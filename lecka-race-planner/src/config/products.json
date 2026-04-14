@@ -1,0 +1,44 @@
+[
+  {
+    "id": "gel-passion-fruit",
+    "name": "Energy Gel Passion Fruit",
+    "type": "gel",
+    "carbs_per_unit": 27,
+    "sodium_per_unit": 120,
+    "price_usd": 29.95,
+    "price_note": "per box of 12",
+    "units_per_box": 12,
+    "shopify_variant_id": "shopify_variant_gel_passion_fruit_box12",
+    "caffeine": false,
+    "caffeine_mg": 0,
+    "ideal_time": ["during"]
+  },
+  {
+    "id": "gel-coffee-cacao",
+    "name": "Energy Gel Coffee Cacao",
+    "type": "gel",
+    "carbs_per_unit": 22,
+    "sodium_per_unit": 120,
+    "price_usd": 29.95,
+    "price_note": "per box of 12",
+    "units_per_box": 12,
+    "shopify_variant_id": "shopify_variant_gel_coffee_cacao_box12",
+    "caffeine": true,
+    "caffeine_mg": 80,
+    "ideal_time": ["during"]
+  },
+  {
+    "id": "bar-mango-coconut",
+    "name": "Energy Bar Mango Coconut",
+    "type": "bar",
+    "carbs_per_unit": 25,
+    "sodium_per_unit": 180,
+    "price_usd": 29.95,
+    "price_note": "per box of 12",
+    "units_per_box": 12,
+    "shopify_variant_id": "shopify_variant_bar_mango_coconut_box12",
+    "caffeine": false,
+    "caffeine_mg": 0,
+    "ideal_time": ["before", "after"]
+  }
+]

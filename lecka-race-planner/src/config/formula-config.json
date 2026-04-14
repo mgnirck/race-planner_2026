@@ -1,0 +1,85 @@
+{
+  "_comment": "All rates are evidence-based guidelines (ISSN / Burke et al.). Adjust as needed.",
+
+  "carb_rates_g_per_hour": {
+    "_comment": "Base carb intake targets by race type, indexed by effort tier",
+    "5k":          { "easy": 30, "race_pace": 40, "hard": 50 },
+    "10k":         { "easy": 30, "race_pace": 45, "hard": 60 },
+    "half_marathon":{ "easy": 40, "race_pace": 60, "hard": 75 },
+    "marathon":    { "easy": 50, "race_pace": 60, "hard": 75 },
+    "ultra_50k":   { "easy": 60, "race_pace": 70, "hard": 90 },
+    "ultra_100k":  { "easy": 60, "race_pace": 75, "hard": 90 },
+    "triathlon_sprint": { "easy": 30, "race_pace": 45, "hard": 60 },
+    "triathlon_olympic":{ "easy": 40, "race_pace": 60, "hard": 75 },
+    "triathlon_70_3":   { "easy": 50, "race_pace": 70, "hard": 90 },
+    "triathlon_140_6":  { "easy": 60, "race_pace": 75, "hard": 90 }
+  },
+
+  "effort_modifiers": {
+    "_comment": "Multiplier applied to the base carb rate",
+    "easy":       1.0,
+    "race_pace":  1.0,
+    "hard":       1.0
+  },
+
+  "condition_modifiers": {
+    "_comment": "Sodium and fluid uplifts for environmental conditions",
+    "cool":   { "sodium_multiplier": 0.85, "fluid_multiplier": 0.9 },
+    "mild":   { "sodium_multiplier": 1.0,  "fluid_multiplier": 1.0 },
+    "warm":   { "sodium_multiplier": 1.25, "fluid_multiplier": 1.2 },
+    "hot":    { "sodium_multiplier": 1.5,  "fluid_multiplier": 1.4 },
+    "humid":  { "sodium_multiplier": 1.4,  "fluid_multiplier": 1.35 }
+  },
+
+  "sodium_targets_mg_per_hour": {
+    "_comment": "Base sodium target before condition modifier. Scales with body weight.",
+    "base_per_kg": 8,
+    "minimum":     300,
+    "maximum":     1500
+  },
+
+  "fluid_targets_ml_per_hour": {
+    "_comment": "Base fluid target before condition modifier. Scales with body weight.",
+    "base_per_kg": 8,
+    "minimum":     400,
+    "maximum":     1000
+  },
+
+  "gender_modifiers": {
+    "_comment": "Small downward adjustment for female athletes (lower avg sweat rate)",
+    "male":   1.0,
+    "female": 0.9,
+    "other":  0.95
+  },
+
+  "timing_rules": {
+    "_comment": "When to consume each product type relative to race start (minutes)",
+    "before": {
+      "window_start_min": -60,
+      "window_end_min":   -15,
+      "note": "Consume 15–60 min before the start"
+    },
+    "during": {
+      "first_intake_min": 20,
+      "interval_min":     30,
+      "note": "First intake at ~20 min, then every 30 min"
+    },
+    "after": {
+      "window_start_min": 0,
+      "window_end_min":   60,
+      "note": "Consume within 60 min of finishing"
+    }
+  },
+
+  "caffeine_rules": {
+    "max_mg_per_hour":       200,
+    "recommended_dose_mg":   80,
+    "first_dose_offset_min": 45,
+    "note": "Caffeine gels replace one plain gel slot when caffeine_ok = true"
+  },
+
+  "training_mode": {
+    "_comment": "In training mode reduce carb targets to train the gut at lower doses",
+    "carb_rate_multiplier": 0.7
+  }
+}
