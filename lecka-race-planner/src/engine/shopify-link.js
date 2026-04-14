@@ -13,7 +13,7 @@
  * Returns
  * -------
  * Full URL string, e.g.:
- *   https://www.getlecka.com/cart/shopify_variant_gel_passion_fruit_box12:1,shopify_variant_bar_mango_coconut_box12:2
+ *   https://www.getlecka.com/cart/shopify_variant_gel_passion_fruit_box12:1,...?discount=RACE10&utm_source=shopify_embed
  *
  * Notes
  * -----
@@ -27,7 +27,13 @@
 
 const STORE_URL = 'https://www.getlecka.com'
 
-export function buildCartURL(selectedProducts, discountCode = '') {
+/**
+ * @param {Array}  selectedProducts  — output of selectProducts()
+ * @param {string} [discountCode]    — applied as ?discount=CODE
+ * @param {string} [utmSource]       — appended as &utm_source=VALUE when set
+ * @returns {string}
+ */
+export function buildCartURL(selectedProducts, discountCode = '', utmSource = '') {
   if (!selectedProducts || selectedProducts.length === 0) {
     return STORE_URL
   }
@@ -49,8 +55,10 @@ export function buildCartURL(selectedProducts, discountCode = '') {
     })
     .join(',')
 
+  const params = []
+  if (discountCode) params.push(`discount=${encodeURIComponent(discountCode)}`)
+  if (utmSource)    params.push(`utm_source=${encodeURIComponent(utmSource)}`)
+
   const base = `${STORE_URL}/cart/${cartItems}`
-  return discountCode
-    ? `${base}?discount=${encodeURIComponent(discountCode)}`
-    : base
+  return params.length ? `${base}?${params.join('&')}` : base
 }

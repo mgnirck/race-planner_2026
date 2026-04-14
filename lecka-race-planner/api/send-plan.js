@@ -561,9 +561,35 @@ async function upsertShopifyCustomer(email, inputs) {
   }
 }
 
+// ── CORS ──────────────────────────────────────────────────────────────────────
+
+const CORS_WHITELIST = [
+  'https://www.getlecka.com',
+  'https://getlecka.com',
+  'https://getlecka.myshopify.com',
+]
+
+function applyCORS(req, res) {
+  const origin = req.headers?.origin ?? ''
+  const allowed =
+    CORS_WHITELIST.includes(origin) ||
+    /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin) ||
+    /^http:\/\/localhost(:\d+)?$/.test(origin)
+
+  if (allowed) res.setHeader('Access-Control-Allow-Origin', origin)
+  res.setHeader('Vary', 'Origin')
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
+  applyCORS(req, res)
+
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end()
+  }
+
   // Only accept POST
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
