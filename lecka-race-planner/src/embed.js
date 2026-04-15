@@ -25,6 +25,25 @@ export const isEmbedded = (() => {
   return new URLSearchParams(window.location.search).get('utm_source') === 'shopify_embed'
 })()
 
+/**
+ * The origin we target for postMessage calls to the parent frame.
+ *
+ * When running inside an iframe, document.referrer is the URL of the
+ * embedding page (e.g. https://getlecka.myshopify.com/...), so we extract
+ * its origin and use that as the postMessage target — restricting messages
+ * to the actual parent page rather than broadcasting to any origin ('*').
+ *
+ * Falls back to '*' only when referrer is absent (rare: parent sent
+ * Referrer-Policy: no-referrer) or unparseable.
+ */
+const parentOrigin = (() => {
+  try {
+    return document.referrer ? new URL(document.referrer).origin : '*'
+  } catch {
+    return '*'
+  }
+})()
+
 // ── Parent communication ──────────────────────────────────────────────────────
 
 /**
@@ -34,7 +53,7 @@ export const isEmbedded = (() => {
 export function notifyResize() {
   if (!isEmbedded) return
   const height = Math.max(document.documentElement.scrollHeight, 500)
-  window.parent.postMessage({ type: 'lecka:resize', height }, '*')
+  window.parent.postMessage({ type: 'lecka:resize', height }, parentOrigin)
 }
 
 /**
@@ -46,7 +65,7 @@ export function notifyResize() {
  */
 export function notifyEmailCapture(email, race_type) {
   if (!isEmbedded) return
-  window.parent.postMessage({ type: 'lecka:emailCapture', email, race_type }, '*')
+  window.parent.postMessage({ type: 'lecka:emailCapture', email, race_type }, parentOrigin)
 }
 
 // ── Cart URL helper ───────────────────────────────────────────────────────────
