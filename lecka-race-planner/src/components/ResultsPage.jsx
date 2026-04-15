@@ -13,7 +13,7 @@
 
 import React, { useState, useMemo } from 'react'
 import { buildCartURL } from '../engine/shopify-link.js'
-import { isEmbedded, notifyEmailCapture } from '../embed.js'
+import { isEmbedded, notifyEmailCapture, embedCartURL } from '../embed.js'
 
 // ── Display label maps ────────────────────────────────────────────────────────
 
@@ -378,7 +378,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   const totalBoxes = aggregated.reduce((sum, row) => sum + row.boxes, 0)
 
   const cartURL = useMemo(
-    () => buildCartURL(selection, '', isEmbedded ? 'shopify_embed' : ''),
+    () => embedCartURL(buildCartURL(selection, '')),
     [selection]
   )
 
