@@ -16,10 +16,21 @@
   },
 
   "effort_modifiers": {
-    "_comment": "Multiplier applied to the base carb rate",
-    "easy":       1.0,
+    "_comment": [
+      "Secondary multiplier applied on top of the effort-indexed base carb rate.",
+      "Physiological rationale (ISSN / Burke et al.):",
+      "  easy      0.85 — at sub-threshold efforts fat oxidation contributes more",
+      "            (~50-60% VO2max); carbohydrate demand is reduced, so the base",
+      "            rate is scaled down to avoid over-fuelling and GI distress.",
+      "  race_pace 1.00 — the base rates in carb_rates_g_per_hour are calibrated",
+      "            for race-pace effort; no additional adjustment needed.",
+      "  hard      1.15 — above threshold (~85%+ VO2max) muscles rely almost",
+      "            exclusively on glycogen. A 15% uplift targets higher turnover",
+      "            and supports delayed fatigue in shorter, intense efforts."
+    ],
+    "easy":       0.85,
     "race_pace":  1.0,
-    "hard":       1.0
+    "hard":       1.15
   },
 
   "condition_modifiers": {

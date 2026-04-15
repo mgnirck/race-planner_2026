@@ -61,7 +61,12 @@ export function calculateTargets(inputs) {
     throw new Error(`Unknown effort "${effort}". Valid options: easy, race_pace, hard`)
   }
 
-  // Training-mode gut reduction
+  // Effort modifier — secondary fine-tuning on top of the effort-indexed base rate.
+  // e.g. easy ×0.85 (more fat oxidation), hard ×1.15 (higher glycogen turnover).
+  const effortMod = formulaConfig.effort_modifiers[effort] ?? 1.0
+  carb_per_hour *= effortMod
+
+  // Training-mode gut reduction applied after effort adjustment
   if (training_mode) {
     carb_per_hour *= formulaConfig.training_mode.carb_rate_multiplier
   }
