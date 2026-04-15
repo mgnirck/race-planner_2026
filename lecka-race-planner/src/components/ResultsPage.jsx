@@ -297,7 +297,7 @@ function EmailCapture({ targets, selection, form }) {
       const res = await fetch('/api/send-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, targets, selection, form }),
+        body: JSON.stringify({ email, targets, inputs: form, selectedProducts: selection }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setState('success')

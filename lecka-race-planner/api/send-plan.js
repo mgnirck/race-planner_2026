@@ -64,10 +64,10 @@ const EFFORT_LABELS = {
 }
 
 const CONDITIONS_LABELS = {
-  'cool':  'Cool (under 18°C / 64°F)',
-  'mild':  'Mild',
-  'warm':  'Warm (18–25°C / 64–77°F)',
-  'hot':   'Hot (over 25°C / 77°F)',
+  'cool':  'Cool (under 15°C / 59°F)',
+  'mild':  'Mild (15–20°C / 59–68°F)',
+  'warm':  'Warm (20–26°C / 68–79°F)',
+  'hot':   'Hot (over 26°C / 79°F)',
   'humid': 'Humid',
 }
 
@@ -120,8 +120,13 @@ function buildCartURL(selectedProducts) {
   const totals = {}
   for (const item of selectedProducts) {
     const vid = item.product.shopify_variant_id
+    if (!/^\d+$/.test(vid)) {
+      console.warn(`[send-plan] Non-numeric variant ID "${vid}" for "${item.product.name}" — skipping`)
+      continue
+    }
     totals[vid] = (totals[vid] ?? 0) + item.quantity
   }
+  if (!Object.keys(totals).length) return 'https://www.getlecka.com'
   const parts = Object.entries(totals).map(([vid, units]) => {
     const prod  = selectedProducts.find(i => i.product.shopify_variant_id === vid)?.product
     const boxes = Math.ceil(units / (prod?.units_per_box ?? 1))
