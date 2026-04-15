@@ -23,9 +23,10 @@ const RACE_PRESETS = [
 ]
 
 const CONDITIONS = [
-  { label: 'Cool',  sublabel: 'under 18°C / 64°F', key: 'cool' },
-  { label: 'Warm',  sublabel: '18–25°C / 64–77°F', key: 'warm' },
-  { label: 'Hot',   sublabel: 'over 25°C / 77°F',  key: 'hot'  },
+  { label: 'Cool',  sublabel: 'under 15°C / 59°F',  key: 'cool' },
+  { label: 'Mild',  sublabel: '15–20°C / 59–68°F',  key: 'mild' },
+  { label: 'Warm',  sublabel: '20–26°C / 68–79°F',  key: 'warm' },
+  { label: 'Hot',   sublabel: 'over 26°C / 79°F',   key: 'hot'  },
 ]
 
 const EFFORT_OPTIONS = [
