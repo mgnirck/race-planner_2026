@@ -21,8 +21,9 @@
  * - If the same variant appears in multiple entries (e.g. bar before + bar after),
  *   quantities are summed so each variant appears once in the URL.
  * - Fractional boxes are rounded up: 13 individual units → 2 boxes of 12.
- * - The Shopify variant IDs in products.json are currently placeholder strings.
- *   Replace them with real numeric Shopify variant IDs before going live.
+ * - Variant ID validation: expects numeric Shopify variant IDs (e.g. "43249546526767").
+ *   Non-numeric IDs trigger a console.warn and are skipped from the cart URL.
+ *   Ensure all products in products.json have real numeric variant IDs.
  */
 
 const STORE_URL = 'https://www.getlecka.com'
@@ -32,16 +33,30 @@ const STORE_URL = 'https://www.getlecka.com'
  * @param {string} [discountCode]    — applied as ?discount=CODE
  * @param {string} [utmSource]       — appended as &utm_source=VALUE when set
  * @returns {string}
+ *
+ * Variant ID validation: logs console.warn and skips any product with non-numeric
+ * shopify_variant_id. This guards against stale placeholder IDs in products.json.
  */
 export function buildCartURL(selectedProducts, discountCode = '', utmSource = '') {
   if (!selectedProducts || selectedProducts.length === 0) {
     return STORE_URL
   }
 
-  // Aggregate unit quantities by variant ID
+  // Aggregate unit quantities by variant ID, validating each variant
   const variantTotals = {}
   for (const item of selectedProducts) {
     const vid = item.product.shopify_variant_id
+
+    // Validate: variant ID should be a numeric string
+    if (!/^\d+$/.test(vid)) {
+      console.warn(
+        `[Lecka] Invalid Shopify variant ID for "${item.product.name}": "${vid}" — ` +
+        `expected numeric ID. Skipping from cart URL. ` +
+        `Update shopify_variant_id in products.json with real numeric ID from Shopify Admin.`
+      )
+      continue
+    }
+
     variantTotals[vid] = (variantTotals[vid] || 0) + item.quantity
   }
 
