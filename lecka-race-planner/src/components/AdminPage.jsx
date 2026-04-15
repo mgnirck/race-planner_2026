@@ -3,8 +3,9 @@
  *
  * Route: /admin
  *
- * A password-protected, client-side analytics view. No personal data is stored
- * or displayed — only aggregate counters written by App.jsx into localStorage.
+ * Password-protected analytics view. On unlock it fetches aggregate stats from
+ * GET /api/record-plan (server-side /tmp counter). Falls back to localStorage
+ * when the API is unavailable (offline, local dev without Vercel CLI).
  *
  * Security note
  * -------------
@@ -12,15 +13,13 @@
  * This is intentionally lightweight — the page only shows non-sensitive aggregate
  * stats. Do not use this mechanism to protect personal data.
  *
- * Set VITE_ADMIN_PASSWORD in your Vercel environment variables.
- * In local dev (MODE === 'development') the page is accessible without a password
- * so you can inspect stats without configuring env vars.
- *
- * localStorage key: 'lecka_plans_v1'
- * Value: JSON array of { date: ISO string, race_type: string }
+ * Data sources (in priority order)
+ * ----------------------------------
+ * 1. GET /api/record-plan  — server-side /tmp counter (all users, approx.)
+ * 2. localStorage 'lecka_plans_v1' — this-browser fallback (offline / dev)
  */
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -116,10 +115,39 @@ function StatBox({ value, label, sub }) {
 export default function AdminPage() {
   const gate = usePasswordGate()
 
-  const allPlans     = useMemo(loadPlans, [gate.unlocked])
-  const monthPlans   = useMemo(() => thisMonthPlans(allPlans), [allPlans])
-  const raceBreakdown = useMemo(() => countByRaceType(allPlans), [allPlans])
-  const topRaceType  = raceBreakdown[0]
+  // ── Server stats ────────────────────────────────────────────────────────────
+  // null = not yet fetched | object = success | 'error' = failed
+  const [serverStats,  setServerStats]  = useState(null)
+  const [serverFetching, setServerFetching] = useState(false)
+
+  useEffect(() => {
+    if (!gate.unlocked) return
+    setServerFetching(true)
+    fetch('/api/record-plan')
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
+      .then(data => setServerStats(data))
+      .catch(() => setServerStats('error'))
+      .finally(() => setServerFetching(false))
+  }, [gate.unlocked])
+
+  // ── localStorage fallback ────────────────────────────────────────────────────
+  const localPlans    = useMemo(loadPlans, [gate.unlocked])
+  const localMonthLen = useMemo(() => thisMonthPlans(localPlans).length, [localPlans])
+  const localBreakdown = useMemo(() => countByRaceType(localPlans), [localPlans])
+
+  // ── Derived display values — prefer server, fall back to local ───────────────
+  const serverOk = serverStats && serverStats !== 'error'
+
+  const displayTotal  = serverOk ? serverStats.total      : localPlans.length
+  const displayMonth  = serverOk ? serverStats.this_month : localMonthLen
+  const displayBreakdown = serverOk
+    ? serverStats.by_race_type.map(r => ({
+        key:   r.key,
+        label: RACE_LABELS[r.key] ?? r.key,
+        count: r.count,
+      }))
+    : localBreakdown
+  const topRaceType = displayBreakdown[0]
 
   const now = new Date()
   const monthLabel = now.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
@@ -178,30 +206,40 @@ export default function AdminPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Lecka</p>
           <h1 className="text-lg font-bold text-[#1B1B1B]">Planner admin</h1>
         </div>
-        <a
-          href="/"
-          className="text-sm text-[#2D6A4F] font-medium hover:underline"
-        >
+        <a href="/" className="text-sm text-[#2D6A4F] font-medium hover:underline">
           ← Back to planner
         </a>
       </div>
 
       <div className="max-w-2xl mx-auto px-5 py-8 space-y-8">
 
-        {/* This month stats */}
+        {/* Data source indicator */}
+        <div className="flex items-center gap-2">
+          {serverFetching ? (
+            <span className="text-xs text-gray-400">Loading server stats…</span>
+          ) : serverOk ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold
+                             text-[#2D6A4F] bg-[#2D6A4F]/8 px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F] inline-block" />
+              Live — all users
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold
+                             text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
+              {serverStats === 'error' ? 'Server unavailable — showing local data' : 'Local data'}
+            </span>
+          )}
+        </div>
+
+        {/* This month / all-time counts */}
         <section>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
             {monthLabel}
           </p>
           <div className="grid grid-cols-2 gap-4">
-            <StatBox
-              value={monthPlans.length}
-              label="Plans generated this month"
-            />
-            <StatBox
-              value={allPlans.length}
-              label="Plans generated all time"
-            />
+            <StatBox value={displayMonth} label="Plans this month" />
+            <StatBox value={displayTotal} label="Plans all time" />
           </div>
         </section>
 
@@ -216,7 +254,9 @@ export default function AdminPage() {
                 <p className="text-lg font-bold text-[#1B1B1B]">{topRaceType.label}</p>
                 <p className="text-sm text-gray-400 mt-0.5">
                   {topRaceType.count} plan{topRaceType.count !== 1 ? 's' : ''}
-                  {' '}({Math.round((topRaceType.count / allPlans.length) * 100)}% of total)
+                  {displayTotal > 0 && (
+                    <> ({Math.round((topRaceType.count / displayTotal) * 100)}% of total)</>
+                  )}
                 </p>
               </div>
               <div className="text-3xl font-bold text-[#74C69D]">#1</div>
@@ -225,26 +265,25 @@ export default function AdminPage() {
         )}
 
         {/* Race type breakdown */}
-        {raceBreakdown.length > 0 && (
+        {displayBreakdown.length > 0 && (
           <section>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
               All race types
             </p>
             <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
-              {raceBreakdown.map((row, i) => (
+              {displayBreakdown.map((row, i) => (
                 <div
                   key={row.key}
                   className={`flex items-center justify-between px-5 py-3 ${
-                    i !== raceBreakdown.length - 1 ? 'border-b border-gray-100' : ''
+                    i !== displayBreakdown.length - 1 ? 'border-b border-gray-100' : ''
                   }`}
                 >
                   <span className="text-sm font-medium text-[#1B1B1B]">{row.label}</span>
                   <div className="flex items-center gap-3">
-                    {/* Mini bar */}
                     <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-[#2D6A4F] rounded-full"
-                        style={{ width: `${(row.count / raceBreakdown[0].count) * 100}%` }}
+                        style={{ width: `${(row.count / displayBreakdown[0].count) * 100}%` }}
                       />
                     </div>
                     <span className="text-sm text-gray-500 w-6 text-right">{row.count}</span>
@@ -255,15 +294,15 @@ export default function AdminPage() {
           </section>
         )}
 
-        {allPlans.length === 0 && (
+        {displayTotal === 0 && !serverFetching && (
           <p className="text-sm text-gray-400 text-center py-12">
             No plans generated yet. Stats appear here after athletes use the planner.
           </p>
         )}
 
-        {/* Footer note */}
+        {/* Footer */}
         <p className="text-xs text-gray-300 text-center pb-4">
-          Stats are stored in this browser's localStorage — no personal data is recorded.
+          No personal data is recorded — only race type and timestamp per plan.
         </p>
       </div>
     </div>
