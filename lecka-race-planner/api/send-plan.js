@@ -566,6 +566,41 @@ async function upsertShopifyCustomer(email, inputs) {
   }
 }
 
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+//
+// In-memory Map keyed by IP. Acceptable for MVP — the Map resets on every cold
+// start, so counts are per-instance rather than global. For production hardening
+// replace with Upstash Redis: https://upstash.com/docs/redis/sdks/ratelimit-ts/overview
+// Their free tier covers ~10k requests/day with a single UPSTASH_REDIS_REST_URL
+// env var and the `@upstash/ratelimit` package.
+
+const RATE_LIMIT_MAX    = 5   // requests
+const RATE_LIMIT_WINDOW = 60  // seconds
+
+const rateLimitMap = new Map()  // IP → { count, resetAt }
+
+function isRateLimited(ip) {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+
+  if (!entry || now >= entry.resetAt) {
+    // First request in this window (or window has expired)
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW * 1000 })
+    return false
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) return true
+
+  entry.count++
+  return false
+}
+
+function clientIP(req) {
+  const forwarded = req.headers['x-forwarded-for']
+  if (forwarded) return forwarded.split(',')[0].trim()
+  return req.socket?.remoteAddress ?? 'unknown'
+}
+
 // ── CORS ──────────────────────────────────────────────────────────────────────
 
 const CORS_WHITELIST = [
@@ -598,6 +633,11 @@ export default async function handler(req, res) {
   // Only accept POST
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
+  }
+
+  // Rate limit — 5 requests per IP per 60 s
+  if (isRateLimited(clientIP(req))) {
+    return res.status(429).json({ success: false, error: 'Too many requests — please wait a minute and try again.' })
   }
 
   const { email, inputs, targets, selectedProducts } = req.body ?? {}
