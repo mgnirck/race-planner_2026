@@ -1,8 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { inject } from '@vercel/analytics'
 import App from './App.jsx'
 import './index.css'
 import { notifyResize } from './embed.js'
+
+inject()
 
 // ── Embed: keep parent iframe sized to our content ────────────────────────────
 // ResizeObserver fires whenever the document height changes (step transitions,

@@ -22,7 +22,7 @@
  */
 
 import { jsPDF }  from 'jspdf'
-import autoTable  from 'jspdf-autotable'
+import 'jspdf-autotable'
 import { Resend } from 'resend'
 
 // ── Brand colours ─────────────────────────────────────────────────────────────
@@ -214,7 +214,7 @@ function generatePDF(inputs, targets, selectedProducts) {
   const durH = targets.total_duration_minutes / 60
   const totalFluid = Math.round(targets.fluid_ml_per_hour * durH)
 
-  autoTable(doc, {
+  doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Metric', 'Per Hour', 'Total Race']],
@@ -257,7 +257,7 @@ function generatePDF(inputs, targets, selectedProducts) {
     item.note ?? '',
   ])
 
-  autoTable(doc, {
+  doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Product', 'Qty', 'When', 'Instructions']],
@@ -314,7 +314,7 @@ function generatePDF(inputs, targets, selectedProducts) {
     e.product,
   ])
 
-  autoTable(doc, {
+  doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Time', 'Action', 'Product']],
