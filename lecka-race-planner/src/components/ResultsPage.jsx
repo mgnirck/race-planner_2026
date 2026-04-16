@@ -138,6 +138,34 @@ function ProductIcon({ product }) {
   )
 }
 
+// ── Warnings ─────────────────────────────────────────────────────────────────
+
+function WarningBox({ warnings, athlete_profile }) {
+  if (!warnings || warnings.length === 0) return null
+
+  const warningIcons = {
+    info: '💡',
+    warning: '⚠️',
+    error: '❌',
+  }
+
+  return (
+    <section>
+      <SectionLabel>Notes & tips</SectionLabel>
+      <div className="space-y-2">
+        {warnings.map((w, i) => (
+          <div
+            key={i}
+            className="border-l-4 border-[#74C69D] bg-[#2D6A4F]/5 rounded-r-lg p-3 text-sm text-[#1B4B35]"
+          >
+            <p className="leading-snug font-medium">{w.message}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // ── NutritionSummary ──────────────────────────────────────────────────────────
 
 function NutritionSummary({ targets }) {
@@ -421,6 +449,9 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             {targets.caffeine_ok ? ' · Caffeine' : ''}
           </p>
         </div>
+
+        {/* ── Warnings (if any) ────────────────────────────────────────────────── */}
+        <WarningBox warnings={targets.warnings} athlete_profile={targets.athlete_profile} />
 
         {/* ── Nutrition targets ────────────────────────────────────────────────── */}
         <NutritionSummary targets={targets} />

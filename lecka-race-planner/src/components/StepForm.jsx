@@ -383,6 +383,37 @@ function StepTwo({ form, setForm }) {
 function StepThree({ form, setForm }) {
   return (
     <div className="space-y-7">
+      {/* Training status (athlete profile) */}
+      <div>
+        <FieldLabel>Your training status</FieldLabel>
+        <div className="space-y-2">
+          <OptionCard
+            label="Untrained"
+            desc="New to endurance sports, lower sweat rate"
+            selected={form.athlete_profile === 'untrained'}
+            onClick={() => setForm(f => ({ ...f, athlete_profile: 'untrained' }))}
+          />
+          <OptionCard
+            label="Intermediate"
+            desc="Moderate endurance training (recommended for most)"
+            selected={form.athlete_profile === 'intermediate'}
+            onClick={() => setForm(f => ({ ...f, athlete_profile: 'intermediate' }))}
+          />
+          <OptionCard
+            label="Trained"
+            desc="Regular endurance athlete, higher sweat rate"
+            selected={form.athlete_profile === 'trained'}
+            onClick={() => setForm(f => ({ ...f, athlete_profile: 'trained' }))}
+          />
+          <OptionCard
+            label="Elite"
+            desc="Professional or competitive athlete"
+            selected={form.athlete_profile === 'elite'}
+            onClick={() => setForm(f => ({ ...f, athlete_profile: 'elite' }))}
+          />
+        </div>
+      </div>
+
       {/* Caffeine */}
       <div>
         <FieldLabel>Caffeine products</FieldLabel>
@@ -442,7 +473,7 @@ function isStep2Valid(form) {
 }
 
 function isStep3Valid(form) {
-  return form.caffeine_ok !== null
+  return form.caffeine_ok !== null && form.athlete_profile !== ''
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -462,8 +493,9 @@ export default function StepForm({ onComplete }) {
     conditions:   '',
     effort:       '',
     // Step 3
-    caffeine_ok:   null,
-    training_mode: false,
+    athlete_profile: '',
+    caffeine_ok:     null,
+    training_mode:   false,
   })
 
   const stepValid = { 1: isStep1Valid(form), 2: isStep2Valid(form), 3: isStep3Valid(form) }
@@ -479,14 +511,15 @@ export default function StepForm({ onComplete }) {
     const goal_minutes = parseGoalTime(form.goal_time)
 
     const targets   = calculateTargets({
-      race_type:     form.race_type,
+      race_type:       form.race_type,
       goal_minutes,
       weight_kg,
-      gender:        form.gender,
-      conditions:    form.conditions,
-      effort:        form.effort,
-      caffeine_ok:   form.caffeine_ok,
-      training_mode: form.training_mode,
+      gender:          form.gender,
+      conditions:      form.conditions,
+      effort:          form.effort,
+      caffeine_ok:     form.caffeine_ok,
+      training_mode:   form.training_mode,
+      athlete_profile: form.athlete_profile,
     })
     const selection = selectProducts(targets)
 
