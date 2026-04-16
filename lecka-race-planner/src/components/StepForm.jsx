@@ -1,25 +1,25 @@
 /**
- * StepForm.jsx
+ * StepForm.jsx — 3-step input form for the Lecka Race Nutrition Planner.
  *
- * 3-step input form for the Lecka Race Nutrition Planner.
+ * Step 1  Your race       — name, distance (km/mi), surface, goal time
+ * Step 2  Body & prefs   — weight, gender, conditions, effort, training status, caffeine, mode
+ * Step 3  Product prefs  — pick favourite gel & bar flavours
  *
  * Props
  * -----
- * onComplete({ targets, selection, form }) — called on final submit after
- *   running calculateTargets() + selectProducts()
+ * onComplete({ targets, selection, form }) — called on final submit
  */
 
 import React, { useState } from 'react'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
+import products             from '../config/products.json'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const RACE_PRESETS = [
-  { label: 'Road half marathon', key: 'half_marathon' },
-  { label: 'Road marathon',      key: 'marathon'      },
-  { label: 'Trail 21–42km',      key: 'half_marathon' },
-  { label: 'Trail 50km+',        key: 'ultra_50k'     },
+const SURFACE_TYPES = [
+  { label: 'Road',  key: 'road'  },
+  { label: 'Trail', key: 'trail' },
 ]
 
 const CONDITIONS = [
@@ -30,28 +30,15 @@ const CONDITIONS = [
 ]
 
 const EFFORT_OPTIONS = [
-  {
-    label: 'Easy / long day',
-    desc:  'Comfortable, conversational pace',
-    key:   'easy',
-  },
-  {
-    label: 'Race pace',
-    desc:  'Goal pace — controlled but working',
-    key:   'race_pace',
-  },
-  {
-    label: 'All-out effort',
-    desc:  'Threshold or beyond — it hurts',
-    key:   'hard',
-  },
+  { label: 'Easy / long day',  desc: 'Comfortable, conversational pace',     key: 'easy'      },
+  { label: 'Race pace',        desc: 'Goal pace — controlled but working',    key: 'race_pace' },
+  { label: 'All-out effort',   desc: 'Threshold or beyond — it hurts',        key: 'hard'      },
 ]
 
-const STEP_TITLES = ['Your race', 'Your body & conditions', 'Your preferences']
+const STEP_TITLES = ['Your race', 'Your body & preferences', 'Product preferences']
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Parse "h:mm" or "hh:mm" → total minutes, or null if invalid */
 function parseGoalTime(str) {
   const match = str.trim().match(/^(\d{1,2}):(\d{2})$/)
   if (!match) return null
@@ -62,7 +49,6 @@ function parseGoalTime(str) {
   return total > 0 ? total : null
 }
 
-/** Map an entered distance (km) to the nearest engine race_type key */
 function distanceToRaceType(km) {
   if (km <  10) return '5k'
   if (km <  20) return '10k'
@@ -72,17 +58,15 @@ function distanceToRaceType(km) {
   return 'ultra_100k'
 }
 
-/** User-facing label for a race_type key when entered via custom distance */
 const RACE_TYPE_LABELS = {
-  '5k':           '5 km',
-  '10k':          '10 km',
-  'half_marathon':'Half marathon',
-  'marathon':     'Marathon',
-  'ultra_50k':    'Ultra 50 km',
-  'ultra_100k':   'Ultra 100 km',
+  '5k':            '5 km',
+  '10k':           '10 km',
+  'half_marathon': 'Half marathon',
+  'marathon':      'Marathon',
+  'ultra_50k':     'Ultra 50 km',
+  'ultra_100k':    'Ultra 100 km+',
 }
 
-/** Convert weight value + unit → kg, or null if out of range / invalid */
 function toKg(value, unit) {
   const n = parseFloat(value)
   if (!isFinite(n) || n <= 0) return null
@@ -90,11 +74,14 @@ function toKg(value, unit) {
   return kg >= 40 && kg <= 140 ? kg : null
 }
 
+function displayToKm(displayVal, unit) {
+  const n = parseFloat(displayVal)
+  if (!isFinite(n) || n <= 0) return null
+  return unit === 'mi' ? n * 1.60934 : n
+}
+
 // ── Primitive UI components ───────────────────────────────────────────────────
 
-/**
- * Round pill button — used for single-select options without long descriptions.
- */
 function Pill({ label, sublabel, selected, onClick }) {
   return (
     <button
@@ -104,8 +91,8 @@ function Pill({ label, sublabel, selected, onClick }) {
         'min-h-[44px] px-4 py-2.5 rounded-full border-2 text-sm font-medium',
         'text-left leading-tight transition-colors',
         selected
-          ? 'border-[#2D6A4F] bg-[#2D6A4F] text-white'
-          : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#74C69D]',
+          ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+          : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
       ].join(' ')}
     >
       <span className="block">{label}</span>
@@ -118,9 +105,6 @@ function Pill({ label, sublabel, selected, onClick }) {
   )
 }
 
-/**
- * Full-width card button — used for options that need a one-line description.
- */
 function OptionCard({ label, desc, selected, onClick }) {
   return (
     <button
@@ -129,11 +113,11 @@ function OptionCard({ label, desc, selected, onClick }) {
       className={[
         'w-full min-h-[64px] px-4 py-3 rounded-xl border-2 text-left transition-colors',
         selected
-          ? 'border-[#2D6A4F] bg-[#2D6A4F]/5'
-          : 'border-gray-200 bg-white hover:border-[#74C69D]',
+          ? 'border-[#48C4B0] bg-[#48C4B0]/5'
+          : 'border-gray-200 bg-white hover:border-[#48C4B0]',
       ].join(' ')}
     >
-      <div className={`text-sm font-semibold ${selected ? 'text-[#2D6A4F]' : 'text-[#1B1B1B]'}`}>
+      <div className={`text-sm font-semibold ${selected ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
         {label}
       </div>
       <div className="text-xs text-gray-400 mt-0.5 font-normal">{desc}</div>
@@ -141,7 +125,6 @@ function OptionCard({ label, desc, selected, onClick }) {
   )
 }
 
-/** Section label above a group of inputs */
 function FieldLabel({ children }) {
   return (
     <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
@@ -150,77 +133,151 @@ function FieldLabel({ children }) {
   )
 }
 
+function ProductPreferenceCard({ product, selected, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={[
+        'w-full px-4 py-3 rounded-xl border-2 text-left transition-colors',
+        selected
+          ? 'border-[#48C4B0] bg-[#48C4B0]/5'
+          : 'border-gray-200 bg-white hover:border-[#48C4B0]/50',
+      ].join(' ')}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-semibold leading-tight ${selected ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
+            {product.name}
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+            <span className="text-xs text-gray-400">{product.carbs_per_unit}g carbs</span>
+            <span className="text-xs text-gray-400">{product.sodium_per_unit}mg sodium</span>
+            {product.caffeine && (
+              <span className="text-xs font-medium text-[#48C4B0]">{product.caffeine_mg}mg caffeine</span>
+            )}
+          </div>
+        </div>
+        <div
+          className={[
+            'w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors',
+            selected ? 'bg-[#48C4B0] border-[#48C4B0]' : 'border-gray-300',
+          ].join(' ')}
+        >
+          {selected && (
+            <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+        </div>
+      </div>
+    </button>
+  )
+}
+
 // ── Step 1: Race ──────────────────────────────────────────────────────────────
 
 function StepOne({ form, setForm }) {
-  const goalMinutes = parseGoalTime(form.goal_time)
+  const goalMinutes   = parseGoalTime(form.goal_time)
   const timeIsInvalid = form.goal_time.length > 0 && goalMinutes === null
 
+  function handleDistChange(rawValue) {
+    setForm(f => {
+      const kmVal = displayToKm(rawValue, f.dist_unit)
+      return {
+        ...f,
+        custom_km_display: rawValue,
+        custom_km:  kmVal !== null ? String(Math.round(kmVal * 10) / 10) : '',
+        race_type:  kmVal ? distanceToRaceType(kmVal) : '',
+      }
+    })
+  }
+
+  function switchDistUnit(newUnit) {
+    setForm(f => {
+      if (f.dist_unit === newUnit) return f
+      const n = parseFloat(f.custom_km_display)
+      let newDisplay = f.custom_km_display
+      if (isFinite(n) && n > 0) {
+        newDisplay = newUnit === 'mi'
+          ? String(Math.round((n / 1.60934) * 10) / 10)
+          : String(Math.round((n * 1.60934) * 10) / 10)
+      }
+      return { ...f, dist_unit: newUnit, custom_km_display: newDisplay }
+    })
+  }
+
   return (
-    <div className="space-y-7">
-      {/* Race type */}
+    <div className="space-y-6">
+
+      {/* Race / run name */}
       <div>
-        <FieldLabel>Race type</FieldLabel>
-        <div className="flex flex-wrap gap-2">
-          {RACE_PRESETS.map(opt => (
+        <FieldLabel>Race or run name</FieldLabel>
+        <input
+          type="text"
+          placeholder="e.g. Boston Marathon 2026"
+          value={form.race_name}
+          onChange={e => setForm(f => ({ ...f, race_name: e.target.value }))}
+          className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                     focus:outline-none focus:border-[#48C4B0]"
+        />
+        <p className="text-xs text-gray-400 mt-1.5">Optional — shown on your plan</p>
+      </div>
+
+      {/* Distance */}
+      <div>
+        <FieldLabel>Race distance</FieldLabel>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            min="1"
+            max="500"
+            placeholder="e.g. 42"
+            value={form.custom_km_display}
+            onChange={e => handleDistChange(e.target.value)}
+            className="w-32 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                       focus:outline-none focus:border-[#48C4B0]"
+          />
+          {/* km / mi toggle */}
+          <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
+            {['km', 'mi'].map(unit => (
+              <button
+                key={unit}
+                type="button"
+                onClick={() => switchDistUnit(unit)}
+                className={[
+                  'px-3 py-2 min-h-[38px] transition-colors',
+                  form.dist_unit === unit
+                    ? 'bg-[#48C4B0] text-white'
+                    : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
+                ].join(' ')}
+              >
+                {unit}
+              </button>
+            ))}
+          </div>
+        </div>
+        {form.race_type && (
+          <p className="text-xs text-[#48C4B0] mt-1.5">
+            {RACE_TYPE_LABELS[form.race_type]} nutrition plan
+          </p>
+        )}
+      </div>
+
+      {/* Surface */}
+      <div>
+        <FieldLabel>Surface</FieldLabel>
+        <div className="flex gap-2">
+          {SURFACE_TYPES.map(s => (
             <Pill
-              key={opt.label}
-              label={opt.label}
-              selected={form.race_label === opt.label}
-              onClick={() =>
-                setForm(f => ({
-                  ...f,
-                  race_label: opt.label,
-                  race_type:  opt.key,
-                  custom_km:  '',
-                }))
-              }
+              key={s.key}
+              label={s.label}
+              selected={form.surface_type === s.key}
+              onClick={() => setForm(f => ({ ...f, surface_type: s.key }))}
             />
           ))}
-          <Pill
-            label="Other distance"
-            selected={form.race_label === 'other'}
-            onClick={() =>
-              setForm(f => ({ ...f, race_label: 'other', race_type: '', custom_km: '' }))
-            }
-          />
         </div>
-
-        {form.race_label === 'other' && (
-          <div className="mt-4">
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="1"
-                max="250"
-                placeholder="Distance"
-                value={form.custom_km}
-                onChange={e => {
-                  const raw = e.target.value
-                  const km  = parseFloat(raw)
-                  setForm(f => ({
-                    ...f,
-                    custom_km:  raw,
-                    race_type:  isFinite(km) && km > 0 ? distanceToRaceType(km) : '',
-                  }))
-                }}
-                className={[
-                  'w-36 border-2 rounded-lg px-3 py-2.5 text-sm',
-                  'focus:outline-none focus:border-[#2D6A4F]',
-                  form.custom_km && !form.race_type
-                    ? 'border-red-300'
-                    : 'border-gray-200',
-                ].join(' ')}
-              />
-              <span className="text-sm text-gray-500">km</span>
-            </div>
-            {form.race_type && (
-              <p className="text-xs text-[#2D6A4F] mt-1.5">
-                Using {RACE_TYPE_LABELS[form.race_type]} nutrition plan
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Goal finish time */}
@@ -236,14 +293,14 @@ function StepOne({ form, setForm }) {
             'w-28 border-2 rounded-lg px-3 py-2.5 text-sm font-mono tracking-wide',
             'focus:outline-none',
             goalMinutes !== null
-              ? 'border-[#2D6A4F]'
+              ? 'border-[#48C4B0]'
               : timeIsInvalid
               ? 'border-red-300'
-              : 'border-gray-200 focus:border-[#2D6A4F]',
+              : 'border-gray-200 focus:border-[#48C4B0]',
           ].join(' ')}
         />
         {goalMinutes !== null && (
-          <p className="text-xs text-[#2D6A4F] mt-1.5">
+          <p className="text-xs text-[#48C4B0] mt-1.5">
             {Math.floor(goalMinutes / 60)}h {goalMinutes % 60}min
           </p>
         )}
@@ -254,14 +311,15 @@ function StepOne({ form, setForm }) {
           <p className="text-xs text-gray-400 mt-1.5">e.g. 2:15 for 2 hours 15 minutes</p>
         )}
       </div>
+
     </div>
   )
 }
 
-// ── Step 2: Body & conditions ─────────────────────────────────────────────────
+// ── Step 2: Body, conditions & preferences ────────────────────────────────────
 
 function StepTwo({ form, setForm }) {
-  const weightOk = toKg(form.weight_value, form.weight_unit) !== null
+  const weightOk      = toKg(form.weight_value, form.weight_unit) !== null
   const weightTouched = form.weight_value !== ''
 
   function switchUnit(newUnit) {
@@ -283,6 +341,7 @@ function StepTwo({ form, setForm }) {
 
   return (
     <div className="space-y-7">
+
       {/* Weight */}
       <div>
         <FieldLabel>Body weight</FieldLabel>
@@ -295,11 +354,10 @@ function StepTwo({ form, setForm }) {
             onChange={e => setForm(f => ({ ...f, weight_value: e.target.value }))}
             className={[
               'w-24 border-2 rounded-lg px-3 py-2.5 text-sm',
-              'focus:outline-none focus:border-[#2D6A4F]',
+              'focus:outline-none focus:border-[#48C4B0]',
               weightTouched && !weightOk ? 'border-red-300' : 'border-gray-200',
             ].join(' ')}
           />
-          {/* kg / lb toggle */}
           <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
             {['kg', 'lb'].map(unit => (
               <button
@@ -309,7 +367,7 @@ function StepTwo({ form, setForm }) {
                 className={[
                   'px-3 py-2 min-h-[38px] transition-colors',
                   form.weight_unit === unit
-                    ? 'bg-[#2D6A4F] text-white'
+                    ? 'bg-[#48C4B0] text-white'
                     : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
                 ].join(' ')}
               >
@@ -374,16 +432,8 @@ function StepTwo({ form, setForm }) {
           ))}
         </div>
       </div>
-    </div>
-  )
-}
 
-// ── Step 3: Preferences ───────────────────────────────────────────────────────
-
-function StepThree({ form, setForm }) {
-  return (
-    <div className="space-y-7">
-      {/* Training status (athlete profile) */}
+      {/* Training status */}
       <div>
         <FieldLabel>Your training status</FieldLabel>
         <div className="space-y-2">
@@ -431,7 +481,7 @@ function StepThree({ form, setForm }) {
         </div>
       </div>
 
-      {/* Training mode */}
+      {/* Planning mode */}
       <div>
         <FieldLabel>Planning for</FieldLabel>
         <div className="space-y-2">
@@ -449,6 +499,62 @@ function StepThree({ form, setForm }) {
           />
         </div>
       </div>
+
+    </div>
+  )
+}
+
+// ── Step 3: Product preferences ───────────────────────────────────────────────
+
+function StepThree({ form, setForm }) {
+  const gels = products.filter(p => p.type === 'gel')
+  const bars = products.filter(p => p.type === 'bar')
+
+  function toggleProduct(id) {
+    setForm(f => {
+      const current = f.preferred_product_ids
+      return current.includes(id)
+        ? { ...f, preferred_product_ids: current.filter(x => x !== id) }
+        : { ...f, preferred_product_ids: [...current, id] }
+    })
+  }
+
+  return (
+    <div className="space-y-7">
+      <p className="text-sm text-gray-500 -mt-2">
+        Pick your favourite flavours — your plan uses these. For longer races we'll mix them up for
+        variety. No preference? We'll choose a balanced mix for you.
+      </p>
+
+      {/* Gels */}
+      <div>
+        <FieldLabel>Energy gels</FieldLabel>
+        <div className="space-y-2">
+          {gels.map(gel => (
+            <ProductPreferenceCard
+              key={gel.id}
+              product={gel}
+              selected={form.preferred_product_ids.includes(gel.id)}
+              onToggle={() => toggleProduct(gel.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Bars */}
+      <div>
+        <FieldLabel>Energy bars</FieldLabel>
+        <div className="space-y-2">
+          {bars.map(bar => (
+            <ProductPreferenceCard
+              key={bar.id}
+              product={bar}
+              selected={form.preferred_product_ids.includes(bar.id)}
+              onToggle={() => toggleProduct(bar.id)}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -456,24 +562,27 @@ function StepThree({ form, setForm }) {
 // ── Step validation ───────────────────────────────────────────────────────────
 
 function isStep1Valid(form) {
-  const raceOk =
-    (form.race_label !== '' && form.race_label !== 'other' && form.race_type !== '') ||
-    (form.race_label === 'other' && form.race_type !== '' && form.custom_km !== '')
-  const timeOk = parseGoalTime(form.goal_time) !== null
-  return raceOk && timeOk
+  return (
+    form.custom_km !== '' &&
+    form.race_type !== '' &&
+    form.surface_type !== '' &&
+    parseGoalTime(form.goal_time) !== null
+  )
 }
 
 function isStep2Valid(form) {
   return (
     toKg(form.weight_value, form.weight_unit) !== null &&
-    form.gender     !== '' &&
-    form.conditions !== '' &&
-    form.effort     !== ''
+    form.gender          !== '' &&
+    form.conditions      !== '' &&
+    form.effort          !== '' &&
+    form.athlete_profile !== '' &&
+    form.caffeine_ok     !== null
   )
 }
 
-function isStep3Valid(form) {
-  return form.caffeine_ok !== null && form.athlete_profile !== ''
+function isStep3Valid(_form) {
+  return true // preferences are always optional — defaults used if nothing selected
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -482,20 +591,24 @@ export default function StepForm({ onComplete }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     // Step 1
-    race_label: '',
-    race_type:  '',
-    custom_km:  '',
-    goal_time:  '',
+    race_name:         '',
+    custom_km:         '',
+    custom_km_display: '',
+    dist_unit:         'km',
+    surface_type:      '',
+    race_type:         '',
+    goal_time:         '',
     // Step 2
-    weight_value: '70',
-    weight_unit:  'kg',
-    gender:       '',
-    conditions:   '',
-    effort:       '',
-    // Step 3
+    weight_value:    '70',
+    weight_unit:     'kg',
+    gender:          '',
+    conditions:      '',
+    effort:          '',
     athlete_profile: '',
     caffeine_ok:     null,
     training_mode:   false,
+    // Step 3
+    preferred_product_ids: [],
   })
 
   const stepValid = { 1: isStep1Valid(form), 2: isStep2Valid(form), 3: isStep3Valid(form) }
@@ -506,7 +619,6 @@ export default function StepForm({ onComplete }) {
       setStep(s => s + 1)
       return
     }
-    // Final step — run the engine and hand off to results
     const weight_kg    = toKg(form.weight_value, form.weight_unit)
     const goal_minutes = parseGoalTime(form.goal_time)
 
@@ -521,23 +633,25 @@ export default function StepForm({ onComplete }) {
       training_mode:   form.training_mode,
       athlete_profile: form.athlete_profile,
     })
-    const selection = selectProducts(targets)
+    const selection = selectProducts(targets, form.preferred_product_ids)
 
     onComplete({ targets, selection, form })
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="bg-white">
+
       {/* ── Progress bar ── */}
       <div className="w-full h-1 bg-gray-100" aria-hidden="true">
         <div
-          className="h-1 bg-[#2D6A4F] transition-all duration-500 ease-in-out"
+          className="h-1 bg-[#48C4B0] transition-all duration-500 ease-in-out"
           style={{ width: `${(step / 3) * 100}%` }}
         />
       </div>
 
-      {/* ── Step header ── */}
-      <div className="max-w-md mx-auto w-full px-5 pt-8 pb-4">
+      {/* ── Logo + Step header ── */}
+      <div className="max-w-md mx-auto w-full px-5 pt-6 pb-4">
+        <img src="/logo.svg" alt="Lecka" className="h-7 mb-5" />
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
           Step {step} of 3
         </p>
@@ -547,23 +661,21 @@ export default function StepForm({ onComplete }) {
       </div>
 
       {/* ── Step content ── */}
-      <div className="flex-1 max-w-md mx-auto w-full px-5 pb-4">
+      <div className="max-w-md mx-auto w-full px-5 pb-4">
         {step === 1 && <StepOne form={form} setForm={setForm} />}
         {step === 2 && <StepTwo form={form} setForm={setForm} />}
         {step === 3 && <StepThree form={form} setForm={setForm} />}
       </div>
 
-      {/* ── Navigation ── */}
-      <div className="max-w-md mx-auto w-full px-5 py-6 flex items-center gap-3 border-t border-gray-100">
+      {/* ── Navigation — follows content naturally, no flex-1 stretch ── */}
+      <div className="max-w-md mx-auto w-full px-5 py-5 flex items-center gap-3 border-t border-gray-100">
         {step > 1 && (
           <button
             type="button"
             onClick={() => setStep(s => s - 1)}
-            className={[
-              'min-h-[48px] px-5 rounded-xl border-2 border-gray-200',
-              'text-sm font-medium text-[#1B1B1B]',
-              'hover:border-[#2D6A4F] transition-colors',
-            ].join(' ')}
+            className="min-h-[48px] px-5 rounded-xl border-2 border-gray-200
+                       text-sm font-medium text-[#1B1B1B]
+                       hover:border-[#48C4B0] transition-colors"
           >
             Back
           </button>
@@ -575,13 +687,14 @@ export default function StepForm({ onComplete }) {
           className={[
             'flex-1 min-h-[48px] rounded-xl text-sm font-semibold transition-colors',
             canAdvance
-              ? 'bg-[#2D6A4F] text-white hover:bg-[#235a3e] active:bg-[#1e4d36]'
+              ? 'bg-[#F64866] text-white hover:bg-[#e03558] active:bg-[#cc2e4e]'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed',
           ].join(' ')}
         >
           {step === 3 ? 'Build my plan' : 'Next'}
         </button>
       </div>
+
     </div>
   )
 }

@@ -2,20 +2,20 @@
  * ResultsPage.jsx
  *
  * Renders the complete race-day nutrition plan:
- *   1. Hero header — race, duration, effort, conditions
- *   2. NutritionSummary — carbs / sodium / fluid targets per hour + totals
+ *   1. Hero header — race name / type, duration, effort, conditions
+ *   2. NutritionSummary — carbs / sodium / fluid per hour + totals
  *   3. ProductCards — what to buy, how many boxes, line price
- *   4. Shop CTA — buildCartURL() → Shopify cart (utm_source when embedded)
- *   5. RaceTimeline — every intake slot sorted chronologically
- *   6. EmailCapture — POST to /api/send-plan, notifyEmailCapture on success
- *   7. "Start over" footer link
+ *   4. Shop CTA — Shopify cart link
+ *   5. RaceTimeline — compact visual bar + phase-grouped schedule
+ *   6. EmailCapture — POST /api/send-plan
+ *   7. Start over footer
  */
 
 import React, { useState, useMemo } from 'react'
-import { buildCartURL } from '../engine/shopify-link.js'
+import { buildCartURL }                          from '../engine/shopify-link.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL } from '../embed.js'
 
-// ── Display label maps ────────────────────────────────────────────────────────
+// ── Label maps ────────────────────────────────────────────────────────────────
 
 const RACE_LABELS = {
   '5k':                '5 km',
@@ -44,7 +44,7 @@ const CONDITION_LABELS = {
   'humid': 'Humid',
 }
 
-// ── Pure helpers ──────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDuration(minutes) {
   const h = Math.floor(minutes / 60)
@@ -54,7 +54,6 @@ function formatDuration(minutes) {
   return `${h}h ${m}min`
 }
 
-/** Badge label inside the timeline time column */
 function formatTimingLabel(minutes, totalDuration) {
   if (minutes < 0) return `T-${Math.abs(minutes)} min`
   if (minutes >= totalDuration) {
@@ -64,29 +63,25 @@ function formatTimingLabel(minutes, totalDuration) {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   if (h > 0 && m > 0) return `${h}h ${m}m`
-  if (h > 0) return `${h}h`
+  if (h > 0)          return `${h}h`
   return `${minutes} min`
 }
 
 function timingPhase(minutes, totalDuration) {
-  if (minutes < 0) return 'before'
+  if (minutes < 0)              return 'before'
   if (minutes >= totalDuration) return 'after'
   return 'during'
 }
 
-/**
- * Flatten all selection items into individual timeline events, sorted by time.
- * Each timing_minutes entry becomes its own event row.
- */
 function buildTimeline(selection, totalDuration) {
   const events = []
   for (const item of selection) {
     for (const t of item.timing_minutes) {
       events.push({
-        time: t,
+        time:    t,
         product: item.product,
-        note: item.note,
-        phase: timingPhase(t, totalDuration),
+        note:    item.note,
+        phase:   timingPhase(t, totalDuration),
       })
     }
   }
@@ -94,10 +89,6 @@ function buildTimeline(selection, totalDuration) {
   return events
 }
 
-/**
- * Aggregate selection items by product.id so each product appears once
- * on the product cards with total units and box count.
- */
 function aggregateByProduct(selection) {
   const map = {}
   for (const item of selection) {
@@ -106,12 +97,45 @@ function aggregateByProduct(selection) {
     map[id].totalUnits += item.quantity
   }
   return Object.values(map).map(({ product, totalUnits }) => {
-    const boxes = Math.ceil(totalUnits / product.units_per_box)
-    return { product, totalUnits, boxes, linePrice: boxes * product.price_usd }
+    const boxes     = Math.ceil(totalUnits / product.units_per_box)
+    const linePrice = boxes * product.price_usd
+    return { product, totalUnits, boxes, linePrice }
   })
 }
 
-// ── Small shared UI primitives ────────────────────────────────────────────────
+/**
+ * Group during-phase events by product and derive a compact schedule string.
+ * Returns array of { product, note, count, scheduleText }
+ */
+function buildDuringGroups(duringEvents) {
+  const byProduct = {}
+  for (const ev of duringEvents) {
+    const id = ev.product.id
+    if (!byProduct[id]) byProduct[id] = { product: ev.product, note: ev.note, times: [] }
+    byProduct[id].times.push(ev.time)
+  }
+
+  return Object.values(byProduct).map(({ product, note, times }) => {
+    let scheduleText
+    if (times.length === 1) {
+      scheduleText = `at ${formatTimingLabel(times[0], Infinity)}`
+    } else {
+      const intervals = times.slice(1).map((t, i) => t - times[i])
+      const allSame   = intervals.every(iv => iv === intervals[0])
+      if (allSame) {
+        scheduleText = `every ${intervals[0]} min, from ${formatTimingLabel(times[0], Infinity)}`
+      } else {
+        const labels = times.map(t => formatTimingLabel(t, Infinity))
+        scheduleText = labels.length > 4
+          ? `${labels.slice(0, 3).join(', ')} … +${labels.length - 3} more`
+          : `at ${labels.join(', ')}`
+      }
+    }
+    return { product, note, count: times.length, scheduleText }
+  })
+}
+
+// ── Shared UI ─────────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }) {
   return (
@@ -121,16 +145,15 @@ function SectionLabel({ children }) {
   )
 }
 
-/** Coloured pill that identifies gel vs bar and caffeine */
 function ProductIcon({ product }) {
   const isBar = product.type === 'bar'
   const isCaf = product.caffeine
-  const bg  = isBar ? '#74C69D' : isCaf ? '#1B1B1B' : '#2D6A4F'
+  const bg  = isBar ? '#48C4B0' : isCaf ? '#1B1B1B' : '#48C4B0'
   const tag = isBar ? 'BAR' : isCaf ? 'CAF' : 'GEL'
   return (
     <div
       className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-      style={{ backgroundColor: bg }}
+      style={{ backgroundColor: bg, opacity: isCaf ? 1 : (isBar ? 0.75 : 1) }}
       aria-hidden="true"
     >
       <span className="text-white text-xs font-bold tracking-wide">{tag}</span>
@@ -138,17 +161,10 @@ function ProductIcon({ product }) {
   )
 }
 
-// ── Warnings ─────────────────────────────────────────────────────────────────
+// ── Warnings ──────────────────────────────────────────────────────────────────
 
-function WarningBox({ warnings, athlete_profile }) {
+function WarningBox({ warnings }) {
   if (!warnings || warnings.length === 0) return null
-
-  const warningIcons = {
-    info: '💡',
-    warning: '⚠️',
-    error: '❌',
-  }
-
   return (
     <section>
       <SectionLabel>Notes & tips</SectionLabel>
@@ -156,7 +172,7 @@ function WarningBox({ warnings, athlete_profile }) {
         {warnings.map((w, i) => (
           <div
             key={i}
-            className="border-l-4 border-[#74C69D] bg-[#2D6A4F]/5 rounded-r-lg p-3 text-sm text-[#1B4B35]"
+            className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-3 text-sm text-[#1B1B1B]"
           >
             <p className="leading-snug font-medium">{w.message}</p>
           </div>
@@ -175,15 +191,15 @@ function NutritionSummary({ targets }) {
       <div className="border-2 border-gray-100 rounded-2xl p-5">
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
-            <p className="text-2xl font-bold text-[#2D6A4F]">{targets.carb_per_hour}</p>
+            <p className="text-2xl font-bold text-[#48C4B0]">{targets.carb_per_hour}</p>
             <p className="text-xs text-gray-400 mt-0.5 leading-tight">g carbs<br />per hour</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#2D6A4F]">{targets.sodium_per_hour}</p>
+            <p className="text-2xl font-bold text-[#48C4B0]">{targets.sodium_per_hour}</p>
             <p className="text-xs text-gray-400 mt-0.5 leading-tight">mg sodium<br />per hour</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#2D6A4F]">{targets.fluid_ml_per_hour}</p>
+            <p className="text-2xl font-bold text-[#48C4B0]">{targets.fluid_ml_per_hour}</p>
             <p className="text-xs text-gray-400 mt-0.5 leading-tight">ml fluid<br />per hour</p>
           </div>
         </div>
@@ -216,7 +232,7 @@ function ProductCard({ product, totalUnits, boxes, linePrice }) {
         </p>
       </div>
       <div className="text-right flex-shrink-0">
-        <p className="text-sm font-bold text-[#1B1B1B]">A${linePrice.toFixed(2)}</p>
+        <p className="text-sm font-bold text-[#1B1B1B]">${linePrice.toFixed(2)}</p>
         <p className="text-xs text-gray-400">{product.price_note}</p>
       </div>
     </div>
@@ -225,20 +241,121 @@ function ProductCard({ product, totalUnits, boxes, linePrice }) {
 
 // ── RaceTimeline ──────────────────────────────────────────────────────────────
 
+/**
+ * Visual fuel bar — shows each gel as a dot along the race duration track.
+ * Works well for any race length; a 14-hour ultra simply has closely-spaced dots.
+ */
+function FuelBar({ events, totalDuration }) {
+  const duringEvents = events.filter(e => e.phase === 'during')
+  const hasCaf       = duringEvents.some(e => e.product.caffeine)
+
+  return (
+    <div>
+      <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+        <span>Start</span>
+        <span>Finish · {formatDuration(totalDuration)}</span>
+      </div>
+
+      {/* Track */}
+      <div className="relative h-4 mx-0.5">
+        {/* Background rail */}
+        <div className="absolute inset-y-[5px] inset-x-0 bg-gray-100 rounded-full" />
+        {/* Coloured fill */}
+        <div className="absolute inset-y-[5px] inset-x-0 bg-gradient-to-r from-[#48C4B0]/30 to-[#48C4B0]/10 rounded-full" />
+
+        {/* Gel dots */}
+        {duringEvents.map((ev, i) => {
+          const pct = Math.min(Math.max((ev.time / totalDuration) * 100, 1), 99)
+          return (
+            <div
+              key={i}
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2
+                         w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm"
+              style={{
+                left:            `${pct}%`,
+                backgroundColor: ev.product.caffeine ? '#1B1B1B' : '#48C4B0',
+                zIndex:          1,
+              }}
+            />
+          )
+        })}
+
+        {/* Start marker */}
+        <div className="absolute left-0 top-1/2 -translate-y-1/2
+                        w-3 h-3 rounded-full bg-[#48C4B0] border-2 border-white" style={{ zIndex: 2 }} />
+        {/* Finish marker */}
+        <div className="absolute right-0 top-1/2 -translate-y-1/2
+                        w-3 h-3 rounded-full bg-gray-300 border-2 border-white" style={{ zIndex: 2 }} />
+      </div>
+
+      {/* Legend */}
+      {hasCaf && (
+        <div className="flex gap-4 mt-2 justify-end">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#48C4B0]" />
+            <span className="text-xs text-gray-400">Gel</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#1B1B1B]" />
+            <span className="text-xs text-gray-400">Caffeine gel</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const PHASE_BADGE = {
-  before: 'bg-[#2D6A4F]/10 text-[#2D6A4F]',
-  during: 'bg-[#74C69D]/40 text-[#1B4B35]',
+  before: 'bg-[#48C4B0]/10 text-[#48C4B0]',
+  during: 'bg-[#48C4B0]/20 text-[#1B1B1B]',
   after:  'bg-gray-100 text-gray-500',
+}
+
+function TimelineRow({ event, totalDuration, isLast }) {
+  return (
+    <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
+      <div className="w-24 flex-shrink-0 pt-0.5">
+        <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
+                          whitespace-nowrap ${PHASE_BADGE[event.phase]}`}>
+          {formatTimingLabel(event.time, totalDuration)}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{event.product.name}</p>
+        <p className="text-xs text-gray-400 mt-0.5 leading-snug">{event.note}</p>
+      </div>
+    </div>
+  )
+}
+
+function DuringGroupRow({ group, isLast }) {
+  return (
+    <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
+      <div className="w-24 flex-shrink-0 pt-0.5">
+        <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
+                          whitespace-nowrap ${PHASE_BADGE.during}`}>
+          ×{group.count}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{group.product.name}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{group.scheduleText}</p>
+        {group.product.caffeine && (
+          <span className="text-xs font-medium text-[#48C4B0]">+ caffeine</span>
+        )}
+      </div>
+    </div>
+  )
 }
 
 function RaceStartDivider() {
   return (
-    <div className="flex items-center gap-3 px-5 py-2 bg-[#2D6A4F]/5">
-      <div className="flex-1 h-px bg-[#2D6A4F]/20" />
-      <span className="text-xs font-semibold text-[#2D6A4F] uppercase tracking-wider whitespace-nowrap">
+    <div className="flex items-center gap-3 px-5 py-2 bg-[#48C4B0]/5">
+      <div className="flex-1 h-px bg-[#48C4B0]/30" />
+      <span className="text-xs font-semibold text-[#48C4B0] uppercase tracking-wider whitespace-nowrap">
         Race start
       </span>
-      <div className="flex-1 h-px bg-[#2D6A4F]/20" />
+      <div className="flex-1 h-px bg-[#48C4B0]/30" />
     </div>
   )
 }
@@ -255,51 +372,69 @@ function FinishDivider({ totalDuration }) {
   )
 }
 
+/**
+ * Compact timeline that works for any race length.
+ * - Visual fuel bar at top shows gel density across the race.
+ * - "During" events are always shown grouped by product + schedule pattern
+ *   (e.g. "every 30 min from 20 min × 14") instead of individual rows.
+ * - Before / After retain individual rows (typically 1–2 items each).
+ */
 function RaceTimeline({ events, totalDuration }) {
   if (events.length === 0) return null
+
+  const beforeEvents = events.filter(e => e.phase === 'before')
+  const duringEvents = events.filter(e => e.phase === 'during')
+  const afterEvents  = events.filter(e => e.phase === 'after')
+  const duringGroups = buildDuringGroups(duringEvents)
 
   return (
     <section>
       <SectionLabel>Race timeline</SectionLabel>
+
+      {/* Visual fuel bar */}
+      {duringEvents.length > 0 && (
+        <div className="mb-5">
+          <FuelBar events={events} totalDuration={totalDuration} />
+        </div>
+      )}
+
+      {/* Phase list */}
       <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
-        {events.map((ev, i) => {
-          const prevPhase = i > 0 ? events[i - 1].phase : null
-          const showRaceStart =
-            ev.phase === 'during' && (prevPhase === 'before' || prevPhase === null)
-          const showFinish =
-            ev.phase === 'after' && (prevPhase === 'during' || prevPhase === null)
 
-          return (
-            <React.Fragment key={i}>
-              {showRaceStart && <RaceStartDivider />}
-              {showFinish && <FinishDivider totalDuration={totalDuration} />}
+        {/* Before */}
+        {beforeEvents.map((ev, i) => (
+          <TimelineRow
+            key={`b${i}`}
+            event={ev}
+            totalDuration={totalDuration}
+            isLast={false}
+          />
+        ))}
 
-              <div
-                className={`flex items-start gap-4 px-5 py-4 ${
-                  i !== events.length - 1 ? 'border-b border-gray-100' : ''
-                }`}
-              >
-                {/* Time badge — fixed width so product names align */}
-                <div className="w-20 flex-shrink-0 pt-0.5">
-                  <span
-                    className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
-                                whitespace-nowrap ${PHASE_BADGE[ev.phase]}`}
-                  >
-                    {formatTimingLabel(ev.time, totalDuration)}
-                  </span>
-                </div>
+        {/* Race start divider */}
+        <RaceStartDivider />
 
-                {/* Product info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">
-                    {ev.product.name}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5 leading-snug">{ev.note}</p>
-                </div>
-              </div>
-            </React.Fragment>
-          )
-        })}
+        {/* During — grouped */}
+        {duringGroups.map((group, i) => (
+          <DuringGroupRow
+            key={`d${i}`}
+            group={group}
+            isLast={i === duringGroups.length - 1 && afterEvents.length === 0}
+          />
+        ))}
+
+        {/* Finish divider */}
+        {afterEvents.length > 0 && <FinishDivider totalDuration={totalDuration} />}
+
+        {/* After */}
+        {afterEvents.map((ev, i) => (
+          <TimelineRow
+            key={`a${i}`}
+            event={ev}
+            totalDuration={totalDuration}
+            isLast={i === afterEvents.length - 1}
+          />
+        ))}
       </div>
     </section>
   )
@@ -309,23 +444,22 @@ function RaceTimeline({ events, totalDuration }) {
 
 function EmailCapture({ targets, selection, form }) {
   const [email,   setEmail]   = useState('')
-  const [state,   setState]   = useState('idle') // idle | sending | success | error
+  const [state,   setState]   = useState('idle')
   const [touched, setTouched] = useState(false)
 
-  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const isValid   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const showError = touched && email !== '' && !isValid
 
   async function handleSubmit(e) {
     e.preventDefault()
     setTouched(true)
     if (!isValid) return
-
     setState('sending')
     try {
       const res = await fetch('/api/send-plan', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, targets, inputs: form, selectedProducts: selection }),
+        body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setState('success')
@@ -337,8 +471,8 @@ function EmailCapture({ targets, selection, form }) {
 
   if (state === 'success') {
     return (
-      <section className="border-2 border-[#74C69D]/40 bg-[#74C69D]/5 rounded-2xl p-5">
-        <p className="text-sm font-bold text-[#2D6A4F]">Plan sent!</p>
+      <section className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5">
+        <p className="text-sm font-bold text-[#48C4B0]">Plan sent!</p>
         <p className="text-xs text-gray-500 mt-1">
           Check your inbox at{' '}
           <span className="font-medium text-[#1B1B1B]">{email}</span>.
@@ -366,7 +500,7 @@ function EmailCapture({ targets, selection, form }) {
               disabled={state === 'sending'}
               className={[
                 'flex-1 min-w-0 border-2 rounded-xl px-4 py-3 text-sm',
-                'focus:outline-none focus:border-[#2D6A4F]',
+                'focus:outline-none focus:border-[#48C4B0]',
                 'disabled:opacity-50',
                 showError ? 'border-red-300' : 'border-gray-200',
               ].join(' ')}
@@ -374,14 +508,13 @@ function EmailCapture({ targets, selection, form }) {
             <button
               type="submit"
               disabled={state === 'sending'}
-              className="min-h-[48px] px-5 bg-[#2D6A4F] text-white rounded-xl text-sm
-                         font-semibold hover:bg-[#235a3e] transition-colors
+              className="min-h-[48px] px-5 bg-[#F64866] text-white rounded-xl text-sm
+                         font-semibold hover:bg-[#e03558] transition-colors
                          disabled:opacity-50 whitespace-nowrap flex-shrink-0"
             >
               {state === 'sending' ? 'Sending…' : 'Send plan'}
             </button>
           </div>
-
           {showError && (
             <p className="text-xs text-red-500 mt-2">Please enter a valid email address.</p>
           )}
@@ -402,7 +535,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   const timeline   = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
   const aggregated = useMemo(() => aggregateByProduct(selection), [selection])
 
-  const subtotal  = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
+  const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalBoxes = aggregated.reduce((sum, row) => sum + row.boxes, 0)
 
   const cartURL = useMemo(
@@ -410,12 +543,16 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
     [selection]
   )
 
-  const raceLabel      = RACE_LABELS[targets.race_type]     ?? targets.race_type
+  // Prefer the athlete's own race name if they typed one
+  const heroTitle      = form.race_name || (RACE_LABELS[targets.race_type] ?? targets.race_type)
   const effortLabel    = EFFORT_LABELS[targets.effort]      ?? targets.effort
   const conditionLabel = CONDITION_LABELS[targets.conditions] ?? targets.conditions
+  const surfaceLabel   = form.surface_type
+    ? (form.surface_type.charAt(0).toUpperCase() + form.surface_type.slice(1))
+    : null
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="bg-white">
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
@@ -423,40 +560,39 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           <button
             type="button"
             onClick={onBack}
-            className="text-sm text-[#2D6A4F] font-medium hover:underline
+            className="text-sm text-[#48C4B0] font-medium hover:underline
                        min-h-[44px] flex items-center"
           >
             ← Back
           </button>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-            Lecka
-          </p>
+          <img src="/logo.svg" alt="Lecka" className="h-6" />
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-5 py-6 space-y-8">
 
-        {/* ── Hero ────────────────────────────────────────────────────────────── */}
+        {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#74C69D] mb-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-1">
             Your plan
           </p>
-          <h1 className="text-2xl font-bold text-[#1B1B1B]">{raceLabel}</h1>
+          <h1 className="text-2xl font-bold text-[#1B1B1B]">{heroTitle}</h1>
           <p className="text-sm text-gray-400 mt-1.5">
             {formatDuration(targets.total_duration_minutes)}
+            {surfaceLabel ? ` · ${surfaceLabel}` : ''}
             {' · '}{effortLabel}
             {' · '}{conditionLabel}
             {targets.caffeine_ok ? ' · Caffeine' : ''}
           </p>
         </div>
 
-        {/* ── Warnings (if any) ────────────────────────────────────────────────── */}
-        <WarningBox warnings={targets.warnings} athlete_profile={targets.athlete_profile} />
+        {/* ── Warnings ────────────────────────────────────────────────────── */}
+        <WarningBox warnings={targets.warnings} />
 
-        {/* ── Nutrition targets ────────────────────────────────────────────────── */}
+        {/* ── Nutrition targets ───────────────────────────────────────────── */}
         <NutritionSummary targets={targets} />
 
-        {/* ── Product cards ───────────────────────────────────────────────────── */}
+        {/* ── Product cards ───────────────────────────────────────────────── */}
         <section>
           <SectionLabel>What to take</SectionLabel>
           <div className="space-y-3">
@@ -466,14 +602,14 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           </div>
         </section>
 
-        {/* ── Shop CTA ────────────────────────────────────────────────────────── */}
-        <section className="border-2 border-[#2D6A4F]/20 rounded-2xl p-5">
+        {/* ── Shop CTA ────────────────────────────────────────────────────── */}
+        <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-gray-500">
               {totalBoxes} box{totalBoxes !== 1 ? 'es' : ''}
             </span>
             <span className="text-xl font-bold text-[#1B1B1B]">
-              A${subtotal.toFixed(2)}
+              ${subtotal.toFixed(2)}
             </span>
           </div>
           <a
@@ -481,28 +617,28 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center w-full min-h-[52px]
-                       bg-[#2D6A4F] hover:bg-[#235a3e] text-white rounded-2xl
+                       bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
                        text-base font-bold transition-colors"
           >
             Shop my plan →
           </a>
           <p className="text-xs text-gray-400 text-center mt-3">
-            Ships to Australia · Free shipping on orders over A$60
+            Ships worldwide · Free shipping on orders over $60
           </p>
         </section>
 
-        {/* ── Race timeline ────────────────────────────────────────────────────── */}
+        {/* ── Race timeline ────────────────────────────────────────────────── */}
         <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
 
-        {/* ── Email capture ────────────────────────────────────────────────────── */}
+        {/* ── Email capture ────────────────────────────────────────────────── */}
         <EmailCapture targets={targets} selection={selection} form={form} />
 
-        {/* ── Footer ──────────────────────────────────────────────────────────── */}
+        {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-10 text-center">
           <button
             type="button"
             onClick={onBack}
-            className="text-sm text-gray-400 hover:text-[#2D6A4F] transition-colors"
+            className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
           >
             ← Start over
           </button>

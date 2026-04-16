@@ -28,10 +28,10 @@ import { Resend } from 'resend'
 // ── Brand colours ─────────────────────────────────────────────────────────────
 
 const C = {
-  green:      '#2D6A4F',
-  greenRgb:   [45, 106, 79],
-  accent:     '#74C69D',
-  accentRgb:  [116, 198, 157],
+  green:      '#48C4B0',
+  greenRgb:   [72, 196, 176],
+  accent:     '#48C4B0',
+  accentRgb:  [72, 196, 176],
   white:      '#FFFFFF',
   whiteRgb:   [255, 255, 255],
   black:      '#1B1B1B',
@@ -90,9 +90,9 @@ function fmtMin(minutes, totalDuration) {
   return `${h}:${m.toString().padStart(2, '0')}`
 }
 
-/** Race label — prefer the UI label the athlete saw, fall back to engine key */
+/** Race label — prefer the athlete's own race name, fall back to engine key label */
 function raceLabel(inputs) {
-  if (inputs.race_label && inputs.race_label !== 'other') return inputs.race_label
+  if (inputs.race_name && inputs.race_name.trim()) return inputs.race_name.trim()
   return RACE_LABELS[inputs.race_type] ?? inputs.race_type
 }
 
@@ -447,22 +447,22 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
     *  { box-sizing: border-box; }
     body { margin: 0; padding: 0; background: #f9f9f9; font-family: -apple-system, Helvetica Neue, Arial, sans-serif; color: #1B1B1B; }
     .wrap      { max-width: 600px; margin: 0 auto; background: #ffffff; }
-    .header    { background: #2D6A4F; padding: 28px 32px; }
+    .header    { background: #48C4B0; padding: 28px 32px; }
     .header h1 { margin: 0; color: #fff; font-size: 26px; letter-spacing: 0.02em; }
     .header p  { margin: 6px 0 0; color: rgba(255,255,255,0.75); font-size: 14px; }
     .body      { padding: 32px; }
     .targets   { display: flex; gap: 12px; margin: 24px 0; }
     .tbox      { flex: 1; border: 2px solid #e8e8e8; border-radius: 10px; padding: 16px 12px; text-align: center; }
-    .tbox .val { font-size: 26px; font-weight: 700; color: #2D6A4F; line-height: 1; }
+    .tbox .val { font-size: 26px; font-weight: 700; color: #48C4B0; line-height: 1; }
     .tbox .lbl { font-size: 11px; color: #888; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
-    .cta       { display: block; background: #2D6A4F; color: #fff !important; text-decoration: none;
+    .cta       { display: block; background: #F64866; color: #fff !important; text-decoration: none;
                  padding: 14px 24px; border-radius: 8px; text-align: center;
                  font-weight: 700; font-size: 15px; margin: 28px 0; }
-    .cta:hover { background: #235a3e; }
+    .cta:hover { background: #e03558; }
     ul         { padding-left: 20px; line-height: 1.9; color: #333; }
     .note      { font-size: 13px; color: #888; margin-top: 20px; }
     .footer    { background: #f2f2f2; padding: 16px 32px; font-size: 12px; color: #999; text-align: center; }
-    .footer a  { color: #2D6A4F; text-decoration: none; }
+    .footer a  { color: #48C4B0; text-decoration: none; }
   </style>
 </head>
 <body>
