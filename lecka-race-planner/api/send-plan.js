@@ -376,6 +376,34 @@ function generatePDF(inputs, targets, selectedProducts) {
     }
   }
 
+  // ── Section 5: Pre-race sodium loading (if applicable) ────────────────────
+  const isHotCondition = ['hot', 'humid'].includes(inputs.conditions)
+  const isLongRace = targets.total_duration_minutes >= 240
+  if (isHotCondition && isLongRace) {
+    y = ensureSpace(doc, y, 50)
+    y = sectionHeading(doc, 'Pre-Race Sodium Loading', y, ML, CW)
+
+    const lines = [
+      'For endurance events >4 hours in hot or humid conditions, pre-race sodium loading',
+      'enhances performance and reduces cramping risk.',
+      '',
+      'Protocol: 2–4 hours before race start',
+      '  \u2022  Mix 20.5 g salt (about 2 teaspoons) into 2.5 L of water or electrolyte drink',
+      '  \u2022  Drink steadily over 2–4 hours; do not chug (GI comfort matters)',
+      '  \u2022  Pair with your pre-race meal for best effect',
+      '',
+      'This boosts plasma sodium and blood volume, extending your aerobic capacity.',
+    ]
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(C.gray)
+    for (const line of lines) {
+      doc.text(line === '' ? '' : line, ML, y)
+      y += line === '' ? 3 : 5.5
+    }
+  }
+
   // ── Footer on every page ──────────────────────────────────────────────────
   const totalPages = doc.internal.getNumberOfPages()
   for (let p = 1; p <= totalPages; p++) {

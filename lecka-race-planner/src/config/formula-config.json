@@ -92,5 +92,87 @@
   "training_mode": {
     "_comment": "In training mode reduce carb targets to train the gut at lower doses",
     "carb_rate_multiplier": 0.7
+  },
+
+  "carb_calculation_strategy": {
+    "_comment": [
+      "Select which carb calculation strategy to use.",
+      "Options: effort_based (current), duration_based (research-aligned), hybrid",
+      "See src/strategies/carb-strategies.js for implementation details."
+    ],
+    "selected": "effort_based"
+  },
+
+  "athlete_profiles": {
+    "_comment": [
+      "Athlete profile modifiers for carb, sodium, and fluid targets.",
+      "Accounts for variation in absorption capacity and sweat rate based on training.",
+      "Untrained athletes have 30-40% lower sweat rates and carb absorption.",
+      "Elite athletes can tolerate higher rates due to training adaptations."
+    ],
+    "untrained": {
+      "carb_modifier": 0.85,
+      "sodium_modifier": 0.85,
+      "fluid_modifier": 0.85,
+      "description": "Lower sweat rate, reduced carb absorption capacity"
+    },
+    "intermediate": {
+      "carb_modifier": 1.0,
+      "sodium_modifier": 1.0,
+      "fluid_modifier": 1.0,
+      "description": "Standard endurance athlete profile (baseline)"
+    },
+    "trained": {
+      "carb_modifier": 1.1,
+      "sodium_modifier": 1.1,
+      "fluid_modifier": 1.1,
+      "description": "Higher sweat rate, greater absorption capacity, better thermoregulation"
+    },
+    "elite": {
+      "carb_modifier": 1.15,
+      "sodium_modifier": 1.15,
+      "fluid_modifier": 1.15,
+      "description": "Optimized sweat control, maximum absorption capacity"
+    }
+  },
+
+  "vo2max_modifiers": {
+    "_comment": "For future VO2Max-adjusted strategy (if athlete provides fitness data)",
+    "untrained": 0.85,
+    "intermediate": 1.0,
+    "trained": 1.15,
+    "elite": 1.2
+  },
+
+  "temperature_modifiers": {
+    "_comment": [
+      "Future: continuous temperature input (Celsius) instead of categorical conditions.",
+      "Maps ambient temperature to sodium/fluid multipliers via curve.",
+      "Base: 20°C (mild). Sweat rate ~2-3% increase per °C above baseline."
+    ],
+    "baseline_temp_celsius": 20,
+    "baseline_sodium_modifier": 1.0,
+    "baseline_fluid_modifier": 1.0
+  },
+
+  "validation_rules": {
+    "_comment": [
+      "Validation and warning thresholds for carb, sodium, fluid recommendations.",
+      "Helps catch potentially problematic fueling strategies."
+    ],
+    "carb": {
+      "min_for_event_min": 45,
+      "warning_high_short_race": "For events <45 min, carb intake is typically unnecessary",
+      "warning_high_carb_rate": "For short races, carb rates >30 g/h increase GI distress risk"
+    },
+    "sodium": {
+      "warning_hot_humidity": "Consider pre-race sodium loading (20.5g in 2.5L water, 2-4 hrs before start)",
+      "warning_duration_min": 240,
+      "max_safe_mg_per_hour": 1500
+    },
+    "fluid": {
+      "max_safe_ml_per_hour": 1000,
+      "warning_overhydration": "Intakes >1000 ml/h increase hyponatremia risk in events <2 hours"
+    }
   }
 }

@@ -32,6 +32,7 @@
  */
 
 import formulaConfig from '../config/formula-config.json'
+import * as carbStrategies from '../strategies/carb-strategies.js'
 
 export function calculateTargets(inputs) {
   const {
@@ -43,6 +44,7 @@ export function calculateTargets(inputs) {
     effort = 'race_pace',
     caffeine_ok = false,
     training_mode = false,
+    athlete_profile = 'intermediate',
   } = inputs
 
   // ── 1. Validate required inputs ──────────────────────────────────────────
@@ -55,20 +57,16 @@ export function calculateTargets(inputs) {
     throw new Error(`Unknown race_type "${race_type}". Valid options: ${Object.keys(carbRates).join(', ')}`)
   }
 
-  // ── 2. Base carb rate ─────────────────────────────────────────────────────
-  let carb_per_hour = carbRates[race_type][effort]
-  if (carb_per_hour === undefined) {
-    throw new Error(`Unknown effort "${effort}". Valid options: easy, race_pace, hard`)
-  }
+  // ── 2. Base carb rate using selected strategy ──────────────────────────────
+  const strategyName = formulaConfig.carb_calculation_strategy.selected
+  let carb_per_hour = carbStrategies.selectCarbStrategy(strategyName, inputs, formulaConfig)
 
-  // Effort modifier — secondary fine-tuning on top of the effort-indexed base rate.
-  // e.g. easy ×0.85 (more fat oxidation), hard ×1.15 (higher glycogen turnover).
-  const effortMod = formulaConfig.effort_modifiers[effort] ?? 1.0
-  carb_per_hour *= effortMod
-
-  // Training-mode gut reduction applied after effort adjustment
-  if (training_mode) {
-    carb_per_hour *= formulaConfig.training_mode.carb_rate_multiplier
+  // Apply athlete profile modifier (trained athletes can absorb more)
+  const profileMods = formulaConfig.athlete_profiles[athlete_profile]
+  if (profileMods) {
+    carb_per_hour *= profileMods.carb_modifier
+  } else if (athlete_profile !== 'intermediate') {
+    console.warn(`Unknown athlete_profile "${athlete_profile}", using intermediate defaults`)
   }
 
   carb_per_hour = Math.round(carb_per_hour)
@@ -82,6 +80,12 @@ export function calculateTargets(inputs) {
   }
 
   let sodium_per_hour = weight_kg * sodiumConfig.base_per_kg * genderMod * condMod.sodium_multiplier
+
+  // Apply athlete profile modifier for sodium
+  if (profileMods) {
+    sodium_per_hour *= profileMods.sodium_modifier
+  }
+
   sodium_per_hour = Math.round(
     Math.min(Math.max(sodium_per_hour, sodiumConfig.minimum), sodiumConfig.maximum)
   )
@@ -89,6 +93,12 @@ export function calculateTargets(inputs) {
   // ── 4. Fluid rate ─────────────────────────────────────────────────────────
   const fluidConfig = formulaConfig.fluid_targets_ml_per_hour
   let fluid_ml_per_hour = weight_kg * fluidConfig.base_per_kg * genderMod * condMod.fluid_multiplier
+
+  // Apply athlete profile modifier for fluid
+  if (profileMods) {
+    fluid_ml_per_hour *= profileMods.fluid_modifier
+  }
+
   fluid_ml_per_hour = Math.round(
     Math.min(Math.max(fluid_ml_per_hour, fluidConfig.minimum), fluidConfig.maximum)
   )
@@ -97,6 +107,50 @@ export function calculateTargets(inputs) {
   const duration_hours = goal_minutes / 60
   const total_carbs = Math.round(carb_per_hour * duration_hours)
   const total_sodium = Math.round(sodium_per_hour * duration_hours)
+
+  // ── 6. Validation and warnings ─────────────────────────────────────────────
+  const warnings = []
+  const validationRules = formulaConfig.validation_rules || {}
+
+  // Carb rate validation
+  if (validationRules.carb) {
+    if (goal_minutes < validationRules.carb.min_for_event_min && carb_per_hour > 0) {
+      warnings.push({
+        type: 'carb_rate_short_race',
+        message: validationRules.carb.warning_high_short_race,
+        severity: 'info',
+      })
+    }
+    if (goal_minutes < 60 && carb_per_hour > 30) {
+      warnings.push({
+        type: 'carb_rate_high_short',
+        message: validationRules.carb.warning_high_carb_rate,
+        severity: 'warning',
+      })
+    }
+  }
+
+  // Sodium warnings
+  if (validationRules.sodium) {
+    if (goal_minutes >= validationRules.sodium.warning_duration_min && conditions in ['hot', 'humid']) {
+      warnings.push({
+        type: 'sodium_loading_recommendation',
+        message: validationRules.sodium.warning_hot_humidity,
+        severity: 'info',
+      })
+    }
+  }
+
+  // Fluid warnings
+  if (validationRules.fluid && fluid_ml_per_hour > validationRules.fluid.max_safe_ml_per_hour) {
+    if (goal_minutes < 120) {
+      warnings.push({
+        type: 'fluid_overhydration_risk',
+        message: validationRules.fluid.warning_overhydration,
+        severity: 'warning',
+      })
+    }
+  }
 
   return {
     carb_per_hour,
@@ -109,35 +163,89 @@ export function calculateTargets(inputs) {
     race_type,
     effort,
     conditions,
+    athlete_profile,
+    carb_strategy: strategyName,
+    warnings,
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dev smoke-test — only runs in Vite dev mode, never in production builds
-// Sample: 70 kg runner, half marathon road, 2h15 goal, warm, race pace, caffeine yes
+// Demonstrates core features: strategies, athlete profiles, validation, warnings
 // ─────────────────────────────────────────────────────────────────────────────
 if (import.meta.env?.DEV) {
-const sample = calculateTargets({
-  race_type:    'half_marathon',
-  goal_minutes: 135,          // 2h 15m
-  weight_kg:    70,
-  gender:       'male',
-  conditions:   'warm',
-  effort:       'race_pace',
-  caffeine_ok:  true,
-  training_mode: false,
-})
+  console.log('=== Lecka Nutrition Engine — Smoke Tests ===\n')
 
-console.log('=== Lecka Nutrition Engine — sample output ===')
-console.log(`Race:              Half Marathon`)
-console.log(`Goal time:         2h 15m (${sample.total_duration_minutes} min)`)
-console.log(`Weight:            70 kg`)
-console.log(`Conditions:        ${sample.conditions}`)
-console.log(`Effort:            ${sample.effort}`)
-console.log(`Caffeine allowed:  ${sample.caffeine_ok}`)
-console.log('---')
-console.log(`Carb target:       ${sample.carb_per_hour} g/h  →  ${sample.total_carbs} g total`)
-console.log(`Sodium target:     ${sample.sodium_per_hour} mg/h  →  ${sample.total_sodium} mg total`)
-console.log(`Fluid target:      ${sample.fluid_ml_per_hour} ml/h`)
-console.log('==============================================')
+  // Sample 1: Half marathon (trained athlete, warm conditions)
+  const sample1 = calculateTargets({
+    race_type:        'half_marathon',
+    goal_minutes:     135,
+    weight_kg:        70,
+    gender:           'male',
+    conditions:       'warm',
+    effort:           'race_pace',
+    caffeine_ok:      true,
+    training_mode:    false,
+    athlete_profile:  'trained',
+  })
+
+  console.log('Sample 1: Half Marathon (Trained Athlete)')
+  console.log(`  Race:       ${sample1.race_type}, ${sample1.total_duration_minutes} min`)
+  console.log(`  Athlete:    ${sample1.athlete_profile}, effort=${sample1.effort}`)
+  console.log(`  Strategy:   ${sample1.carb_strategy}`)
+  console.log(`  Carb:       ${sample1.carb_per_hour} g/h → ${sample1.total_carbs} g`)
+  console.log(`  Sodium:     ${sample1.sodium_per_hour} mg/h → ${sample1.total_sodium} mg`)
+  console.log(`  Fluid:      ${sample1.fluid_ml_per_hour} ml/h`)
+  if (sample1.warnings.length > 0) {
+    console.log(`  Warnings:   ${sample1.warnings.map((w) => w.message).join('; ')}`)
+  }
+
+  // Sample 2: 5K race (validation test — should warn about short race)
+  const sample2 = calculateTargets({
+    race_type:        '5k',
+    goal_minutes:     22,
+    weight_kg:        70,
+    gender:           'male',
+    conditions:       'mild',
+    effort:           'hard',
+    caffeine_ok:      true,
+    training_mode:    false,
+    athlete_profile:  'intermediate',
+  })
+
+  console.log('\nSample 2: 5K Race (Validation Test)')
+  console.log(`  Race:       ${sample2.race_type}, ${sample2.total_duration_minutes} min`)
+  console.log(`  Carb:       ${sample2.carb_per_hour} g/h (expect warnings for short race)`)
+  console.log(`  Sodium:     ${sample2.sodium_per_hour} mg/h`)
+  console.log(`  Fluid:      ${sample2.fluid_ml_per_hour} ml/h`)
+  if (sample2.warnings.length > 0) {
+    console.log(`  ✓ Warnings detected (as expected):`)
+    sample2.warnings.forEach((w) => console.log(`    - [${w.type}] ${w.message}`))
+  }
+
+  // Sample 3: Ultra 50K with gut training mode
+  const sample3 = calculateTargets({
+    race_type:        'ultra_50k',
+    goal_minutes:     360,
+    weight_kg:        75,
+    gender:           'female',
+    conditions:       'hot',
+    effort:           'race_pace',
+    caffeine_ok:      true,
+    training_mode:    true,
+    athlete_profile:  'elite',
+  })
+
+  console.log('\nSample 3: Ultra 50K (Gut Training Mode, Hot Conditions)')
+  console.log(`  Race:       ${sample3.race_type}, ${sample3.total_duration_minutes} min`)
+  console.log(`  Athlete:    ${sample3.athlete_profile}, training_mode=true`)
+  console.log(`  Carb:       ${sample3.carb_per_hour} g/h (reduced via training mode)`)
+  console.log(`  Sodium:     ${sample3.sodium_per_hour} mg/h`)
+  console.log(`  Fluid:      ${sample3.fluid_ml_per_hour} ml/h`)
+  if (sample3.warnings.length > 0) {
+    console.log(`  Warnings:`)
+    sample3.warnings.forEach((w) => console.log(`    - ${w.message}`))
+  }
+
+  console.log('==============================================')
 } // end DEV smoke-test
