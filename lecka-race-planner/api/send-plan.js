@@ -399,6 +399,9 @@ function generatePDF(inputs, targets, selectedProducts) {
 // ── Email ─────────────────────────────────────────────────────────────────────
 
 async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY environment variable is not set')
+  }
   const resend  = new Resend(process.env.RESEND_API_KEY)
   const label   = raceLabel(inputs)
   const subject = `Your ${label} nutrition plan is ready`
@@ -488,9 +491,9 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
     html,
     attachments: [
       {
-        filename:     `lecka-race-plan-${inputs.race_type ?? 'race'}.pdf`,
-        content:      pdfBuffer,
-        content_type: 'application/pdf',
+        filename:    `lecka-race-plan-${inputs.race_type ?? 'race'}.pdf`,
+        content:     pdfBuffer,
+        contentType: 'application/pdf',
       },
     ],
   })
@@ -671,7 +674,8 @@ export default async function handler(req, res) {
   try {
     await sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl)
   } catch (emailErr) {
-    console.error('[send-plan] Email send failed:', emailErr)
+    console.error('[send-plan] Email send failed:', emailErr.message)
+    console.error('[send-plan] RESEND_API_KEY set:', !!process.env.RESEND_API_KEY)
     return res.status(500).json({ success: false, error: 'Failed to send email. Please try again.' })
   }
 
