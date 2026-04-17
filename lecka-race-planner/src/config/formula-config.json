@@ -105,6 +105,15 @@
     "selected": "distance_adaptive"
   },
 
+  "elevation_modifiers": {
+    "_comment": "Carb and sodium uplifts based on average course grade (elevation_gain_m / distance_m * 100). Climbing increases glycogen demand and core temperature.",
+    "flat":          { "avg_grade_pct_max": 1,  "carb_modifier": 1.00, "sodium_modifier": 1.00 },
+    "rolling":       { "avg_grade_pct_max": 3,  "carb_modifier": 1.05, "sodium_modifier": 1.05 },
+    "hilly":         { "avg_grade_pct_max": 6,  "carb_modifier": 1.10, "sodium_modifier": 1.08 },
+    "very_hilly":    { "avg_grade_pct_max": 10, "carb_modifier": 1.15, "sodium_modifier": 1.12 },
+    "mountain":      { "avg_grade_pct_max": 999,"carb_modifier": 1.22, "sodium_modifier": 1.18 }
+  },
+
   "athlete_profiles": {
     "_comment": [
       "Athlete profile modifiers for carb, sodium, and fluid targets.",

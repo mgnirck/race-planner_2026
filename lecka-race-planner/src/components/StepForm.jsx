@@ -14,6 +14,7 @@ import React, { useState } from 'react'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
 import products             from '../config/products.json'
+import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,8 @@ function ProductPreferenceCard({ product, selected, onToggle }) {
 // ── Step 1: Race ──────────────────────────────────────────────────────────────
 
 function StepOne({ form, setForm }) {
+  const [gpxError, setGpxError] = useState(false)
+
   const goalMinutes   = parseGoalTime(form.goal_time)
   const timeIsInvalid = form.goal_time.length > 0 && goalMinutes === null
 
@@ -208,6 +211,43 @@ function StepOne({ form, setForm }) {
     })
   }
 
+  function handleGpxFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      try {
+        const parsed = parseGPX(evt.target.result)
+        const { label } = estimateElevationImpact(parsed.elevation_gain_m, parsed.distance_km)
+        const roundedKm = Math.round(parsed.distance_km * 10) / 10
+        setGpxError(false)
+        setForm(f => ({
+          ...f,
+          custom_km:         String(roundedKm),
+          custom_km_display: String(roundedKm),
+          elevation_gain_m:  parsed.elevation_gain_m,
+          gpx_parsed:        true,
+          race_type:         distanceToRaceType(parsed.distance_km),
+          ...(parsed.avg_grade_pct > 2 ? { surface_type: 'trail' } : {}),
+        }))
+      } catch {
+        setGpxError(true)
+        setForm(f => ({ ...f, gpx_parsed: false }))
+      }
+    }
+    reader.onerror = () => {
+      setGpxError(true)
+      setForm(f => ({ ...f, gpx_parsed: false }))
+    }
+    reader.readAsText(file)
+    // Reset input so the same file can be re-selected after an error
+    e.target.value = ''
+  }
+
+  const gpxSummaryLabel = form.gpx_parsed
+    ? estimateElevationImpact(form.elevation_gain_m, parseFloat(form.custom_km) || 0).label
+    : ''
+
   return (
     <div className="space-y-6">
 
@@ -223,6 +263,51 @@ function StepOne({ form, setForm }) {
                      focus:outline-none focus:border-[#48C4B0]"
         />
         <p className="text-xs text-gray-400 mt-1.5">Optional — shown on your plan</p>
+      </div>
+
+      {/* GPX upload */}
+      <div>
+        <FieldLabel>Upload GPX file (optional)</FieldLabel>
+        <label
+          className="flex flex-col items-center justify-center gap-1.5 w-full
+                     border-2 border-dashed border-gray-200 rounded-xl bg-gray-50
+                     py-6 px-4 cursor-pointer hover:border-[#48C4B0] transition-colors"
+        >
+          <input
+            type="file"
+            accept=".gpx"
+            className="sr-only"
+            onChange={handleGpxFile}
+          />
+          <svg
+            className="w-6 h-6 text-gray-300"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 16V4m0 0L8 8m4-4 4 4"/>
+            <path d="M4 20h16"/>
+          </svg>
+          <p className="text-sm text-gray-500 text-center">
+            Drop your race GPX file here, or click to browse
+          </p>
+          <p className="text-xs text-gray-400 text-center">
+            Auto-fills distance, elevation &amp; surface
+          </p>
+        </label>
+        {form.gpx_parsed && !gpxError && (
+          <p className="text-xs text-[#48C4B0] mt-1.5">
+            GPX loaded: {form.custom_km} km · {form.elevation_gain_m} m elevation gain · {gpxSummaryLabel}
+          </p>
+        )}
+        {gpxError && (
+          <p className="text-xs text-red-400 mt-1.5">
+            Could not read GPX file — please try another
+          </p>
+        )}
       </div>
 
       {/* Distance */}
@@ -598,6 +683,8 @@ export default function StepForm({ onComplete }) {
     surface_type:      '',
     race_type:         '',
     goal_time:         '',
+    elevation_gain_m:  0,
+    gpx_parsed:        false,
     // Step 2
     weight_value:    '70',
     weight_unit:     'kg',
@@ -623,15 +710,17 @@ export default function StepForm({ onComplete }) {
     const goal_minutes = parseGoalTime(form.goal_time)
 
     const targets   = calculateTargets({
-      race_type:       form.race_type,
+      race_type:        form.race_type,
       goal_minutes,
       weight_kg,
-      gender:          form.gender,
-      conditions:      form.conditions,
-      effort:          form.effort,
-      caffeine_ok:     form.caffeine_ok,
-      training_mode:   form.training_mode,
-      athlete_profile: form.athlete_profile,
+      gender:           form.gender,
+      conditions:       form.conditions,
+      effort:           form.effort,
+      caffeine_ok:      form.caffeine_ok,
+      training_mode:    form.training_mode,
+      athlete_profile:  form.athlete_profile,
+      elevation_gain_m: form.elevation_gain_m,
+      distance_km:      parseFloat(form.custom_km) || 0,
     })
     const selection = selectProducts(targets, form.preferred_product_ids)
 
