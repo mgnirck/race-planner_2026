@@ -22,7 +22,14 @@
  */
 
 import jsPDFModule from 'jspdf'
-import autoTable   from 'jspdf-autotable'
+// IMPORTANT: side-effect import. jspdf-autotable ships a UMD bundle whose CJS
+// default export is an object wrapper ({ default: fn, __esModule: true }), not
+// a function — so `import autoTable from 'jspdf-autotable'; autoTable(doc, ...)`
+// throws "autoTable is not a function" under Node ESM on Vercel. Loading the
+// module for its side effect invokes applyPlugin(jsPDF) and attaches
+// `autoTable` to jsPDF.API, so `doc.autoTable({...})` works everywhere.
+// Do NOT change this to a default or namespace import.
+import 'jspdf-autotable'
 import { Resend }  from 'resend'
 import { computeCartItems } from '../src/engine/region-utils.js'
 
@@ -238,7 +245,7 @@ function generatePDF(inputs, targets, selectedProducts) {
   const durH = targets.total_duration_minutes / 60
   const totalFluid = Math.round(targets.fluid_ml_per_hour * durH)
 
-  autoTable(doc, {
+  doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Metric', 'Per Hour', 'Total Race']],
@@ -281,7 +288,7 @@ function generatePDF(inputs, targets, selectedProducts) {
     item.note ?? '',
   ])
 
-  autoTable(doc, {
+  doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Product', 'Qty', 'When', 'Instructions']],
@@ -338,7 +345,7 @@ function generatePDF(inputs, targets, selectedProducts) {
     e.product,
   ])
 
-  autoTable(doc, {
+  doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Time', 'Action', 'Product']],
