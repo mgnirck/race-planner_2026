@@ -15,6 +15,8 @@ import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
 import products             from '../config/products.json'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
+import { detectRegion }     from '../embed.js'
+import { isAvailableInRegion } from '../engine/region-utils.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -592,8 +594,8 @@ function StepTwo({ form, setForm }) {
 // ── Step 3: Product preferences ───────────────────────────────────────────────
 
 function StepThree({ form, setForm }) {
-  const gels = products.filter(p => p.type === 'gel')
-  const bars = products.filter(p => p.type === 'bar')
+  const gels = products.filter(p => p.type === 'gel' && isAvailableInRegion(p, detectRegion))
+  const bars = products.filter(p => p.type === 'bar' && isAvailableInRegion(p, detectRegion))
 
   function toggleProduct(id) {
     setForm(f => {
@@ -722,7 +724,7 @@ export default function StepForm({ onComplete }) {
       elevation_gain_m: form.elevation_gain_m,
       distance_km:      parseFloat(form.custom_km) || 0,
     })
-    const selection = selectProducts(targets, form.preferred_product_ids)
+    const selection = selectProducts(targets, form.preferred_product_ids, detectRegion)
 
     onComplete({ targets, selection, form })
   }

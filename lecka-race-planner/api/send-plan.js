@@ -180,7 +180,7 @@ function generatePDF(inputs, targets, selectedProducts) {
   // Small brand tagline
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
-  doc.setTextColor([255, 255, 255, 180])
+  doc.setTextColor(200, 240, 235)
   doc.text('Real food. Real performance.', ML, 28)
 
   // Right side — plan title + date
