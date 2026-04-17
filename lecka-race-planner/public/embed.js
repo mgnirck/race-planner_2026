@@ -25,6 +25,7 @@
   // Accept messages from any *.vercel.app subdomain OR the live Lecka domain.
   // Adjust ALLOWED_ORIGINS after you set a custom domain.
   var ALLOWED_ORIGINS = [
+    'https://plan.getlecka.com',
     'https://www.getlecka.com',
     'https://getlecka.com',
   ];
