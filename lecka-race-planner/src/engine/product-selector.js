@@ -15,7 +15,7 @@
 import products      from '../config/products.json'
 import formulaConfig from '../config/formula-config.json'
 
-export function selectProducts(targets, preferredProductIds = []) {
+export function selectProducts(targets, preferredProductIds = [], region = 'us') {
   const { total_duration_minutes, caffeine_ok } = targets
   const { timing_rules: timingRules, caffeine_rules: caffeineRules } = formulaConfig
 
