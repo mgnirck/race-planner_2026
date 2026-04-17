@@ -855,7 +855,9 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             Get 10% Discount — code NUTRIPLAN10 applied automatically
           </p>
           <p className="text-xs text-gray-400 text-center mt-1">
-            Ships to US only. Free shipping on orders over $60.
+            {region === 'us'
+              ? 'Ships to US only. Free shipping on orders over $60.'
+              : `Ships to ${regionConfig.label}. Visit ${regionConfig.store_url} for shipping info.`}
           </p>
         </section>
 
