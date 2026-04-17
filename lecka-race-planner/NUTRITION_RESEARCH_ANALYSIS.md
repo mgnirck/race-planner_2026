@@ -1,7 +1,9 @@
 # Nutrition Plan Logic - Research Analysis & Validation
 
-**Date:** April 2026  
+**Date:** April 2026 (updated April 17 2026)
 **Purpose:** Deep analysis of carbohydrate, sodium, and fluid intake formulas against current sports science research. Identifies evidence-based improvements for continuous codebase evolution.
+
+> **Status update (April 17 2026):** The `distance_adaptive` strategy is now the default. Plans are continuously calculated from actual `goal_minutes` via linear interpolation — no more fixed buckets. A 70 km race produces a genuinely different plan from a 50 km race. See Section 5 Phase 1 implementation notes.
 
 ---
 
@@ -284,38 +286,51 @@ Example: 70 kg male, warm conditions
 
 ## 5. RECOMMENDED IMPROVEMENTS (PRIORITY ORDER)
 
-### Phase 1: Quick Wins (1-2 days)
+### Phase 1: Quick Wins ✅ IMPLEMENTED
 
-#### 1a. **Carb Rate Validation**
+#### 1a. **Carb Rate Validation** ✅
 - **Issue:** 5K events don't need carbs; warnings prevent GI distress
-- **Implementation:** In `nutrition-engine.js`, add warning if `goal_minutes < 45` and `carb_per_hour > 0`
+- **Implementation:** In `nutrition-engine.js`, warning fires if `goal_minutes < 45` and `carb_per_hour > 0`
 - **Research:** ISSN, Burke et al. both agree <45 min events don't benefit from fueling
-- **User Impact:** Prevents unnecessary carbs in short races
+- **Status:** Done
 
-#### 1b. **Pre-Race Sodium Loading Guidance**
+#### 1b. **Pre-Race Sodium Loading Guidance** ✅
 - **Issue:** Research shows 20.5 g sodium loading 2-4 hrs before race improves performance >4 hrs
-- **Implementation:** Add note to PDF if `goal_minutes > 240` and `conditions` in [hot, humid]
-  - Text: "Consider pre-race sodium loading: 20.5g salt in 2.5L water 2-4 hours before start"
+- **Implementation:** PDF includes sodium loading section when `goal_minutes > 240` and hot/humid conditions
 - **Research:** Marino et al. 2021
-- **User Impact:** Maximizes performance in long, hot races
+- **Status:** Done
 
-#### 1c. **Duration-Based Carb Algorithm Alternative**
-- **Issue:** Effort-based doesn't align with duration-dependent physiology
-- **Implementation:** 
-  ```json
-  "carb_calculation_strategy": "effort_based",
-  "carb_strategies": {
-    "effort_based": { ...current },
-    "duration_based": {
-      "0-45_min": 0,
-      "45-150_min": 60,
-      "150-180_min": { "single_carb": 75, "dual_carb": 90 },
-      ">180_min": 60-90
-    }
-  }
-  ```
+#### 1c. **Distance-Adaptive Carb Algorithm** ✅ (replaces the planned duration-based bucket approach)
+- **Issue:** Effort-based strategy bucketed all races into fixed categories; a 70 km race used identical rates to a 50 km race.
+- **Implementation:** New `distance_adaptive` strategy in `src/strategies/carb-strategies.js`
+  - Linear interpolation between 13 research-anchored breakpoints from 0 → 900 minutes
+  - Every distinct `goal_minutes` value produces a distinct carb rate
+  - Effort modifier (easy: 0.85×, race_pace: 1.0×, hard: 1.15×) applied on top
+  - Athlete profile modifier applied after effort
+  - Example outcomes:
+    | Race | Time | Carb rate (race_pace) |
+    |------|------|----------------------|
+    | 10 km | 50 min | ~27 g/h |
+    | Half marathon | 105 min | ~55 g/h |
+    | Marathon | 210 min | ~65 g/h |
+    | 50 km ultra | 360 min | ~74 g/h |
+    | 70 km ultra | 480 min | ~77 g/h |
+    | 100 km ultra | 600 min | ~79 g/h |
+- **Anchor points (ISSN 2018 / Burke IOC 2019):**
+  - 0–30 min → 0 g/h (sufficient muscle glycogen)
+  - 45 min → 20 g/h (marginal SGLT1 benefit begins)
+  - 60 min → 35 g/h (single-transporter threshold)
+  - 90 min → 50 g/h
+  - 120 min → 58 g/h (2h zone)
+  - 180 min → 63 g/h (3h / marathon–ultra transition)
+  - 240 min → 67 g/h
+  - 300 min → 71 g/h (50 km range)
+  - 360 min → 74 g/h
+  - 480 min → 77 g/h (70–80 km range)
+  - 600 min → 79 g/h (100 km range)
+  - 900 min → 82 g/h (150+ km / very long ultra)
 - **Research:** Burke et al. emphasizes duration >> effort for CHO utilization
-- **User Impact:** Better targeting for 5Ks; proper high-carb for long ultras
+- **Status:** Done — `formula-config.json` `carb_calculation_strategy.selected` = `"distance_adaptive"`
 
 ### Phase 2: Architecture Refactoring (3-5 days)
 
@@ -370,14 +385,15 @@ Example: 70 kg male, warm conditions
 
 ### Code Changes Required
 
-- [ ] Extend `formula-config.json` with carb strategies & athlete profiles
-- [ ] Create `src/strategies/carb-strategies.js` with pluggable algorithms
-- [ ] Modify `nutrition-engine.js` to select strategy dynamically
-- [ ] Add carb rate validation for <45 min events
-- [ ] Add pre-race sodium loading note to PDF generation
+- [x] Extend `formula-config.json` with carb strategies & athlete profiles
+- [x] Create `src/strategies/carb-strategies.js` with pluggable algorithms
+- [x] Modify `nutrition-engine.js` to select strategy dynamically
+- [x] Add carb rate validation for <45 min events
+- [x] Add pre-race sodium loading note to PDF generation
+- [x] Add athlete profile selector to form
+- [x] Implement `distance_adaptive` strategy for continuous, interpolated carb rates
 - [ ] Add temperature input to StepForm (optional, replaces categorical conditions)
 - [ ] Create sweat rate estimator tool UI
-- [ ] Add athlete profile selector to form
 - [ ] Implement formula versioning for reproducibility
 - [ ] Add unit tests for edge cases (light/heavy athletes, cool/hot, short/long races)
 

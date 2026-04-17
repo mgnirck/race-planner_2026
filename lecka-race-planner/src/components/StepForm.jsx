@@ -258,9 +258,9 @@ function StepOne({ form, setForm }) {
             ))}
           </div>
         </div>
-        {form.race_type && (
+        {form.custom_km_display && (
           <p className="text-xs text-[#48C4B0] mt-1.5">
-            {RACE_TYPE_LABELS[form.race_type]} nutrition plan
+            {form.custom_km_display} {form.dist_unit} — personalised nutrition plan
           </p>
         )}
       </div>

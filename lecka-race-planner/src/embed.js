@@ -52,8 +52,30 @@ const parentOrigin = (() => {
  */
 export function notifyResize() {
   if (!isEmbedded) return
-  const height = Math.max(document.documentElement.scrollHeight, 500)
+  const height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 500)
   window.parent.postMessage({ type: 'lecka:resize', height }, parentOrigin)
+}
+
+/**
+ * Set up all three automatic height-sync triggers:
+ *   1. On initial load
+ *   2. On window resize
+ *   3. Via ResizeObserver when content changes (React step transitions, etc.)
+ *
+ * Call once at app startup. Safe no-op when not embedded.
+ */
+export function initHeightSync() {
+  if (!isEmbedded) return
+
+  // 1. On initial load
+  window.addEventListener('load', notifyResize)
+
+  // 2. On window resize
+  window.addEventListener('resize', notifyResize)
+
+  // 3. When content changes dynamically (React state changes, step transitions)
+  const ro = new ResizeObserver(notifyResize)
+  ro.observe(document.body)
 }
 
 /**

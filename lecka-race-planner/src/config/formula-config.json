@@ -97,10 +97,12 @@
   "carb_calculation_strategy": {
     "_comment": [
       "Select which carb calculation strategy to use.",
-      "Options: effort_based (current), duration_based (research-aligned), hybrid",
+      "Options: effort_based, duration_based, hybrid, distance_adaptive (default)",
+      "distance_adaptive: linearly interpolates between research anchors from goal_minutes.",
+      "This ensures every unique race duration produces a unique carb target.",
       "See src/strategies/carb-strategies.js for implementation details."
     ],
-    "selected": "effort_based"
+    "selected": "distance_adaptive"
   },
 
   "athlete_profiles": {

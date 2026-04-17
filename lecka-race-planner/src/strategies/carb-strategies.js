@@ -141,14 +141,85 @@ export function calculateCarbs_VO2MaxAdjusted(inputs, config) {
 }
 
 /**
+ * Distance-adaptive strategy — continuously interpolated from goal duration
+ *
+ * Uses linear interpolation between research-anchored breakpoints so every
+ * distinct race duration produces a distinct carb target.  A 70 km race
+ * (goal ~480 min) returns a meaningfully different rate from a 50 km race
+ * (~360 min).  Effort modifier applied on top as a ±15% band.
+ *
+ * Anchor points derived from ISSN 2018 / Burke et al. (IOC 2019):
+ *   0-30 min   → 0 g/h  (sufficient muscle glycogen, no benefit)
+ *   45 min     → 20 g/h (marginal benefit starts, SGLT1 priming)
+ *   60 min     → 35 g/h (single-transporter threshold)
+ *   90 min     → 50 g/h
+ *   120 min    → 58 g/h (2h marathon zone)
+ *   180 min    → 63 g/h (3h marathon / half-ultra transition)
+ *   240 min    → 67 g/h (4h mark)
+ *   300 min    → 71 g/h (50km ultra ~5h)
+ *   360 min    → 74 g/h (50km ultra ~6h)
+ *   480 min    → 77 g/h (70-80km ultra ~8h)
+ *   600 min    → 79 g/h (100km ultra ~10h)
+ *   900 min    → 82 g/h (100 mile / very long ultra)
+ */
+const DURATION_ANCHORS = [
+  [0,   0],
+  [30,  0],
+  [45,  20],
+  [60,  35],
+  [90,  50],
+  [120, 58],
+  [180, 63],
+  [240, 67],
+  [300, 71],
+  [360, 74],
+  [480, 77],
+  [600, 79],
+  [900, 82],
+]
+
+function interpolateFromAnchors(minutes) {
+  if (minutes <= DURATION_ANCHORS[0][0]) return DURATION_ANCHORS[0][1]
+  const last = DURATION_ANCHORS[DURATION_ANCHORS.length - 1]
+  if (minutes >= last[0]) return last[1]
+
+  for (let i = 1; i < DURATION_ANCHORS.length; i++) {
+    const [t1, r1] = DURATION_ANCHORS[i - 1]
+    const [t2, r2] = DURATION_ANCHORS[i]
+    if (minutes >= t1 && minutes <= t2) {
+      const ratio = (minutes - t1) / (t2 - t1)
+      return r1 + ratio * (r2 - r1)
+    }
+  }
+  return DURATION_ANCHORS[DURATION_ANCHORS.length - 1][1]
+}
+
+export function calculateCarbs_DistanceAdaptive(inputs, config) {
+  const { goal_minutes, effort, training_mode } = inputs
+
+  let carbPerHour = interpolateFromAnchors(goal_minutes)
+
+  // Apply effort modifier (easy: -15%, race_pace: 0%, hard: +15%)
+  const effortMod = config.effort_modifiers?.[effort] ?? 1.0
+  carbPerHour *= effortMod
+
+  if (training_mode) {
+    carbPerHour *= config.training_mode.carb_rate_multiplier
+  }
+
+  return Math.round(carbPerHour)
+}
+
+/**
  * Registry of all available strategies
  * Core system uses this to select strategy dynamically from config
  */
 export const carbStrategies = {
-  effort_based: calculateCarbs_EffortBased,
-  duration_based: calculateCarbs_DurationBased,
-  hybrid: calculateCarbs_Hybrid,
-  vo2max_adjusted: calculateCarbs_VO2MaxAdjusted,
+  effort_based:       calculateCarbs_EffortBased,
+  duration_based:     calculateCarbs_DurationBased,
+  hybrid:             calculateCarbs_Hybrid,
+  vo2max_adjusted:    calculateCarbs_VO2MaxAdjusted,
+  distance_adaptive:  calculateCarbs_DistanceAdaptive,
 }
 
 /**

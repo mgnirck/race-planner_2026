@@ -115,7 +115,7 @@ function sectionHeading(doc, title, y, marginL, contentW) {
 }
 
 /** Inline cart URL builder — mirrors shopify-link.js without the import chain */
-function buildCartURL(selectedProducts) {
+function buildCartURL(selectedProducts, discountCode = 'NUTRIPLAN10') {
   if (!selectedProducts?.length) return 'https://www.getlecka.com'
   const totals = {}
   for (const item of selectedProducts) {
@@ -132,7 +132,8 @@ function buildCartURL(selectedProducts) {
     const boxes = Math.ceil(units / (prod?.units_per_box ?? 1))
     return `${vid}:${boxes}`
   })
-  return `https://www.getlecka.com/cart/${parts.join(',')}`
+  const base = `https://www.getlecka.com/cart/${parts.join(',')}`
+  return discountCode ? `${base}?discount=${encodeURIComponent(discountCode)}` : base
 }
 
 // ── PDF generation ────────────────────────────────────────────────────────────
@@ -148,16 +149,16 @@ function generatePDF(inputs, targets, selectedProducts) {
   doc.setFillColor(C.green)
   doc.rect(0, 0, W, 38, 'F')
 
-  // Wordmark
+  // Wordmark — lowercase to match the Lecka brand SVG logo
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(26)
+  doc.setFontSize(28)
   doc.setTextColor(C.white)
-  doc.text('LECKA', ML, 17)
+  doc.text('lecka', ML, 18)
 
   // Tagline
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.text('Real food. Real performance.', ML, 25)
+  doc.text('Real food. Real performance.', ML, 26)
 
   // Right side — plan title + date
   doc.setFont('helvetica', 'bold')
@@ -468,7 +469,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
 <body>
   <div class="wrap">
     <div class="header">
-      <h1>LECKA</h1>
+      <img src="https://plan.getlecka.com/logo.svg" alt="lecka" style="height:36px;display:block;margin-bottom:8px;" />
       <p>Your personalised race nutrition plan</p>
     </div>
     <div class="body">
@@ -499,6 +500,12 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
       </ul>
 
       <a href="${cartUrl}" class="cta">Shop your plan on Lecka &rarr;</a>
+
+      <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
+        <p style="margin:0;font-size:13px;color:#1B1B1B;">
+          <strong>10% discount included:</strong> Code <code style="background:#e0f7f2;padding:2px 6px;border-radius:4px;font-family:monospace;">NUTRIPLAN10</code> is already applied to your cart link above.
+        </p>
+      </div>
 
       <p class="note">
         Open the attached PDF for your full race timeline, training notes, and timing guide.
@@ -565,12 +572,12 @@ async function upsertShopifyCustomer(email, inputs) {
     const existingTags = existing.tags
       ? existing.tags.split(',').map(t => t.trim()).filter(Boolean)
       : []
-    const mergedTags = Array.from(new Set([...existingTags, 'race-planner'])).join(', ')
+    const mergedTags = Array.from(new Set([...existingTags, 'race-planner', 'plan'])).join(', ')
 
     const putRes = await fetch(`${base}/customers/${existing.id}.json`, {
       method:  'PUT',
       headers,
-      body:    JSON.stringify({ customer: { id: existing.id, tags: mergedTags, note } }),
+      body:    JSON.stringify({ customer: { id: existing.id, tags: mergedTags, note, accepts_marketing: true } }),
     })
     if (!putRes.ok) {
       const body = await putRes.text()
@@ -584,9 +591,10 @@ async function upsertShopifyCustomer(email, inputs) {
       body:    JSON.stringify({
         customer: {
           email,
-          tags:           'race-planner',
+          tags:              'race-planner, plan',
           note,
-          verified_email: true,
+          verified_email:    true,
+          accepts_marketing: true,
         },
       }),
     })
