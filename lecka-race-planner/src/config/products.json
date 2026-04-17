@@ -9,6 +9,20 @@
     "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43249546526767",
+    "regions": {
+      "us": {
+        "shopify_variant_id": "43249546526767",
+        "price": 29.95
+      },
+      "de": {
+        "shopify_variant_id": "PLACEHOLDER_DE",
+        "price": 0
+      },
+      "dk": {
+        "shopify_variant_id": "PLACEHOLDER_DK",
+        "price": 0
+      }
+    },
     "caffeine": false,
     "caffeine_mg": 0,
     "ideal_time": ["during"]
@@ -23,6 +37,20 @@
     "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43649538064431",
+    "regions": {
+      "us": {
+        "shopify_variant_id": "43649538064431",
+        "price": 29.95
+      },
+      "de": {
+        "shopify_variant_id": "PLACEHOLDER_DE",
+        "price": 0
+      },
+      "dk": {
+        "shopify_variant_id": "PLACEHOLDER_DK",
+        "price": 0
+      }
+    },
     "caffeine": true,
     "caffeine_mg": 90,
     "ideal_time": ["during"]
@@ -37,6 +65,20 @@
     "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43249546854447",
+    "regions": {
+      "us": {
+        "shopify_variant_id": "43249546854447",
+        "price": 29.95
+      },
+      "de": {
+        "shopify_variant_id": "PLACEHOLDER_DE",
+        "price": 0
+      },
+      "dk": {
+        "shopify_variant_id": "PLACEHOLDER_DK",
+        "price": 0
+      }
+    },
     "caffeine": false,
     "caffeine_mg": 0,
     "ideal_time": ["during"]
@@ -51,6 +93,20 @@
     "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "44452873404463",
+    "regions": {
+      "us": {
+        "shopify_variant_id": "44452873404463",
+        "price": 29.95
+      },
+      "de": {
+        "shopify_variant_id": "PLACEHOLDER_DE",
+        "price": 0
+      },
+      "dk": {
+        "shopify_variant_id": "PLACEHOLDER_DK",
+        "price": 0
+      }
+    },
     "caffeine": false,
     "caffeine_mg": 0,
     "ideal_time": ["during"]
@@ -65,6 +121,20 @@
     "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "44452862492719",
+    "regions": {
+      "us": {
+        "shopify_variant_id": "44452862492719",
+        "price": 29.95
+      },
+      "de": {
+        "shopify_variant_id": "PLACEHOLDER_DE",
+        "price": 0
+      },
+      "dk": {
+        "shopify_variant_id": "PLACEHOLDER_DK",
+        "price": 0
+      }
+    },
     "caffeine": false,
     "caffeine_mg": 0,
     "ideal_time": ["during"]
@@ -79,6 +149,20 @@
     "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43249548558383",
+    "regions": {
+      "us": {
+        "shopify_variant_id": "43249548558383",
+        "price": 29.95
+      },
+      "de": {
+        "shopify_variant_id": "PLACEHOLDER_DE",
+        "price": 0
+      },
+      "dk": {
+        "shopify_variant_id": "PLACEHOLDER_DK",
+        "price": 0
+      }
+    },
     "caffeine": false,
     "caffeine_mg": 0,
     "ideal_time": ["before", "after"]
@@ -93,6 +177,20 @@
     "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43249547706415",
+    "regions": {
+      "us": {
+        "shopify_variant_id": "43249547706415",
+        "price": 29.95
+      },
+      "de": {
+        "shopify_variant_id": "PLACEHOLDER_DE",
+        "price": 0
+      },
+      "dk": {
+        "shopify_variant_id": "PLACEHOLDER_DK",
+        "price": 0
+      }
+    },
     "caffeine": false,
     "caffeine_mg": 0,
     "ideal_time": ["before", "after"]
