@@ -14,6 +14,8 @@
  * effort           : string  — 'easy' | 'race_pace' | 'hard'
  * caffeine_ok      : boolean — athlete consents to caffeine products
  * training_mode    : boolean — gut-training session (lower carb dose)
+ * elevation_gain_m : number  — total positive ascent in metres (default 0)
+ * distance_km      : number  — course distance in km (default 0 = skip elevation modifier)
  *
  * Returns
  * -------
@@ -28,6 +30,9 @@
  *   race_type             : string
  *   effort                : string
  *   conditions            : string
+ *   elevation_gain_m      : number
+ *   avg_grade_pct         : number
+ *   elevation_tier        : string   'flat'|'rolling'|'hilly'|'very_hilly'|'mountain'
  * }
  */
 
@@ -45,6 +50,8 @@ export function calculateTargets(inputs) {
     caffeine_ok = false,
     training_mode = false,
     athlete_profile = 'intermediate',
+    elevation_gain_m = 0,
+    distance_km = 0,
   } = inputs
 
   // ── 1. Validate required inputs ──────────────────────────────────────────
@@ -71,6 +78,24 @@ export function calculateTargets(inputs) {
 
   carb_per_hour = Math.round(carb_per_hour)
 
+  // ── 2b. Elevation modifier ────────────────────────────────────────────────
+  let elevation_tier = 'flat'
+  let avg_grade_pct = 0
+
+  if (elevation_gain_m > 0 && distance_km > 0) {
+    avg_grade_pct = (elevation_gain_m / (distance_km * 1000)) * 100
+
+    const elevMods = formulaConfig.elevation_modifiers
+    const tier = Object.entries(elevMods)
+      .filter(([key]) => key !== '_comment')
+      .find(([, cfg]) => avg_grade_pct <= cfg.avg_grade_pct_max)
+
+    if (tier) {
+      elevation_tier = tier[0]
+      carb_per_hour = Math.round(carb_per_hour * tier[1].carb_modifier)
+    }
+  }
+
   // ── 3. Sodium rate ────────────────────────────────────────────────────────
   const sodiumConfig = formulaConfig.sodium_targets_mg_per_hour
   const genderMod = formulaConfig.gender_modifiers[gender] ?? 1.0
@@ -84,6 +109,14 @@ export function calculateTargets(inputs) {
   // Apply athlete profile modifier for sodium
   if (profileMods) {
     sodium_per_hour *= profileMods.sodium_modifier
+  }
+
+  // Apply elevation sodium modifier
+  if (elevation_gain_m > 0 && distance_km > 0) {
+    const elevTierCfg = formulaConfig.elevation_modifiers[elevation_tier]
+    if (elevTierCfg) {
+      sodium_per_hour *= elevTierCfg.sodium_modifier
+    }
   }
 
   sodium_per_hour = Math.round(
@@ -165,6 +198,9 @@ export function calculateTargets(inputs) {
     conditions,
     athlete_profile,
     carb_strategy: strategyName,
+    elevation_gain_m,
+    avg_grade_pct: Math.round(avg_grade_pct * 10) / 10,
+    elevation_tier,
     warnings,
   }
 }
