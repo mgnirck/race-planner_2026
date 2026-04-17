@@ -1,3 +1,5 @@
+import regionsConfig from './config/regions.json'
+
 /**
  * src/embed.js — app-side embed utilities
  *
@@ -108,4 +110,39 @@ export function embedCartURL(url) {
   } catch {
     return url
   }
+}
+
+// ── Region detection ──────────────────────────────────────────────────────────
+
+/**
+ * Detected region key ('us' | 'de' | 'dk'). Evaluated once at module load.
+ * Checks ?region= URL param first, then matches document.referrer hostname
+ * against each region's referrer_hosts list. Defaults to 'us'.
+ */
+export const detectRegion = (() => {
+  try {
+    const param = new URLSearchParams(window.location.search).get('region')
+    if (param && regionsConfig[param]) return param
+
+    if (document.referrer) {
+      const hostname = new URL(document.referrer).hostname.toLowerCase()
+      for (const [key, config] of Object.entries(regionsConfig)) {
+        if (config.referrer_hosts.includes(hostname)) return key
+      }
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return 'us'
+})()
+
+/**
+ * Returns the region config object for the given region key.
+ * Falls back to the 'us' config if the key is not found.
+ *
+ * @param {string} region — 'us' | 'de' | 'dk'
+ * @returns {object}
+ */
+export function getRegionConfig(region) {
+  return regionsConfig[region] ?? regionsConfig['us']
 }

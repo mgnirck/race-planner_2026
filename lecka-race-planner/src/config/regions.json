@@ -1,0 +1,23 @@
+{
+  "us": {
+    "store_url": "https://www.getlecka.com",
+    "currency": "USD",
+    "currency_symbol": "$",
+    "label": "United States",
+    "referrer_hosts": ["getlecka.com", "www.getlecka.com"]
+  },
+  "de": {
+    "store_url": "https://www.getlecka.de",
+    "currency": "EUR",
+    "currency_symbol": "€",
+    "label": "Germany",
+    "referrer_hosts": ["getlecka.de", "www.getlecka.de"]
+  },
+  "dk": {
+    "store_url": "https://www.getlecka.dk",
+    "currency": "DKK",
+    "currency_symbol": "kr",
+    "label": "Denmark",
+    "referrer_hosts": ["getlecka.dk", "www.getlecka.dk"]
+  }
+}

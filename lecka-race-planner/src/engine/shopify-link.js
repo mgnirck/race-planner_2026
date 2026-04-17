@@ -1,3 +1,5 @@
+import regionsConfig from '../config/regions.json'
+
 /**
  * shopify-link.js
  *
@@ -26,26 +28,28 @@
  *   Ensure all products in products.json have real numeric variant IDs.
  */
 
-const STORE_URL = 'https://www.getlecka.com'
-
 /**
  * @param {Array}  selectedProducts  — output of selectProducts()
  * @param {string} [discountCode]    — applied as ?discount=CODE
  * @param {string} [utmSource]       — appended as &utm_source=VALUE when set
+ * @param {string} [region]          — region key ('us' | 'de' | 'dk'), defaults to 'us'
  * @returns {string}
  *
  * Variant ID validation: logs console.warn and skips any product with non-numeric
  * shopify_variant_id. This guards against stale placeholder IDs in products.json.
  */
-export function buildCartURL(selectedProducts, discountCode = '', utmSource = '') {
+export function buildCartURL(selectedProducts, discountCode = '', utmSource = '', region = 'us') {
+  const storeUrl = regionsConfig[region]?.store_url ?? regionsConfig['us'].store_url
+
   if (!selectedProducts || selectedProducts.length === 0) {
-    return STORE_URL
+    return storeUrl
   }
 
   // Aggregate unit quantities by variant ID, validating each variant
   const variantTotals = {}
   for (const item of selectedProducts) {
-    const vid = item.product.shopify_variant_id
+    const vid = item.product.regions?.[region]?.shopify_variant_id
+                ?? item.product.shopify_variant_id
 
     // Validate: variant ID should be a numeric string
     if (!/^\d+$/.test(vid)) {
@@ -74,6 +78,6 @@ export function buildCartURL(selectedProducts, discountCode = '', utmSource = ''
   if (discountCode) params.push(`discount=${encodeURIComponent(discountCode)}`)
   if (utmSource)    params.push(`utm_source=${encodeURIComponent(utmSource)}`)
 
-  const base = `${STORE_URL}/cart/${cartItems}`
+  const base = `${storeUrl}/cart/${cartItems}`
   return params.length ? `${base}?${params.join('&')}` : base
 }

@@ -13,7 +13,8 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { buildCartURL }                          from '../engine/shopify-link.js'
-import { isEmbedded, notifyEmailCapture, embedCartURL } from '../embed.js'
+import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
+import regionsConfig from '../config/regions.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -99,7 +100,7 @@ function buildTimeline(selection, totalDuration) {
   return events
 }
 
-function aggregateByProduct(selection) {
+function aggregateByProduct(selection, region = 'us') {
   const map = {}
   for (const item of selection) {
     const id = item.product.id
@@ -108,7 +109,8 @@ function aggregateByProduct(selection) {
   }
   return Object.values(map).map(({ product, totalUnits }) => {
     const boxes     = Math.ceil(totalUnits / product.units_per_box)
-    const linePrice = boxes * product.price_usd
+    const unitPrice = product.regions?.[region]?.price || product.price_usd
+    const linePrice = boxes * unitPrice
     return { product, totalUnits, boxes, linePrice }
   })
 }
@@ -235,7 +237,7 @@ function NutritionSummary({ targets }) {
 
 // ── ProductCard ───────────────────────────────────────────────────────────────
 
-function ProductCard({ product, totalUnits, boxes, linePrice }) {
+function ProductCard({ product, totalUnits, boxes, linePrice, currencySymbol = '$' }) {
   return (
     <div className="border-2 border-gray-100 rounded-2xl p-4 flex items-center gap-4">
       <ProductIcon product={product} />
@@ -247,7 +249,7 @@ function ProductCard({ product, totalUnits, boxes, linePrice }) {
         </p>
       </div>
       <div className="text-right flex-shrink-0">
-        <p className="text-sm font-bold text-[#1B1B1B]">${linePrice.toFixed(2)}</p>
+        <p className="text-sm font-bold text-[#1B1B1B]">{currencySymbol}{linePrice.toFixed(2)}</p>
         <p className="text-xs text-gray-400">{product.price_note}</p>
       </div>
     </div>
@@ -708,16 +710,18 @@ function ResearchModal({ onClose }) {
 
 export default function ResultsPage({ targets, selection, form, onBack }) {
   const [showResearch, setShowResearch] = useState(false)
+  const [region, setRegion] = useState(detectRegion)
+  const regionConfig = getRegionConfig(region)
 
   const timeline   = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
-  const aggregated = useMemo(() => aggregateByProduct(selection), [selection])
+  const aggregated = useMemo(() => aggregateByProduct(selection, region), [selection, region])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalBoxes = aggregated.reduce((sum, row) => sum + row.boxes, 0)
 
   const cartURL = useMemo(
-    () => embedCartURL(buildCartURL(selection, 'NUTRIPLAN10')),
-    [selection]
+    () => embedCartURL(buildCartURL(selection, 'NUTRIPLAN10', '', region)),
+    [selection, region]
   )
 
   // Prefer athlete's race name → actual distance typed → race_type label
@@ -798,10 +802,34 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           <SectionLabel>What to take</SectionLabel>
           <div className="space-y-3">
             {aggregated.map(row => (
-              <ProductCard key={row.product.id} {...row} />
+              <ProductCard key={row.product.id} {...row} currencySymbol={regionConfig.currency_symbol} />
             ))}
           </div>
         </section>
+
+        {/* ── Region picker ────────────────────────────────────────────────── */}
+        {!isEmbedded && (
+          <section>
+            <SectionLabel>Shipping to</SectionLabel>
+            <div className="flex gap-2">
+              {Object.entries(regionsConfig).map(([key, cfg]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setRegion(key)}
+                  className={[
+                    'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                    region === key
+                      ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                      : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                  ].join(' ')}
+                >
+                  {cfg.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Shop CTA ────────────────────────────────────────────────────── */}
         <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
@@ -810,7 +838,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
               {totalBoxes} box{totalBoxes !== 1 ? 'es' : ''}
             </span>
             <span className="text-xl font-bold text-[#1B1B1B]">
-              ${subtotal.toFixed(2)}
+              {regionConfig.currency_symbol}{subtotal.toFixed(2)}
             </span>
           </div>
           <a
