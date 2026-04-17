@@ -36,7 +36,7 @@
  * }
  */
 
-import formulaConfig from '../config/formula-config.json'
+import formulaConfig from '../config/formula-config.json' with { type: 'json' }
 import * as carbStrategies from '../strategies/carb-strategies.js'
 
 export function calculateTargets(inputs) {

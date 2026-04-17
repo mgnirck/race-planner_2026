@@ -47,7 +47,8 @@ function haversineKm(lat1, lon1, lat2, lon2) {
  * }}
  */
 export function parseGPX(fileText) {
-  const parser = new window.DOMParser();
+  // Use globalThis so the module is testable in Node (window === globalThis in browsers)
+  const parser = new (globalThis.DOMParser ?? window.DOMParser)();
   const doc = parser.parseFromString(fileText, 'application/xml');
 
   const trkpts = Array.from(doc.getElementsByTagName('trkpt'));
