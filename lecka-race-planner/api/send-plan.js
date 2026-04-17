@@ -149,16 +149,17 @@ function generatePDF(inputs, targets, selectedProducts) {
   doc.setFillColor(C.green)
   doc.rect(0, 0, W, 38, 'F')
 
-  // Wordmark — lowercase to match the Lecka brand SVG logo
+  // Wordmark — lowercase bold, white on teal, matching the Lecka brand
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(28)
+  doc.setFontSize(30)
   doc.setTextColor(C.white)
-  doc.text('lecka', ML, 18)
+  doc.text('lecka', ML, 20)
 
-  // Tagline
+  // Small brand tagline
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.text('Real food. Real performance.', ML, 26)
+  doc.setFontSize(8.5)
+  doc.setTextColor([255, 255, 255, 180])
+  doc.text('Real food. Real performance.', ML, 28)
 
   // Right side — plan title + date
   doc.setFont('helvetica', 'bold')
@@ -449,7 +450,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
     body { margin: 0; padding: 0; background: #f9f9f9; font-family: -apple-system, Helvetica Neue, Arial, sans-serif; color: #1B1B1B; }
     .wrap      { max-width: 600px; margin: 0 auto; background: #ffffff; }
     .header    { background: #48C4B0; padding: 28px 32px; }
-    .header h1 { margin: 0; color: #fff; font-size: 26px; letter-spacing: 0.02em; }
+    .header svg { display: block; margin-bottom: 8px; }
     .header p  { margin: 6px 0 0; color: rgba(255,255,255,0.75); font-size: 14px; }
     .body      { padding: 32px; }
     .targets   { display: flex; gap: 12px; margin: 24px 0; }
@@ -469,7 +470,9 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
 <body>
   <div class="wrap">
     <div class="header">
-      <img src="https://plan.getlecka.com/logo.svg" alt="lecka" style="height:36px;display:block;margin-bottom:8px;" />
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 44" height="36" aria-label="lecka">
+        <text x="0" y="36" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-weight="800" font-size="38" letter-spacing="-1" fill="#ffffff">lecka</text>
+      </svg>
       <p>Your personalised race nutrition plan</p>
     </div>
     <div class="body">
@@ -557,18 +560,25 @@ async function upsertShopifyCustomer(email, inputs) {
     `Generated: ${new Date().toISOString().split('T')[0]}`,
   ].join(' | ')
 
-  // 1. Check if customer already exists
-  const searchUrl = `${base}/customers/search.json?query=email:${encodeURIComponent(email)}&limit=1&fields=id,email,tags`
-  const searchRes = await fetch(searchUrl, { headers })
-  if (!searchRes.ok) {
-    const body = await searchRes.text()
-    throw new Error(`Shopify search ${searchRes.status}: ${body}`)
+  // email_marketing_consent replaces deprecated accepts_marketing (since API 2022-07)
+  const marketingConsent = {
+    state:                'subscribed',
+    opt_in_level:         'single_opt_in',
+    consent_updated_at:   new Date().toISOString(),
   }
-  const { customers } = await searchRes.json()
+
+  // 1. Direct email lookup — more reliable than /search.json which is eventually consistent
+  const lookupUrl = `${base}/customers.json?email=${encodeURIComponent(email)}&limit=1&fields=id,email,tags`
+  const lookupRes = await fetch(lookupUrl, { headers })
+  if (!lookupRes.ok) {
+    const body = await lookupRes.text()
+    throw new Error(`Shopify lookup ${lookupRes.status}: ${body}`)
+  }
+  const { customers } = await lookupRes.json()
   const existing = customers?.[0]
 
   if (existing) {
-    // 2a. Update — merge tags so we never clobber existing ones
+    // 2a. Update existing customer — merge tags, never clobber
     const existingTags = existing.tags
       ? existing.tags.split(',').map(t => t.trim()).filter(Boolean)
       : []
@@ -577,31 +587,46 @@ async function upsertShopifyCustomer(email, inputs) {
     const putRes = await fetch(`${base}/customers/${existing.id}.json`, {
       method:  'PUT',
       headers,
-      body:    JSON.stringify({ customer: { id: existing.id, tags: mergedTags, note, accepts_marketing: true } }),
+      body:    JSON.stringify({
+        customer: {
+          id: existing.id,
+          tags: mergedTags,
+          note,
+          email_marketing_consent: marketingConsent,
+        },
+      }),
     })
     if (!putRes.ok) {
       const body = await putRes.text()
       throw new Error(`Shopify update ${putRes.status}: ${body}`)
     }
+    console.log(`[send-plan] Shopify customer updated: ${existing.id} | tags: ${mergedTags}`)
   } else {
-    // 2b. Create new customer
+    // 2b. Create new customer with plan + race-planner tags and marketing consent
     const postRes = await fetch(`${base}/customers.json`, {
       method:  'POST',
       headers,
       body:    JSON.stringify({
         customer: {
           email,
-          tags:              'race-planner, plan',
+          tags:                    'race-planner, plan',
           note,
-          verified_email:    true,
-          accepts_marketing: true,
+          verified_email:          true,
+          email_marketing_consent: marketingConsent,
         },
       }),
     })
     if (!postRes.ok) {
       const body = await postRes.text()
+      // 422 means duplicate — customer was created between our lookup and POST
+      if (postRes.status === 422) {
+        console.warn(`[send-plan] Shopify 422 on create (duplicate?): ${body}`)
+        return // non-fatal; customer already exists
+      }
       throw new Error(`Shopify create ${postRes.status}: ${body}`)
     }
+    const created = await postRes.json()
+    console.log(`[send-plan] Shopify customer created: ${created.customer?.id} | email: ${email}`)
   }
 }
 
