@@ -376,31 +376,7 @@ function generatePDF(inputs, targets, selectedProducts) {
 
   y = doc.lastAutoTable.finalY + 10
 
-  // ── Section 4: Training notes (optional) ─────────────────────────────────
-  if (inputs.training_mode) {
-    y = ensureSpace(doc, y, 55)
-    y = sectionHeading(doc, 'Training Notes', y, ML, CW)
-
-    const lines = [
-      'This plan runs in training mode: carb targets are set to 70% of your race-day dose',
-      'to progressively condition your gut for absorbing fuel under race effort.',
-      '',
-      '\u2022  Start with nutrition on every other long run; build to every session.',
-      '\u2022  Mirror the exact race-day product sequence in your longest training block.',
-      '\u2022  If you experience GI distress, drop back one level and rebuild gradually.',
-      '\u2022  Aim to complete at least 2 long runs at the full race-day dose before race day.',
-    ]
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(C.gray)
-    for (const line of lines) {
-      doc.text(line === '' ? '' : line, ML, y)
-      y += line === '' ? 3 : 5.5
-    }
-  }
-
-  // ── Section 5: Pre-race sodium loading (if applicable) ────────────────────
+  // ── Section 4: Pre-race sodium loading (if applicable) ────────────────────
   const isHotCondition = ['hot', 'humid'].includes(inputs.conditions)
   const isLongRace = targets.total_duration_minutes >= 240
   if (isHotCondition && isLongRace) {

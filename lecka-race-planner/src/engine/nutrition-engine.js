@@ -13,7 +13,6 @@
  * conditions       : string  — 'cool' | 'mild' | 'warm' | 'hot' | 'humid'
  * effort           : string  — 'easy' | 'race_pace' | 'hard'
  * caffeine_ok      : boolean — athlete consents to caffeine products
- * training_mode    : boolean — gut-training session (lower carb dose)
  * elevation_gain_m : number  — total positive ascent in metres (default 0)
  * distance_km      : number  — course distance in km (default 0 = skip elevation modifier)
  *
@@ -48,7 +47,6 @@ export function calculateTargets(inputs) {
     conditions = 'mild',
     effort = 'race_pace',
     caffeine_ok = false,
-    training_mode = false,
     athlete_profile = 'intermediate',
     elevation_gain_m = 0,
     distance_km = 0,

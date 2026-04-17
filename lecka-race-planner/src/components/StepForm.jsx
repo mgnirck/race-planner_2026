@@ -568,25 +568,6 @@ function StepTwo({ form, setForm }) {
         </div>
       </div>
 
-      {/* Planning mode */}
-      <div>
-        <FieldLabel>Planning for</FieldLabel>
-        <div className="space-y-2">
-          <OptionCard
-            label="Race day only"
-            desc="Full-dose plan optimised for your goal race"
-            selected={form.training_mode === false}
-            onClick={() => setForm(f => ({ ...f, training_mode: false }))}
-          />
-          <OptionCard
-            label="I train with nutrition too"
-            desc="Includes training notes — reduced doses to condition your gut"
-            selected={form.training_mode === true}
-            onClick={() => setForm(f => ({ ...f, training_mode: true }))}
-          />
-        </div>
-      </div>
-
     </div>
   )
 }
@@ -695,7 +676,6 @@ export default function StepForm({ onComplete }) {
     effort:          '',
     athlete_profile: '',
     caffeine_ok:     null,
-    training_mode:   false,
     // Step 3
     preferred_product_ids: [],
   })
@@ -719,7 +699,6 @@ export default function StepForm({ onComplete }) {
       conditions:       form.conditions,
       effort:           form.effort,
       caffeine_ok:      form.caffeine_ok,
-      training_mode:    form.training_mode,
       athlete_profile:  form.athlete_profile,
       elevation_gain_m: form.elevation_gain_m,
       distance_km:      parseFloat(form.custom_km) || 0,
