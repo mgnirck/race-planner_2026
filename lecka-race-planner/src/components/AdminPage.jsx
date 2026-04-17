@@ -119,16 +119,22 @@ export default function AdminPage() {
   // null = not yet fetched | object = success | 'error' = failed
   const [serverStats,  setServerStats]  = useState(null)
   const [serverFetching, setServerFetching] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  function refreshStats() {
+    setRefreshKey(k => k + 1)
+  }
 
   useEffect(() => {
     if (!gate.unlocked) return
     setServerFetching(true)
-    fetch('/api/record-plan')
+    setServerStats(null)
+    fetch(`/api/record-plan?t=${Date.now()}`, { cache: 'no-store' })
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
       .then(data => setServerStats(data))
       .catch(() => setServerStats('error'))
       .finally(() => setServerFetching(false))
-  }, [gate.unlocked])
+  }, [gate.unlocked, refreshKey])
 
   // ── localStorage fallback ────────────────────────────────────────────────────
   const localPlans    = useMemo(loadPlans, [gate.unlocked])
@@ -222,6 +228,11 @@ export default function AdminPage() {
                              text-[#2D6A4F] bg-[#2D6A4F]/8 px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F] inline-block" />
               Live — all users
+              {serverStats.generated_at && (
+                <span className="text-[#2D6A4F]/60 font-normal">
+                  · {new Date(serverStats.generated_at).toLocaleTimeString()}
+                </span>
+              )}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold
@@ -230,6 +241,15 @@ export default function AdminPage() {
               {serverStats === 'error' ? 'Server unavailable — showing local data' : 'Local data'}
             </span>
           )}
+          <button
+            type="button"
+            onClick={refreshStats}
+            disabled={serverFetching}
+            className="ml-auto text-xs text-[#2D6A4F] font-medium hover:underline
+                       disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {serverFetching ? 'Refreshing…' : '↺ Refresh'}
+          </button>
         </div>
 
         {/* This month / all-time counts */}

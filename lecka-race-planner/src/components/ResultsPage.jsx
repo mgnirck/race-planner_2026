@@ -11,9 +11,10 @@
  *   7. Start over footer
  */
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { buildCartURL }                          from '../engine/shopify-link.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL } from '../embed.js'
+import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
 
 // ── Label maps ────────────────────────────────────────────────────────────────
 
@@ -523,15 +524,177 @@ function EmailCapture({ targets, selection, form }) {
               Something went wrong — please try again or email us at info@getlecka.com
             </p>
           )}
+          <p className="text-xs text-gray-400 mt-3">
+            By providing your email, you agree to receive the Lecka newsletter.
+          </p>
         </form>
       </div>
     </section>
   )
 }
 
+// ── Research markdown renderer ────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function renderInlineMarkdown(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code style="background:#f0fdf9;padding:1px 5px;border-radius:3px;font-size:0.875em;font-family:monospace">$1</code>')
+}
+
+function markdownToHtml(md) {
+  const lines = md.split('\n')
+  const out = []
+  let inCodeBlock = false
+  let inTable = false
+  let tableRows = []
+  let inList = false
+
+  function flushTable() {
+    if (!tableRows.length) return
+    out.push('<div style="overflow-x:auto;margin:12px 0"><table style="width:100%;border-collapse:collapse;font-size:13px">')
+    tableRows.forEach((row, ri) => {
+      const cells = row.split('|').filter((_, i, a) => i > 0 && i < a.length - 1)
+      const tag = ri === 0 ? 'th' : 'td'
+      const style = ri === 0
+        ? 'background:#48C4B0;color:#fff;padding:6px 10px;text-align:left;font-weight:600'
+        : `padding:6px 10px;border-bottom:1px solid #e5e7eb;${ri % 2 === 0 ? 'background:#f9fafb' : ''}`
+      out.push('<tr>' + cells.map(c => `<${tag} style="${style}">${renderInlineMarkdown(c.trim())}</${tag}>`).join('') + '</tr>')
+    })
+    out.push('</table></div>')
+    tableRows = []
+    inTable = false
+  }
+
+  function flushList() {
+    if (inList) { out.push('</ul>'); inList = false }
+  }
+
+  for (const raw of lines) {
+    const line = raw
+
+    if (line.startsWith('```')) {
+      flushList()
+      if (inTable) flushTable()
+      if (inCodeBlock) { out.push('</code></pre>'); inCodeBlock = false }
+      else { out.push('<pre style="background:#f5f5f5;border-radius:6px;padding:12px;overflow-x:auto;font-size:12px;margin:10px 0"><code>'); inCodeBlock = true }
+      continue
+    }
+    if (inCodeBlock) { out.push(escapeHtml(line) + '\n'); continue }
+
+    if (line.startsWith('|')) {
+      flushList()
+      if (line.replace(/[\s|:-]/g, '') === '') continue // separator row
+      tableRows.push(line)
+      inTable = true
+      continue
+    }
+    if (inTable) flushTable()
+
+    if (/^---+$/.test(line.trim())) { flushList(); out.push('<hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0">'); continue }
+    if (line.startsWith('### ')) { flushList(); out.push(`<h3 style="font-size:14px;font-weight:700;color:#1B1B1B;margin:16px 0 6px">${renderInlineMarkdown(line.slice(4))}</h3>`); continue }
+    if (line.startsWith('## ')) { flushList(); out.push(`<h2 style="font-size:16px;font-weight:700;color:#1B1B1B;margin:20px 0 8px;border-bottom:2px solid #48C4B0;padding-bottom:4px">${renderInlineMarkdown(line.slice(3))}</h2>`); continue }
+    if (line.startsWith('# ')) { flushList(); out.push(`<h1 style="font-size:20px;font-weight:800;color:#1B1B1B;margin:0 0 12px">${renderInlineMarkdown(line.slice(2))}</h1>`); continue }
+
+    const listMatch = line.match(/^([*\-]) (.+)/)
+    const numberedMatch = line.match(/^(\d+)\. (.+)/)
+    if (listMatch) {
+      if (!inList) { out.push('<ul style="padding-left:20px;margin:6px 0;line-height:1.8">'); inList = true }
+      out.push(`<li style="color:#374151">${renderInlineMarkdown(listMatch[2])}</li>`)
+      continue
+    }
+    if (numberedMatch) {
+      flushList()
+      out.push(`<p style="margin:4px 0;color:#374151;padding-left:8px">${numberedMatch[1]}. ${renderInlineMarkdown(numberedMatch[2])}</p>`)
+      continue
+    }
+
+    flushList()
+    if (line.trim() === '') { out.push('<div style="height:6px"></div>'); continue }
+    out.push(`<p style="margin:4px 0;color:#374151;line-height:1.6">${renderInlineMarkdown(line)}</p>`)
+  }
+
+  if (inTable) flushTable()
+  if (inList) out.push('</ul>')
+  if (inCodeBlock) out.push('</code></pre>')
+
+  return out.join('')
+}
+
+function ResearchModal({ onClose }) {
+  const contentRef = useRef(null)
+  const htmlContent = useMemo(() => markdownToHtml(researchMarkdown), [])
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        ref={contentRef}
+        className="bg-white w-full sm:max-w-2xl sm:mx-4 sm:rounded-2xl
+                   rounded-t-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: '90vh' }}
+      >
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0]">Science</p>
+            <h2 className="text-base font-bold text-[#1B1B1B]">How your numbers are calculated</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full
+                       bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors text-lg leading-none"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+        {/* Scrollable content */}
+        <div
+          className="overflow-y-auto px-5 py-4 flex-1"
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+        />
+        <div className="px-5 py-3 border-t border-gray-100 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full min-h-[44px] bg-[#48C4B0] text-white rounded-xl
+                       text-sm font-semibold hover:bg-[#3db09d] transition-colors"
+          >
+            Back to my plan
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ResultsPage({ targets, selection, form, onBack }) {
+  const [showResearch, setShowResearch] = useState(false)
+
   const timeline   = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
   const aggregated = useMemo(() => aggregateByProduct(selection), [selection])
 
@@ -539,12 +702,14 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   const totalBoxes = aggregated.reduce((sum, row) => sum + row.boxes, 0)
 
   const cartURL = useMemo(
-    () => embedCartURL(buildCartURL(selection, '')),
+    () => embedCartURL(buildCartURL(selection, 'NUTRIPLAN10')),
     [selection]
   )
 
-  // Prefer the athlete's own race name if they typed one
-  const heroTitle      = form.race_name || (RACE_LABELS[targets.race_type] ?? targets.race_type)
+  // Prefer athlete's race name → actual distance typed → race_type label
+  const heroTitle      = form.race_name ||
+    (form.custom_km_display ? `${form.custom_km_display} ${form.dist_unit || 'km'}` : null) ||
+    (RACE_LABELS[targets.race_type] ?? targets.race_type)
   const effortLabel    = EFFORT_LABELS[targets.effort]      ?? targets.effort
   const conditionLabel = CONDITION_LABELS[targets.conditions] ?? targets.conditions
   const surfaceLabel   = form.surface_type
@@ -553,6 +718,9 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
 
   return (
     <div className="bg-white">
+
+      {/* ── Research modal ─────────────────────────────────────────────────── */}
+      {showResearch && <ResearchModal onClose={() => setShowResearch(false)} />}
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
@@ -591,6 +759,14 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
 
         {/* ── Nutrition targets ───────────────────────────────────────────── */}
         <NutritionSummary targets={targets} />
+        <button
+          type="button"
+          onClick={() => setShowResearch(true)}
+          className="text-xs text-[#48C4B0] underline underline-offset-2 hover:text-[#3db09d]
+                     transition-colors -mt-4 text-left"
+        >
+          Learn more how the numbers were calculated
+        </button>
 
         {/* ── Product cards ───────────────────────────────────────────────── */}
         <section>
@@ -622,8 +798,11 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           >
             Shop my plan →
           </a>
-          <p className="text-xs text-gray-400 text-center mt-3">
-            Ships worldwide · Free shipping on orders over $60
+          <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
+            Get 10% Discount — code NUTRIPLAN10 applied automatically
+          </p>
+          <p className="text-xs text-gray-400 text-center mt-1">
+            Ships to US only. Free shipping on orders over $60.
           </p>
         </section>
 

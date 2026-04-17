@@ -69,6 +69,7 @@
     switch (data.type) {
 
       case 'lecka:resize':
+      case 'lecka-resize':
         if (typeof data.height === 'number') resizeAll(data.height);
         break;
 
