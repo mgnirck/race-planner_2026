@@ -13,6 +13,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { buildCartURL }                          from '../engine/shopify-link.js'
+import { computeCartItems, computeLinePrice }    from '../engine/region-utils.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
 import regionsConfig from '../config/regions.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
@@ -107,12 +108,13 @@ function aggregateByProduct(selection, region = 'us') {
     if (!map[id]) map[id] = { product: item.product, totalUnits: 0 }
     map[id].totalUnits += item.quantity
   }
-  return Object.values(map).map(({ product, totalUnits }) => {
-    const boxes     = Math.ceil(totalUnits / product.units_per_box)
-    const unitPrice = product.regions?.[region]?.price || product.price_usd
-    const linePrice = boxes * unitPrice
-    return { product, totalUnits, boxes, linePrice }
-  })
+  return Object.values(map)
+    .map(({ product, totalUnits }) => {
+      const cartItems = computeCartItems(product, region, totalUnits)
+      const linePrice = computeLinePrice(product, region, totalUnits)
+      return { product, totalUnits, cartItems, linePrice }
+    })
+    .filter(row => row.cartItems.length > 0)
 }
 
 /**
@@ -237,20 +239,25 @@ function NutritionSummary({ targets }) {
 
 // ── ProductCard ───────────────────────────────────────────────────────────────
 
-function ProductCard({ product, totalUnits, boxes, linePrice, currencySymbol = '$' }) {
+function ProductCard({ product, totalUnits, cartItems, linePrice, currencySymbol = '$' }) {
+  const packSummary = cartItems
+    .map(item => item.units_per_pack === 1
+      ? `${item.quantity} single`
+      : `${item.quantity}×${item.units_per_pack}-pack`
+    )
+    .join(' + ')
+
   return (
     <div className="border-2 border-gray-100 rounded-2xl p-4 flex items-center gap-4">
       <ProductIcon product={product} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
         <p className="text-xs text-gray-400 mt-1">
-          {totalUnits} unit{totalUnits !== 1 ? 's' : ''}&nbsp;·&nbsp;
-          {boxes} box{boxes !== 1 ? 'es' : ''} of {product.units_per_box}
+          {totalUnits} unit{totalUnits !== 1 ? 's' : ''}&nbsp;·&nbsp;{packSummary}
         </p>
       </div>
       <div className="text-right flex-shrink-0">
         <p className="text-sm font-bold text-[#1B1B1B]">{currencySymbol}{linePrice.toFixed(2)}</p>
-        <p className="text-xs text-gray-400">{product.price_note}</p>
       </div>
     </div>
   )
@@ -459,7 +466,7 @@ function RaceTimeline({ events, totalDuration }) {
 
 // ── EmailCapture ──────────────────────────────────────────────────────────────
 
-function EmailCapture({ targets, selection, form }) {
+function EmailCapture({ targets, selection, form, region = 'us' }) {
   const [email,   setEmail]   = useState('')
   const [state,   setState]   = useState('idle')
   const [touched, setTouched] = useState(false)
@@ -476,7 +483,7 @@ function EmailCapture({ targets, selection, form }) {
       const res = await fetch('/api/send-plan', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection }),
+        body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection, region }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setState('success')
@@ -717,7 +724,9 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   const aggregated = useMemo(() => aggregateByProduct(selection, region), [selection, region])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
-  const totalBoxes = aggregated.reduce((sum, row) => sum + row.boxes, 0)
+  const totalPacks = aggregated.reduce(
+    (sum, row) => sum + row.cartItems.reduce((s, item) => s + item.quantity, 0), 0
+  )
 
   const cartURL = useMemo(
     () => embedCartURL(buildCartURL(selection, 'NUTRIPLAN10', '', region)),
@@ -835,7 +844,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-gray-500">
-              {totalBoxes} box{totalBoxes !== 1 ? 'es' : ''}
+              {totalPacks} pack{totalPacks !== 1 ? 's' : ''}
             </span>
             <span className="text-xl font-bold text-[#1B1B1B]">
               {regionConfig.currency_symbol}{subtotal.toFixed(2)}
@@ -865,7 +874,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
 
         {/* ── Email capture ────────────────────────────────────────────────── */}
-        <EmailCapture targets={targets} selection={selection} form={form} />
+        <EmailCapture targets={targets} selection={selection} form={form} region={region} />
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-10 text-center">

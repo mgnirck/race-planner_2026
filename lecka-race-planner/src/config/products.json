@@ -6,26 +6,25 @@
     "carbs_per_unit": 27,
     "sodium_per_unit": 120,
     "price_usd": 29.95,
-    "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43249546526767",
-    "regions": {
-      "us": {
-        "shopify_variant_id": "43249546526767",
-        "price": 29.95
-      },
-      "de": {
-        "shopify_variant_id": "44368630579390",
-        "price": 29.99
-      },
-      "dk": {
-        "shopify_variant_id": "PLACEHOLDER_DK",
-        "price": 0
-      }
-    },
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"]
+    "ideal_time": ["during"],
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "43249546526767", "units_per_pack": 12, "price": 29.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "44368630579390", "units_per_pack": 12, "price": 29.99 },
+          { "shopify_variant_id": "44368630612158", "units_per_pack": 1,  "price": 2.59  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
   },
   {
     "id": "gel-coffee-cacao",
@@ -34,26 +33,25 @@
     "carbs_per_unit": 22,
     "sodium_per_unit": 120,
     "price_usd": 29.95,
-    "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43649538064431",
-    "regions": {
-      "us": {
-        "shopify_variant_id": "43649538064431",
-        "price": 29.95
-      },
-      "de": {
-        "shopify_variant_id": "45134288552126",
-        "price": 29.99
-      },
-      "dk": {
-        "shopify_variant_id": "PLACEHOLDER_DK",
-        "price": 0
-      }
-    },
     "caffeine": true,
     "caffeine_mg": 90,
-    "ideal_time": ["during"]
+    "ideal_time": ["during"],
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "43649538064431", "units_per_pack": 12, "price": 29.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "45134288552126", "units_per_pack": 12, "price": 29.99 },
+          { "shopify_variant_id": "45134288584894", "units_per_pack": 1,  "price": 2.59  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
   },
   {
     "id": "gel-banana",
@@ -62,26 +60,25 @@
     "carbs_per_unit": 27,
     "sodium_per_unit": 120,
     "price_usd": 29.95,
-    "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43249546854447",
-    "regions": {
-      "us": {
-        "shopify_variant_id": "43249546854447",
-        "price": 29.95
-      },
-      "de": {
-        "shopify_variant_id": "44368627826878",
-        "price": 29.99
-      },
-      "dk": {
-        "shopify_variant_id": "PLACEHOLDER_DK",
-        "price": 0
-      }
-    },
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"]
+    "ideal_time": ["during"],
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "43249546854447", "units_per_pack": 12, "price": 29.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "44368627826878", "units_per_pack": 12, "price": 29.99 },
+          { "shopify_variant_id": "44368627859646", "units_per_pack": 1,  "price": 2.59  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
   },
   {
     "id": "gel-lime-ginger",
@@ -90,26 +87,25 @@
     "carbs_per_unit": 27,
     "sodium_per_unit": 370,
     "price_usd": 29.95,
-    "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "44452873404463",
-    "regions": {
-      "us": {
-        "shopify_variant_id": "44452873404463",
-        "price": 29.95
-      },
-      "de": {
-        "shopify_variant_id": "45293740425406",
-        "price": 29.99
-      },
-      "dk": {
-        "shopify_variant_id": "PLACEHOLDER_DK",
-        "price": 0
-      }
-    },
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"]
+    "ideal_time": ["during"],
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "44452873404463", "units_per_pack": 12, "price": 29.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "45293740425406", "units_per_pack": 12, "price": 29.99 },
+          { "shopify_variant_id": "45293740458174", "units_per_pack": 1,  "price": 2.59  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
   },
   {
     "id": "gel-kumquat-honey",
@@ -118,26 +114,25 @@
     "carbs_per_unit": 26,
     "sodium_per_unit": 290,
     "price_usd": 29.95,
-    "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "44452862492719",
-    "regions": {
-      "us": {
-        "shopify_variant_id": "44452862492719",
-        "price": 29.95
-      },
-      "de": {
-        "shopify_variant_id": "45293152731326",
-        "price": 29.99
-      },
-      "dk": {
-        "shopify_variant_id": "PLACEHOLDER_DK",
-        "price": 0
-      }
-    },
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"]
+    "ideal_time": ["during"],
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "44452862492719", "units_per_pack": 12, "price": 29.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "45293152731326", "units_per_pack": 12, "price": 29.99 },
+          { "shopify_variant_id": "45293152764094", "units_per_pack": 1,  "price": 2.59  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
   },
   {
     "id": "bar-mango-coconut",
@@ -146,26 +141,71 @@
     "carbs_per_unit": 25,
     "sodium_per_unit": 180,
     "price_usd": 29.95,
-    "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43249548558383",
-    "regions": {
-      "us": {
-        "shopify_variant_id": "43249548558383",
-        "price": 29.95
-      },
-      "de": {
-        "shopify_variant_id": "42825271083198",
-        "price": 28.90
-      },
-      "dk": {
-        "shopify_variant_id": "PLACEHOLDER_DK",
-        "price": 0
-      }
-    },
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["before", "after"]
+    "ideal_time": ["before", "after"],
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "43249548558383", "units_per_pack": 12, "price": 29.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "42825271083198", "units_per_pack": 12, "price": 28.90 },
+          { "shopify_variant_id": "43508209483966", "units_per_pack": 1,  "price": 2.49  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
+  },
+  {
+    "id": "bar-cacao-banana",
+    "name": "Energy Bar Cacao Banana",
+    "type": "bar",
+    "carbs_per_unit": 25,
+    "sodium_per_unit": 180,
+    "price_usd": 29.95,
+    "units_per_box": 12,
+    "shopify_variant_id": "PLACEHOLDER_US",
+    "caffeine": false,
+    "caffeine_mg": 0,
+    "ideal_time": ["before", "after"],
+    "regions": {
+      "us": { "variants": [] },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "42825278914750", "units_per_pack": 12, "price": 28.90 },
+          { "shopify_variant_id": "43508198015166", "units_per_pack": 1,  "price": 2.49  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
+  },
+  {
+    "id": "bar-banana-cinnamon",
+    "name": "Energy Bar Banana Cinnamon",
+    "type": "bar",
+    "carbs_per_unit": 25,
+    "sodium_per_unit": 180,
+    "price_usd": 29.95,
+    "units_per_box": 12,
+    "shopify_variant_id": "PLACEHOLDER_US",
+    "caffeine": false,
+    "caffeine_mg": 0,
+    "ideal_time": ["before", "after"],
+    "regions": {
+      "us": { "variants": [] },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "42825293234366", "units_per_pack": 12, "price": 28.90 },
+          { "shopify_variant_id": "44061328474302", "units_per_pack": 1,  "price": 2.49  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
   },
   {
     "id": "bar-pineapple-banana",
@@ -174,25 +214,24 @@
     "carbs_per_unit": 25,
     "sodium_per_unit": 180,
     "price_usd": 29.95,
-    "price_note": "per box of 12",
     "units_per_box": 12,
     "shopify_variant_id": "43249547706415",
-    "regions": {
-      "us": {
-        "shopify_variant_id": "43249547706415",
-        "price": 29.95
-      },
-      "de": {
-        "shopify_variant_id": "42825289957566",
-        "price": 28.90
-      },
-      "dk": {
-        "shopify_variant_id": "PLACEHOLDER_DK",
-        "price": 0
-      }
-    },
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["before", "after"]
+    "ideal_time": ["before", "after"],
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "43249547706415", "units_per_pack": 12, "price": 29.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "42825289957566", "units_per_pack": 12, "price": 28.90 },
+          { "shopify_variant_id": "44061332373694", "units_per_pack": 1,  "price": 2.49  }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
   }
 ]

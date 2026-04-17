@@ -4,41 +4,49 @@
  * Selects products for a given set of nutrition targets, respecting user
  * product-flavour preferences and rotating variety on longer races.
  *
- * Export: selectProducts(targets, preferredProductIds?) → Array<{product, quantity, timing_minutes, note}>
+ * Export: selectProducts(targets, preferredProductIds?, region?) → Array<{product, quantity, timing_minutes, note}>
  *
  * preferredProductIds (optional) — array of product IDs the athlete prefers.
  *   If omitted / empty, sensible defaults are used.
  *   For races with ≥ 5 gel slots the selector cycles through the chosen
  *   non-caffeine flavours so the athlete gets variety.
+ *
+ * region (optional) — filters products to those available in that region.
+ *   Falls back to 'us' if not specified.
  */
 
 import products      from '../config/products.json'
 import formulaConfig from '../config/formula-config.json'
+import { isAvailableInRegion } from './region-utils.js'
 
 export function selectProducts(targets, preferredProductIds = [], region = 'us') {
   const { total_duration_minutes, caffeine_ok } = targets
   const { timing_rules: timingRules, caffeine_rules: caffeineRules } = formulaConfig
 
+  // ── Filter the full catalogue to products available in this region ────────
+
+  const availableProducts = products.filter(p => isAvailableInRegion(p, region))
+
   // ── Resolve product pools ─────────────────────────────────────────────────
 
   const preferred = preferredProductIds.length > 0
-    ? products.filter(p => preferredProductIds.includes(p.id))
+    ? availableProducts.filter(p => preferredProductIds.includes(p.id))
     : []
 
   // Non-caffeine gels — fall back to passion fruit if none preferred
   const plainGelPool = preferred.filter(p => p.type === 'gel' && !p.caffeine)
-  const defaultPlainGel = products.find(p => p.id === 'gel-passion-fruit')
-  const plainGels = plainGelPool.length > 0 ? plainGelPool : [defaultPlainGel]
+  const defaultPlainGel = availableProducts.find(p => p.id === 'gel-passion-fruit')
+  const plainGels = plainGelPool.length > 0 ? plainGelPool : (defaultPlainGel ? [defaultPlainGel] : [])
 
   // Caffeine gels — fall back to coffee cacao if none preferred
   const cafGelPool = preferred.filter(p => p.type === 'gel' && p.caffeine)
-  const defaultCafGel = products.find(p => p.id === 'gel-coffee-cacao')
-  const cafGels = cafGelPool.length > 0 ? cafGelPool : [defaultCafGel]
+  const defaultCafGel = availableProducts.find(p => p.id === 'gel-coffee-cacao')
+  const cafGels = cafGelPool.length > 0 ? cafGelPool : (defaultCafGel ? [defaultCafGel] : [])
 
   // Bars — fall back to mango coconut if none preferred
   const barPool = preferred.filter(p => p.type === 'bar')
-  const defaultBar = products.find(p => p.id === 'bar-mango-coconut')
-  const bars = barPool.length > 0 ? barPool : [defaultBar]
+  const defaultBar = availableProducts.find(p => p.id === 'bar-mango-coconut')
+  const bars = barPool.length > 0 ? barPool : (defaultBar ? [defaultBar] : [])
 
   // ── Build gel timing slots ────────────────────────────────────────────────
 
@@ -77,7 +85,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
 
   // ── Plain gels — with optional variety rotation ───────────────────────────
 
-  if (plainGelSlots.length > 0) {
+  if (plainGelSlots.length > 0 && plainGels.length > 0) {
     if (useVariety && plainGels.length > 1) {
       // Cycle flavours across slots, then group by product
       const byProduct = {}
@@ -106,7 +114,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
 
   // ── Caffeine gels ─────────────────────────────────────────────────────────
 
-  if (cafGelSlots.length > 0) {
+  if (cafGelSlots.length > 0 && cafGels.length > 0) {
     if (cafGels.length > 1) {
       const byProduct = {}
       cafGelSlots.forEach((slot, i) => {
@@ -134,24 +142,26 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
 
   // ── Bars: use different flavour before vs after if two options available ──
 
-  const barBefore = bars[0]
-  const barAfter  = bars.length > 1 ? bars[1] : bars[0]
+  if (bars.length > 0) {
+    const barBefore = bars[0]
+    const barAfter  = bars.length > 1 ? bars[1] : bars[0]
 
-  if (total_duration_minutes >= 60) {
+    if (total_duration_minutes >= 60) {
+      selected.push({
+        product:        barBefore,
+        quantity:       1,
+        timing_minutes: [-30],
+        note:           timingRules.before.note,
+      })
+    }
+
     selected.push({
-      product:        barBefore,
+      product:        barAfter,
       quantity:       1,
-      timing_minutes: [-30],
-      note:           timingRules.before.note,
+      timing_minutes: [total_duration_minutes + 15],
+      note:           timingRules.after.note,
     })
   }
-
-  selected.push({
-    product:        barAfter,
-    quantity:       1,
-    timing_minutes: [total_duration_minutes + 15],
-    note:           timingRules.after.note,
-  })
 
   return selected
 }

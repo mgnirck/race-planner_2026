@@ -21,9 +21,12 @@
  * SHOPIFY_STORE_URL     — e.g. getlecka.myshopify.com (no https://)
  */
 
-import { jsPDF }  from 'jspdf'
-import 'jspdf-autotable'
-import { Resend } from 'resend'
+import jsPDFModule from 'jspdf'
+import autoTable   from 'jspdf-autotable'
+import { Resend }  from 'resend'
+import { computeCartItems } from '../src/engine/region-utils.js'
+
+const { jsPDF } = jsPDFModule
 
 // ── Brand colours ─────────────────────────────────────────────────────────────
 
@@ -114,25 +117,44 @@ function sectionHeading(doc, title, y, marginL, contentW) {
   return y + 9
 }
 
-/** Inline cart URL builder — mirrors shopify-link.js without the import chain */
-function buildCartURL(selectedProducts, discountCode = 'NUTRIPLAN10') {
-  if (!selectedProducts?.length) return 'https://www.getlecka.com'
-  const totals = {}
+const REGION_STORE_URLS = {
+  us: 'https://www.getlecka.com',
+  de: 'https://www.getlecka.de',
+  dk: 'https://www.getlecka.dk',
+}
+
+/** Builds a Shopify cart URL using the greedy pack-fill algorithm from region-utils */
+function buildCartURL(selectedProducts, region = 'us', discountCode = 'NUTRIPLAN10') {
+  const storeUrl = REGION_STORE_URLS[region] ?? REGION_STORE_URLS.us
+  if (!selectedProducts?.length) return storeUrl
+
+  // Accumulate total units per product
+  const unitsByProductId = {}
+  const productById = {}
   for (const item of selectedProducts) {
-    const vid = item.product.shopify_variant_id
-    if (!/^\d+$/.test(vid)) {
-      console.warn(`[send-plan] Non-numeric variant ID "${vid}" for "${item.product.name}" — skipping`)
-      continue
-    }
-    totals[vid] = (totals[vid] ?? 0) + item.quantity
+    const pid = item.product.id
+    unitsByProductId[pid] = (unitsByProductId[pid] ?? 0) + item.quantity
+    productById[pid] = item.product
   }
-  if (!Object.keys(totals).length) return 'https://www.getlecka.com'
-  const parts = Object.entries(totals).map(([vid, units]) => {
-    const prod  = selectedProducts.find(i => i.product.shopify_variant_id === vid)?.product
-    const boxes = Math.ceil(units / (prod?.units_per_box ?? 1))
-    return `${vid}:${boxes}`
-  })
-  const base = `https://www.getlecka.com/cart/${parts.join(',')}`
+
+  // Resolve to variant line items using greedy pack-fill
+  const variantTotals = {}
+  for (const [pid, totalUnits] of Object.entries(unitsByProductId)) {
+    const product = productById[pid]
+    const lines = computeCartItems(product, region, totalUnits)
+    for (const line of lines) {
+      const vid = line.shopify_variant_id
+      if (!/^\d+$/.test(vid)) {
+        console.warn(`[send-plan] Non-numeric variant ID "${vid}" for "${product.name}" — skipping`)
+        continue
+      }
+      variantTotals[vid] = (variantTotals[vid] ?? 0) + line.quantity
+    }
+  }
+
+  if (!Object.keys(variantTotals).length) return storeUrl
+  const parts = Object.entries(variantTotals).map(([vid, qty]) => `${vid}:${qty}`)
+  const base = `${storeUrl}/cart/${parts.join(',')}`
   return discountCode ? `${base}?discount=${encodeURIComponent(discountCode)}` : base
 }
 
@@ -216,7 +238,7 @@ function generatePDF(inputs, targets, selectedProducts) {
   const durH = targets.total_duration_minutes / 60
   const totalFluid = Math.round(targets.fluid_ml_per_hour * durH)
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Metric', 'Per Hour', 'Total Race']],
@@ -259,7 +281,7 @@ function generatePDF(inputs, targets, selectedProducts) {
     item.note ?? '',
   ])
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Product', 'Qty', 'When', 'Instructions']],
@@ -316,7 +338,7 @@ function generatePDF(inputs, targets, selectedProducts) {
     e.product,
   ])
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     margin: { left: ML, right: MR },
     head: [['Time', 'Action', 'Product']],
@@ -529,9 +551,9 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
     html,
     attachments: [
       {
-        filename:    `lecka-race-plan-${inputs.race_type ?? 'race'}.pdf`,
-        content:     pdfBuffer,
-        contentType: 'application/pdf',
+        filename:     `lecka-race-plan-${inputs.race_type ?? 'race'}.pdf`,
+        content:      pdfBuffer,
+        content_type: 'application/pdf',
       },
     ],
   })
@@ -541,15 +563,22 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
 
 // ── Shopify customer upsert ───────────────────────────────────────────────────
 
-async function upsertShopifyCustomer(email, inputs) {
-  const { SHOPIFY_ACCESS_TOKEN, SHOPIFY_STORE_URL } = process.env
-  if (!SHOPIFY_ACCESS_TOKEN || !SHOPIFY_STORE_URL) {
-    throw new Error('SHOPIFY_ACCESS_TOKEN or SHOPIFY_STORE_URL env var is missing')
+async function upsertShopifyCustomer(email, inputs, region = 'us') {
+  let accessToken, storeUrl
+  if (region === 'de') {
+    accessToken = process.env.SHOPIFY_ACCESS_TOKEN_DE
+    storeUrl    = process.env.SHOPIFY_STORE_URL_DE
+  } else {
+    accessToken = process.env.SHOPIFY_ACCESS_TOKEN
+    storeUrl    = process.env.SHOPIFY_STORE_URL
+  }
+  if (!accessToken || !storeUrl) {
+    throw new Error(`Shopify env vars missing for region "${region}" (need SHOPIFY_ACCESS_TOKEN${region === 'de' ? '_DE' : ''} and SHOPIFY_STORE_URL${region === 'de' ? '_DE' : ''})`)
   }
 
-  const base    = `https://${SHOPIFY_STORE_URL}/admin/api/2024-01`
+  const base    = `https://${storeUrl}/admin/api/2024-01`
   const headers = {
-    'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+    'X-Shopify-Access-Token': accessToken,
     'Content-Type':           'application/json',
     'Accept':                 'application/json',
   }
@@ -671,6 +700,10 @@ const CORS_WHITELIST = [
   'https://www.getlecka.com',
   'https://getlecka.com',
   'https://getlecka.myshopify.com',
+  'https://www.getlecka.de',
+  'https://getlecka.de',
+  'https://www.getlecka.dk',
+  'https://getlecka.dk',
 ]
 
 function applyCORS(req, res) {
@@ -704,7 +737,7 @@ export default async function handler(req, res) {
     return res.status(429).json({ success: false, error: 'Too many requests — please wait a minute and try again.' })
   }
 
-  const { email, inputs, targets, selectedProducts } = req.body ?? {}
+  const { email, inputs, targets, selectedProducts, region = 'us' } = req.body ?? {}
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -729,7 +762,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Failed to generate PDF.' })
   }
 
-  const cartUrl = buildCartURL(selectedProducts)
+  const cartUrl = buildCartURL(selectedProducts, region)
 
   // ── Send email (priority — failure aborts the request) ────────────────────
   try {
@@ -742,7 +775,7 @@ export default async function handler(req, res) {
 
   // ── Shopify upsert (non-fatal) ────────────────────────────────────────────
   try {
-    await upsertShopifyCustomer(email, inputs)
+    await upsertShopifyCustomer(email, inputs, region)
   } catch (shopifyErr) {
     // Log but do not fail — email was already sent successfully
     console.error('[send-plan] Shopify upsert failed (non-fatal):', shopifyErr.message)
