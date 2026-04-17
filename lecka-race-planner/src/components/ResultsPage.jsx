@@ -16,6 +16,15 @@ import { buildCartURL }                          from '../engine/shopify-link.js
 import { isEmbedded, notifyEmailCapture, embedCartURL } from '../embed.js'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const ELEVATION_MODIFIER_PCT = {
+  rolling:    5,
+  hilly:      10,
+  very_hilly: 15,
+  mountain:   22,
+}
+
 // ── Label maps ────────────────────────────────────────────────────────────────
 
 const RACE_LABELS = {
@@ -214,6 +223,11 @@ function NutritionSummary({ targets }) {
             <span className="font-semibold text-[#1B1B1B]">{targets.total_sodium}mg</span>
           </span>
         </div>
+        {targets.elevation_tier && targets.elevation_tier !== 'flat' && (
+          <p className="text-xs text-[#48C4B0] italic mt-2">
+            Carbs and sodium adjusted +{ELEVATION_MODIFIER_PCT[targets.elevation_tier]}% for hilly course
+          </p>
+        )}
       </div>
     </section>
   )
@@ -752,6 +766,17 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             {' · '}{conditionLabel}
             {targets.caffeine_ok ? ' · Caffeine' : ''}
           </p>
+          {targets.elevation_gain_m > 0 && (
+            <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full
+                             bg-[#48C4B0]/10 text-[#48C4B0] text-xs font-semibold">
+              {targets.elevation_gain_m} m gain
+              {' · '}
+              {targets.elevation_tier
+                .split('_')
+                .map((w, i) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w)
+                .join(' ')}
+            </span>
+          )}
         </div>
 
         {/* ── Warnings ────────────────────────────────────────────────────── */}
