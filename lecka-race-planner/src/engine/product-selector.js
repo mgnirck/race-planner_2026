@@ -24,8 +24,11 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
   const { timing_rules: timingRules, caffeine_rules: caffeineRules } = formulaConfig
 
   // ── Filter the full catalogue to products available in this region ────────
+  // Exclude variety packs — they are used at the cart-optimisation layer, not here.
 
-  const availableProducts = products.filter(p => isAvailableInRegion(p, region))
+  const availableProducts = products.filter(p =>
+    isAvailableInRegion(p, region) && p.type !== 'variety_pack'
+  )
 
   // ── Resolve product pools ─────────────────────────────────────────────────
 

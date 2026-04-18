@@ -43,7 +43,8 @@ const STEP_TITLES = ['Your race', 'Your body & preferences', 'Product preference
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function parseGoalTime(str) {
-  const match = str.trim().match(/^(\d{1,2}):(\d{2})$/)
+  // Accepts H:MM, HH:MM, H.MM, HH.MM (colon or dot separator)
+  const match = str.trim().match(/^(\d{1,2})[:.](\d{2})$/)
   if (!match) return null
   const hours = parseInt(match[1], 10)
   const mins  = parseInt(match[2], 10)
@@ -213,6 +214,30 @@ function StepOne({ form, setForm }) {
     })
   }
 
+  function handleElevChange(rawValue) {
+    setForm(f => {
+      const n = parseFloat(rawValue)
+      const elevM = isFinite(n) && n >= 0
+        ? Math.round(f.elev_unit === 'ft' ? n / 3.28084 : n)
+        : 0
+      return { ...f, elev_display: rawValue, elevation_gain_m: elevM }
+    })
+  }
+
+  function switchElevUnit(newUnit) {
+    setForm(f => {
+      if (f.elev_unit === newUnit) return f
+      const n = parseFloat(f.elev_display)
+      let newDisplay = f.elev_display
+      if (isFinite(n) && n > 0) {
+        newDisplay = newUnit === 'ft'
+          ? String(Math.round(n * 3.28084))
+          : String(Math.round(n / 3.28084))
+      }
+      return { ...f, elev_unit: newUnit, elev_display: newDisplay }
+    })
+  }
+
   function handleGpxFile(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -223,15 +248,21 @@ function StepOne({ form, setForm }) {
         const { label } = estimateElevationImpact(parsed.elevation_gain_m, parsed.distance_km)
         const roundedKm = Math.round(parsed.distance_km * 10) / 10
         setGpxError(false)
-        setForm(f => ({
-          ...f,
-          custom_km:         String(roundedKm),
-          custom_km_display: String(roundedKm),
-          elevation_gain_m:  parsed.elevation_gain_m,
-          gpx_parsed:        true,
-          race_type:         distanceToRaceType(parsed.distance_km),
-          ...(parsed.avg_grade_pct > 2 ? { surface_type: 'trail' } : {}),
-        }))
+        setForm(f => {
+          const displayElev = f.elev_unit === 'ft'
+            ? String(Math.round(parsed.elevation_gain_m * 3.28084))
+            : String(Math.round(parsed.elevation_gain_m))
+          return {
+            ...f,
+            custom_km:         String(roundedKm),
+            custom_km_display: String(roundedKm),
+            elevation_gain_m:  parsed.elevation_gain_m,
+            elev_display:      displayElev,
+            gpx_parsed:        true,
+            race_type:         distanceToRaceType(parsed.distance_km),
+            ...(parsed.avg_grade_pct > 2 ? { surface_type: 'trail' } : {}),
+          }
+        })
       } catch {
         setGpxError(true)
         setForm(f => ({ ...f, gpx_parsed: false }))
@@ -352,6 +383,48 @@ function StepOne({ form, setForm }) {
         )}
       </div>
 
+      {/* Elevation gain */}
+      <div>
+        <FieldLabel>Elevation gain</FieldLabel>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            min="0"
+            max="10000"
+            placeholder="0"
+            value={form.elev_display}
+            onChange={e => handleElevChange(e.target.value)}
+            className="w-32 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                       focus:outline-none focus:border-[#48C4B0]"
+          />
+          {/* m / ft toggle */}
+          <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
+            {['m', 'ft'].map(unit => (
+              <button
+                key={unit}
+                type="button"
+                onClick={() => switchElevUnit(unit)}
+                className={[
+                  'px-3 py-2 min-h-[38px] transition-colors',
+                  form.elev_unit === unit
+                    ? 'bg-[#48C4B0] text-white'
+                    : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
+                ].join(' ')}
+              >
+                {unit}
+              </button>
+            ))}
+          </div>
+        </div>
+        {form.gpx_parsed && form.elevation_gain_m > 0 ? (
+          <p className="text-xs text-[#48C4B0] mt-1.5">Auto-filled from GPX · {gpxSummaryLabel}</p>
+        ) : (
+          <p className="text-xs text-gray-400 mt-1.5">
+            Optional — improves calculation for hilly courses. Default is 0 (flat).
+          </p>
+        )}
+      </div>
+
       {/* Surface */}
       <div>
         <FieldLabel>Surface</FieldLabel>
@@ -392,10 +465,10 @@ function StepOne({ form, setForm }) {
           </p>
         )}
         {timeIsInvalid && (
-          <p className="text-xs text-red-400 mt-1.5">Enter time as h:mm, e.g. 2:15</p>
+          <p className="text-xs text-red-400 mt-1.5">Enter time as h:mm or h.mm, e.g. 2:15 or 2.15</p>
         )}
         {!timeIsInvalid && goalMinutes === null && (
-          <p className="text-xs text-gray-400 mt-1.5">e.g. 2:15 for 2 hours 15 minutes</p>
+          <p className="text-xs text-gray-400 mt-1.5">e.g. 2:15 or 2.15 for 2 hours 15 minutes</p>
         )}
       </div>
 
@@ -667,6 +740,8 @@ export default function StepForm({ onComplete }) {
     race_type:         '',
     goal_time:         '',
     elevation_gain_m:  0,
+    elev_display:      '',
+    elev_unit:         'm',
     gpx_parsed:        false,
     // Step 2
     weight_value:    '70',

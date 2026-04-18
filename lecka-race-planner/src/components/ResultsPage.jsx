@@ -12,10 +12,11 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { buildCartURL }                          from '../engine/shopify-link.js'
-import { computeCartItems, computeLinePrice }    from '../engine/region-utils.js'
+import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
+import { computeCartItems, computeLinePrice, computeOptimalGelCart } from '../engine/region-utils.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
 import regionsConfig from '../config/regions.json'
+import allProductsCatalog from '../config/products.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -108,13 +109,36 @@ function aggregateByProduct(selection, region = 'us') {
     if (!map[id]) map[id] = { product: item.product, totalUnits: 0 }
     map[id].totalUnits += item.quantity
   }
-  return Object.values(map)
+  const allRows = Object.values(map)
     .map(({ product, totalUnits }) => {
       const cartItems = computeCartItems(product, region, totalUnits)
       const linePrice = computeLinePrice(product, region, totalUnits)
-      return { product, totalUnits, cartItems, linePrice }
+      const cartUnits = cartItems.reduce((s, item) => s + item.quantity * item.units_per_pack, 0)
+      return { product, totalUnits, cartItems, linePrice, cartUnits }
     })
     .filter(row => row.cartItems.length > 0)
+
+  // Separate gel products and apply variety-pack cost optimisation
+  const gelRows   = allRows.filter(r => r.product.type === 'gel')
+  const otherRows = allRows.filter(r => r.product.type !== 'gel')
+  const { rows: optimisedGelRows } = computeOptimalGelCart(gelRows, region, allProductsCatalog)
+
+  return [...optimisedGelRows, ...otherRows]
+}
+
+function computeTrainingInfo(aggregated) {
+  let totalRaceUnits = 0
+  let totalCartUnits = 0
+  for (const row of aggregated) {
+    totalRaceUnits += row.totalUnits
+    totalCartUnits += row.cartUnits
+  }
+  return {
+    hasOverage:    totalCartUnits > totalRaceUnits,
+    totalRaceUnits,
+    totalCartUnits,
+    extraUnits:    totalCartUnits - totalRaceUnits,
+  }
 }
 
 /**
@@ -239,7 +263,20 @@ function NutritionSummary({ targets }) {
 
 // ── ProductCard ───────────────────────────────────────────────────────────────
 
-function ProductCard({ product, totalUnits, cartItems, linePrice, currencySymbol = '$' }) {
+function VarietyPackContents({ product, region }) {
+  const contents = product.contains?.[region]
+  if (!contents) return null
+  const items = Object.entries(contents).map(([id, qty]) => {
+    const label = id.replace('gel-', '').replace(/-/g, ' ')
+    return `${qty}× ${label.charAt(0).toUpperCase() + label.slice(1)}`
+  })
+  return (
+    <p className="text-xs text-gray-400 mt-0.5 leading-snug">{items.join(' · ')}</p>
+  )
+}
+
+function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, currencySymbol = '$', savedAmount = 0, region = 'us' }) {
+  const isVarietyPack = product.type === 'variety_pack'
   const packSummary = cartItems
     .map(item => item.units_per_pack === 1
       ? `${item.quantity} single`
@@ -247,14 +284,35 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, currencySymbol
     )
     .join(' + ')
 
+  const hasOverage = cartUnits > totalUnits
+
   return (
-    <div className="border-2 border-gray-100 rounded-2xl p-4 flex items-center gap-4">
+    <div className={[
+      'border-2 rounded-2xl p-4 flex items-start gap-4',
+      isVarietyPack ? 'border-[#48C4B0]/40 bg-[#48C4B0]/5' : 'border-gray-100',
+    ].join(' ')}>
       <ProductIcon product={product} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
+          {isVarietyPack && savedAmount > 0 && (
+            <span className="text-xs font-bold text-white bg-[#48C4B0] px-1.5 py-0.5 rounded-full whitespace-nowrap">
+              Saves {currencySymbol}{savedAmount.toFixed(2)}
+            </span>
+          )}
+        </div>
+        {isVarietyPack
+          ? <VarietyPackContents product={product} region={region} />
+          : null
+        }
         <p className="text-xs text-gray-400 mt-1">
-          {totalUnits} unit{totalUnits !== 1 ? 's' : ''}&nbsp;·&nbsp;{packSummary}
+          {totalUnits} for race&nbsp;·&nbsp;{packSummary}
         </p>
+        {hasOverage && (
+          <p className="text-xs text-[#48C4B0] mt-0.5">
+            +{cartUnits - totalUnits} extra for training
+          </p>
+        )}
       </div>
       <div className="text-right flex-shrink-0">
         <p className="text-sm font-bold text-[#1B1B1B]">{currencySymbol}{linePrice.toFixed(2)}</p>
@@ -720,17 +778,19 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   const [region, setRegion] = useState(detectRegion)
   const regionConfig = getRegionConfig(region)
 
-  const timeline   = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
-  const aggregated = useMemo(() => aggregateByProduct(selection, region), [selection, region])
+  const timeline      = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
+  const aggregated    = useMemo(() => aggregateByProduct(selection, region), [selection, region])
+  const trainingInfo  = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
     (sum, row) => sum + row.cartItems.reduce((s, item) => s + item.quantity, 0), 0
   )
 
+  // Cart URL built from the already-optimised aggregated rows (may use variety pack)
   const cartURL = useMemo(
-    () => embedCartURL(buildCartURL(selection, 'NUTRIPLAN10', '', region)),
-    [selection, region]
+    () => embedCartURL(buildCartURLFromAggregated(aggregated, 'NUTRIPLAN10', '', region)),
+    [aggregated, region]
   )
 
   // Prefer athlete's race name → actual distance typed → race_type label
@@ -811,10 +871,51 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           <SectionLabel>What to take</SectionLabel>
           <div className="space-y-3">
             {aggregated.map(row => (
-              <ProductCard key={row.product.id} {...row} currencySymbol={regionConfig.currency_symbol} />
+              <ProductCard
+                key={row.product.id}
+                {...row}
+                currencySymbol={regionConfig.currency_symbol}
+                cartUnits={row.cartUnits}
+                savedAmount={row.savedAmount ?? 0}
+                region={region}
+              />
             ))}
           </div>
         </section>
+
+        {/* ── Training preparation (shown when buying more than needed for race) */}
+        {trainingInfo.hasOverage && (
+          <section className="border-2 border-[#48C4B0]/30 rounded-2xl p-5 bg-[#48C4B0]/5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-2">
+              Race day vs. what you buy
+            </p>
+            <p className="text-sm text-[#1B1B1B] mb-4">
+              Your race needs{' '}
+              <span className="font-bold">{trainingInfo.totalRaceUnits} gel{trainingInfo.totalRaceUnits !== 1 ? 's' : ''}</span>{' '}
+              total. Because {regionConfig.label} only sells multi-packs, your cart includes{' '}
+              <span className="font-bold">{trainingInfo.totalCartUnits} gels</span> —{' '}
+              the extra{' '}
+              <span className="font-bold">{trainingInfo.extraUnits}</span>{' '}
+              are perfect for training runs before race day.
+            </p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+              How to use them for race prep
+            </p>
+            <ul className="space-y-2">
+              {[
+                'Practice with gels on long runs 3–4 weeks before your race to train your gut',
+                'Replicate your race-day fuelling schedule during training (same timing, same products)',
+                'Start with 1 gel per hour and build up to your target race frequency',
+                'Never try a new product on race day — always test in training first',
+              ].map((tip, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-[#1B1B1B]">
+                  <span className="text-[#48C4B0] font-bold flex-shrink-0 mt-0.5">→</span>
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* ── Region picker ────────────────────────────────────────────────── */}
         {!isEmbedded && (
@@ -858,7 +959,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
                        bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
                        text-base font-bold transition-colors"
           >
-            Shop my plan →
+            Buy My Plan – 10% Off →
           </a>
           <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
             Get 10% Discount — code NUTRIPLAN10 applied automatically

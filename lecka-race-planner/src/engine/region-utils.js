@@ -111,3 +111,51 @@ export function getUnitPrice(product, region) {
   const sorted = [...variants].sort((a, b) => a.units_per_pack - b.units_per_pack)
   return sorted[0].price / sorted[0].units_per_pack
 }
+
+/**
+ * Checks whether using a variety pack is cheaper than buying individual
+ * single-flavour packs for all the gels in the plan, and returns the
+ * optimal cart rows.
+ *
+ * @param {Array}  gelAggregated  aggregated gel rows: [{product, totalUnits, cartItems, linePrice, cartUnits}]
+ * @param {string} region         'us' | 'de' | 'dk'
+ * @param {Array}  allProducts    full product catalogue (to find the variety pack)
+ * @returns {{ rows, totalCost, usesVarietyPack, savedAmount }}
+ *   rows            - display rows (same shape as aggregated input), replacing gel rows when VP wins
+ *   totalCost       - total price of gel cart items
+ *   usesVarietyPack - true when the variety pack was selected
+ *   savedAmount     - money saved vs individual packs (0 when VP not used)
+ */
+export function computeOptimalGelCart(gelAggregated, region, allProducts) {
+  const individualCost = gelAggregated.reduce((s, r) => s + r.linePrice, 0)
+
+  const varietyPack = allProducts.find(p => p.type === 'variety_pack')
+  const vpVariants  = varietyPack ? getRegionVariants(varietyPack, region) : []
+  const vpVariant   = vpVariants.length > 0 ? vpVariants[0] : null
+
+  if (!vpVariant || individualCost <= 0) {
+    return { rows: gelAggregated, totalCost: individualCost, usesVarietyPack: false, savedAmount: 0 }
+  }
+
+  const totalGelUnits = gelAggregated.reduce((s, r) => s + r.totalUnits, 0)
+  const vpCount       = Math.ceil(totalGelUnits / vpVariant.units_per_pack)
+  const varietyCost   = parseFloat((vpCount * vpVariant.price).toFixed(2))
+
+  if (varietyCost >= individualCost) {
+    return { rows: gelAggregated, totalCost: individualCost, usesVarietyPack: false, savedAmount: 0 }
+  }
+
+  const vpCartUnits = vpCount * vpVariant.units_per_pack
+  const saved       = parseFloat((individualCost - varietyCost).toFixed(2))
+
+  const vpRow = {
+    product:    varietyPack,
+    totalUnits: totalGelUnits,
+    cartItems:  [{ ...vpVariant, quantity: vpCount }],
+    linePrice:  varietyCost,
+    cartUnits:  vpCartUnits,
+    savedAmount: saved,
+  }
+
+  return { rows: [vpRow], totalCost: varietyCost, usesVarietyPack: true, savedAmount: saved }
+}

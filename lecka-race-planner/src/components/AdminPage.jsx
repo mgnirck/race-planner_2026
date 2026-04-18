@@ -137,8 +137,8 @@ export default function AdminPage() {
   }, [gate.unlocked, refreshKey])
 
   // ── localStorage fallback ────────────────────────────────────────────────────
-  const localPlans    = useMemo(loadPlans, [gate.unlocked])
-  const localMonthLen = useMemo(() => thisMonthPlans(localPlans).length, [localPlans])
+  const localPlans     = useMemo(loadPlans, [gate.unlocked])
+  const localMonthLen  = useMemo(() => thisMonthPlans(localPlans).length, [localPlans])
   const localBreakdown = useMemo(() => countByRaceType(localPlans), [localPlans])
 
   // ── Derived display values — prefer server, fall back to local ───────────────
@@ -153,6 +153,9 @@ export default function AdminPage() {
         count: r.count,
       }))
     : localBreakdown
+  const displayRegions = serverOk && serverStats.by_region
+    ? serverStats.by_region
+    : null
   const topRaceType = displayBreakdown[0]
 
   const now = new Date()
@@ -314,6 +317,39 @@ export default function AdminPage() {
           </section>
         )}
 
+        {/* Region breakdown */}
+        {displayRegions && displayRegions.length > 0 && (
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+              Plans by region
+            </p>
+            <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
+              {displayRegions.map((row, i) => {
+                const regionLabel = { us: 'United States', de: 'Germany', dk: 'Denmark', unknown: 'Unknown' }[row.key] ?? row.key.toUpperCase()
+                return (
+                  <div
+                    key={row.key}
+                    className={`flex items-center justify-between px-5 py-3 ${
+                      i !== displayRegions.length - 1 ? 'border-b border-gray-100' : ''
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-[#1B1B1B]">{regionLabel}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#2D6A4F] rounded-full"
+                          style={{ width: `${(row.count / displayRegions[0].count) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-gray-500 w-6 text-right">{row.count}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         {displayTotal === 0 && !serverFetching && (
           <p className="text-sm text-gray-400 text-center py-12">
             No plans generated yet. Stats appear here after athletes use the planner.
@@ -322,7 +358,7 @@ export default function AdminPage() {
 
         {/* Footer */}
         <p className="text-xs text-gray-300 text-center pb-4">
-          No personal data is recorded — only race type and timestamp per plan.
+          No personal data is recorded — only race type, region, and timestamp per plan.
         </p>
       </div>
     </div>
