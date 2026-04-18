@@ -2,25 +2,26 @@ import React, { useState } from 'react'
 import StepForm    from './components/StepForm'
 import ResultsPage from './components/ResultsPage'
 import AdminPage   from './components/AdminPage'
+import { detectRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
 
 const STATS_KEY = 'lecka_plans_v1'
 const MAX_STORED = 1000  // prevent unbounded growth
 
-function recordPlan(race_type) {
+function recordPlan(race_type, region) {
   // 1. Server-side counter — fire-and-forget, never blocks the UI
   fetch('/api/record-plan', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ race_type }),
+    body:    JSON.stringify({ race_type, region }),
   }).catch(() => {})  // silently swallow network errors
 
   // 2. localStorage fallback — works offline and in dev without the API
   try {
     const raw  = localStorage.getItem(STATS_KEY)
     const list = raw ? JSON.parse(raw) : []
-    list.push({ date: new Date().toISOString(), race_type })
+    list.push({ date: new Date().toISOString(), race_type, region })
     localStorage.setItem(STATS_KEY, JSON.stringify(list.slice(-MAX_STORED)))
   } catch {
     // localStorage unavailable (private browsing, quota) — silently skip
@@ -41,7 +42,10 @@ export default function App() {
   }
 
   function handleComplete(result) {
-    recordPlan(result.targets?.race_type ?? result.form?.race_type ?? 'unknown')
+    recordPlan(
+      result.targets?.race_type ?? result.form?.race_type ?? 'unknown',
+      detectRegion,
+    )
     setPlan(result)
   }
 

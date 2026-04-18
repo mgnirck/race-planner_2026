@@ -61,6 +61,17 @@ function countByRaceType(plans) {
     .map(([key, count]) => ({ key, count }))
 }
 
+function countByRegion(plans) {
+  const counts = {}
+  for (const p of plans) {
+    const r = p.region ?? 'unknown'
+    counts[r] = (counts[r] ?? 0) + 1
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => ({ key, count }))
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default function handler(req, res) {
@@ -74,7 +85,7 @@ export default function handler(req, res) {
 
   // ── POST — record a new plan ────────────────────────────────────────────────
   if (req.method === 'POST') {
-    const { race_type } = req.body ?? {}
+    const { race_type, region } = req.body ?? {}
 
     if (!race_type || typeof race_type !== 'string') {
       return res.status(400).json({ error: 'race_type is required' })
@@ -82,7 +93,9 @@ export default function handler(req, res) {
 
     try {
       const plans = loadPlans()
-      plans.push({ date: new Date().toISOString(), race_type })
+      const entry = { date: new Date().toISOString(), race_type }
+      if (region && typeof region === 'string') entry.region = region
+      plans.push(entry)
       savePlans(plans.slice(-MAX_STORED))
       return res.status(201).json({ ok: true })
     } catch (err) {
@@ -99,6 +112,7 @@ export default function handler(req, res) {
         total:         plans.length,
         this_month:    thisMonthCount(plans),
         by_race_type:  countByRaceType(plans),
+        by_region:     countByRegion(plans),
         generated_at:  new Date().toISOString(),
         _note: '/tmp storage resets on cold start — counts are approximate for MVP',
       })

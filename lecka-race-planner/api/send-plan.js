@@ -165,9 +165,36 @@ function buildCartURL(selectedProducts, region = 'us', discountCode = 'NUTRIPLAN
   return discountCode ? `${base}?discount=${encodeURIComponent(discountCode)}` : base
 }
 
+// ── Training overage helper ───────────────────────────────────────────────────
+
+function computeTrainingInfo(selectedProducts, region) {
+  const unitsByPid = {}
+  const productById = {}
+  for (const item of selectedProducts) {
+    const pid = item.product.id
+    unitsByPid[pid] = (unitsByPid[pid] ?? 0) + item.quantity
+    productById[pid] = item.product
+  }
+  let totalRaceUnits = 0
+  let totalCartUnits = 0
+  for (const [pid, raceUnits] of Object.entries(unitsByPid)) {
+    const product = productById[pid]
+    const cartItems = computeCartItems(product, region, raceUnits)
+    const cartUnits = cartItems.reduce((s, item) => s + item.quantity * item.units_per_pack, 0)
+    totalRaceUnits += raceUnits
+    totalCartUnits += cartUnits
+  }
+  return {
+    hasOverage:    totalCartUnits > totalRaceUnits,
+    totalRaceUnits,
+    totalCartUnits,
+    extraUnits:    totalCartUnits - totalRaceUnits,
+  }
+}
+
 // ── PDF generation ────────────────────────────────────────────────────────────
 
-function generatePDF(inputs, targets, selectedProducts) {
+function generatePDF(inputs, targets, selectedProducts, region = 'us') {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const W  = 210   // page width (A4)
   const ML = 20    // left margin
@@ -317,6 +344,36 @@ function generatePDF(inputs, targets, selectedProducts) {
 
   y = doc.lastAutoTable.finalY + 10
 
+  // ── Section 2b: Training preparation (when buying more than race needs) ──
+  const tInfo = computeTrainingInfo(selectedProducts, region)
+  if (tInfo.hasOverage) {
+    y = ensureSpace(doc, y, 55)
+    y = sectionHeading(doc, 'Training Preparation', y, ML, CW)
+
+    const trainingLines = [
+      `Your race needs ${tInfo.totalRaceUnits} gel${tInfo.totalRaceUnits !== 1 ? 's' : ''} total.`,
+      `Because your region sells in multi-packs, your cart includes ${tInfo.totalCartUnits} gels — ` +
+        `with ${tInfo.extraUnits} extra perfect for training runs before race day.`,
+      '',
+      'How to use the extras for race prep:',
+      '  \u2022  Practice with gels on long runs 3\u20134 weeks before your race to train your gut',
+      '  \u2022  Replicate your race-day fuelling schedule during training (same timing, same products)',
+      '  \u2022  Start with 1 gel per hour and build up to your target race frequency',
+      '  \u2022  Never try a new product on race day \u2014 always test in training first',
+    ]
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(C.gray)
+    for (const line of trainingLines) {
+      if (line === '') { y += 3; continue }
+      const wrapped = doc.splitTextToSize(line, CW)
+      doc.text(wrapped, ML, y)
+      y += wrapped.length * 5.5
+    }
+    y += 4
+  }
+
   // ── Section 3: Race day timeline ──────────────────────────────────────────
   y = ensureSpace(doc, y, 60)
   y = sectionHeading(doc, 'Race Day Timeline', y, ML, CW)
@@ -433,7 +490,7 @@ function generatePDF(inputs, targets, selectedProducts) {
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 
-async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl) {
+async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl, region = 'us') {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY environment variable is not set')
   }
@@ -444,6 +501,24 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
   const productListHtml = selectedProducts
     .map(item => `<li><strong>${item.product.name}</strong> &times;&nbsp;${item.quantity} &mdash; ${item.note ?? ''}</li>`)
     .join('\n')
+
+  const emailTInfo = computeTrainingInfo(selectedProducts, region)
+  const trainingHtml = emailTInfo.hasOverage ? `
+    <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:16px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#1B1B1B;">Race day vs. what you buy</p>
+      <p style="margin:0 0 12px;font-size:13px;color:#374151;">
+        Your race needs <strong>${emailTInfo.totalRaceUnits} gel${emailTInfo.totalRaceUnits !== 1 ? 's' : ''}</strong> total.
+        Because your region sells in multi-packs, your cart includes <strong>${emailTInfo.totalCartUnits} gels</strong> &mdash;
+        the extra <strong>${emailTInfo.extraUnits}</strong> are perfect for training before race day.
+      </p>
+      <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#888;">How to use the extras</p>
+      <ul style="margin:0;padding-left:18px;font-size:13px;color:#374151;line-height:1.8;">
+        <li>Practice with gels on long runs 3&ndash;4 weeks before your race to train your gut</li>
+        <li>Replicate your race-day fuelling schedule during training (same timing, same products)</li>
+        <li>Start with 1 gel per hour and build up to your target race frequency</li>
+        <li>Never try a new product on race day &mdash; always test in training first</li>
+      </ul>
+    </div>` : ''
 
   const html = /* html */`<!DOCTYPE html>
 <html lang="en">
@@ -507,7 +582,9 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
         ${productListHtml}
       </ul>
 
-      <a href="${cartUrl}" class="cta">Shop your plan on Lecka &rarr;</a>
+      ${trainingHtml}
+
+      <a href="${cartUrl}" class="cta">Buy My Plan &ndash; 10% Off &rarr;</a>
 
       <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
         <p style="margin:0;font-size:13px;color:#1B1B1B;">
@@ -739,7 +816,7 @@ export default async function handler(req, res) {
   // ── Generate PDF ───────────────────────────────────────────────────────────
   let pdfBuffer
   try {
-    pdfBuffer = generatePDF(inputs, targets, selectedProducts)
+    pdfBuffer = generatePDF(inputs, targets, selectedProducts, region)
   } catch (pdfErr) {
     console.error('[send-plan] PDF generation failed:', pdfErr)
     return res.status(500).json({ success: false, error: 'Failed to generate PDF.' })
@@ -749,7 +826,7 @@ export default async function handler(req, res) {
 
   // ── Send email (priority — failure aborts the request) ────────────────────
   try {
-    await sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl)
+    await sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl, region)
   } catch (emailErr) {
     console.error('[send-plan] Email send failed:', emailErr.message)
     console.error('[send-plan] RESEND_API_KEY set:', !!process.env.RESEND_API_KEY)

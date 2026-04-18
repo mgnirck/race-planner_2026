@@ -112,9 +112,25 @@ function aggregateByProduct(selection, region = 'us') {
     .map(({ product, totalUnits }) => {
       const cartItems = computeCartItems(product, region, totalUnits)
       const linePrice = computeLinePrice(product, region, totalUnits)
-      return { product, totalUnits, cartItems, linePrice }
+      const cartUnits = cartItems.reduce((s, item) => s + item.quantity * item.units_per_pack, 0)
+      return { product, totalUnits, cartItems, linePrice, cartUnits }
     })
     .filter(row => row.cartItems.length > 0)
+}
+
+function computeTrainingInfo(aggregated) {
+  let totalRaceUnits = 0
+  let totalCartUnits = 0
+  for (const row of aggregated) {
+    totalRaceUnits += row.totalUnits
+    totalCartUnits += row.cartUnits
+  }
+  return {
+    hasOverage:    totalCartUnits > totalRaceUnits,
+    totalRaceUnits,
+    totalCartUnits,
+    extraUnits:    totalCartUnits - totalRaceUnits,
+  }
 }
 
 /**
@@ -239,7 +255,7 @@ function NutritionSummary({ targets }) {
 
 // ── ProductCard ───────────────────────────────────────────────────────────────
 
-function ProductCard({ product, totalUnits, cartItems, linePrice, currencySymbol = '$' }) {
+function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, currencySymbol = '$' }) {
   const packSummary = cartItems
     .map(item => item.units_per_pack === 1
       ? `${item.quantity} single`
@@ -247,14 +263,21 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, currencySymbol
     )
     .join(' + ')
 
+  const hasOverage = cartUnits > totalUnits
+
   return (
     <div className="border-2 border-gray-100 rounded-2xl p-4 flex items-center gap-4">
       <ProductIcon product={product} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
         <p className="text-xs text-gray-400 mt-1">
-          {totalUnits} unit{totalUnits !== 1 ? 's' : ''}&nbsp;·&nbsp;{packSummary}
+          {totalUnits} for race&nbsp;·&nbsp;{packSummary}
         </p>
+        {hasOverage && (
+          <p className="text-xs text-[#48C4B0] mt-0.5">
+            +{cartUnits - totalUnits} extra for training
+          </p>
+        )}
       </div>
       <div className="text-right flex-shrink-0">
         <p className="text-sm font-bold text-[#1B1B1B]">{currencySymbol}{linePrice.toFixed(2)}</p>
@@ -720,8 +743,9 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   const [region, setRegion] = useState(detectRegion)
   const regionConfig = getRegionConfig(region)
 
-  const timeline   = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
-  const aggregated = useMemo(() => aggregateByProduct(selection, region), [selection, region])
+  const timeline      = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
+  const aggregated    = useMemo(() => aggregateByProduct(selection, region), [selection, region])
+  const trainingInfo  = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
@@ -811,10 +835,44 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           <SectionLabel>What to take</SectionLabel>
           <div className="space-y-3">
             {aggregated.map(row => (
-              <ProductCard key={row.product.id} {...row} currencySymbol={regionConfig.currency_symbol} />
+              <ProductCard key={row.product.id} {...row} currencySymbol={regionConfig.currency_symbol} cartUnits={row.cartUnits} />
             ))}
           </div>
         </section>
+
+        {/* ── Training preparation (shown when buying more than needed for race) */}
+        {trainingInfo.hasOverage && (
+          <section className="border-2 border-[#48C4B0]/30 rounded-2xl p-5 bg-[#48C4B0]/5">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-2">
+              Race day vs. what you buy
+            </p>
+            <p className="text-sm text-[#1B1B1B] mb-4">
+              Your race needs{' '}
+              <span className="font-bold">{trainingInfo.totalRaceUnits} gel{trainingInfo.totalRaceUnits !== 1 ? 's' : ''}</span>{' '}
+              total. Because {regionConfig.label} only sells multi-packs, your cart includes{' '}
+              <span className="font-bold">{trainingInfo.totalCartUnits} gels</span> —{' '}
+              the extra{' '}
+              <span className="font-bold">{trainingInfo.extraUnits}</span>{' '}
+              are perfect for training runs before race day.
+            </p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+              How to use them for race prep
+            </p>
+            <ul className="space-y-2">
+              {[
+                'Practice with gels on long runs 3–4 weeks before your race to train your gut',
+                'Replicate your race-day fuelling schedule during training (same timing, same products)',
+                'Start with 1 gel per hour and build up to your target race frequency',
+                'Never try a new product on race day — always test in training first',
+              ].map((tip, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-[#1B1B1B]">
+                  <span className="text-[#48C4B0] font-bold flex-shrink-0 mt-0.5">→</span>
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* ── Region picker ────────────────────────────────────────────────── */}
         {!isEmbedded && (
@@ -858,7 +916,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
                        bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
                        text-base font-bold transition-colors"
           >
-            Shop my plan →
+            Buy My Plan – 10% Off →
           </a>
           <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
             Get 10% Discount — code NUTRIPLAN10 applied automatically
