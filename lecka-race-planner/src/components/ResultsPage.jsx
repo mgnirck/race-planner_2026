@@ -12,10 +12,11 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { buildCartURL }                          from '../engine/shopify-link.js'
-import { computeCartItems, computeLinePrice }    from '../engine/region-utils.js'
+import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
+import { computeCartItems, computeLinePrice, computeOptimalGelCart } from '../engine/region-utils.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
 import regionsConfig from '../config/regions.json'
+import allProductsCatalog from '../config/products.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -108,7 +109,7 @@ function aggregateByProduct(selection, region = 'us') {
     if (!map[id]) map[id] = { product: item.product, totalUnits: 0 }
     map[id].totalUnits += item.quantity
   }
-  return Object.values(map)
+  const allRows = Object.values(map)
     .map(({ product, totalUnits }) => {
       const cartItems = computeCartItems(product, region, totalUnits)
       const linePrice = computeLinePrice(product, region, totalUnits)
@@ -116,6 +117,13 @@ function aggregateByProduct(selection, region = 'us') {
       return { product, totalUnits, cartItems, linePrice, cartUnits }
     })
     .filter(row => row.cartItems.length > 0)
+
+  // Separate gel products and apply variety-pack cost optimisation
+  const gelRows   = allRows.filter(r => r.product.type === 'gel')
+  const otherRows = allRows.filter(r => r.product.type !== 'gel')
+  const { rows: optimisedGelRows } = computeOptimalGelCart(gelRows, region, allProductsCatalog)
+
+  return [...optimisedGelRows, ...otherRows]
 }
 
 function computeTrainingInfo(aggregated) {
@@ -255,7 +263,20 @@ function NutritionSummary({ targets }) {
 
 // ── ProductCard ───────────────────────────────────────────────────────────────
 
-function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, currencySymbol = '$' }) {
+function VarietyPackContents({ product, region }) {
+  const contents = product.contains?.[region]
+  if (!contents) return null
+  const items = Object.entries(contents).map(([id, qty]) => {
+    const label = id.replace('gel-', '').replace(/-/g, ' ')
+    return `${qty}× ${label.charAt(0).toUpperCase() + label.slice(1)}`
+  })
+  return (
+    <p className="text-xs text-gray-400 mt-0.5 leading-snug">{items.join(' · ')}</p>
+  )
+}
+
+function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, currencySymbol = '$', savedAmount = 0, region = 'us' }) {
+  const isVarietyPack = product.type === 'variety_pack'
   const packSummary = cartItems
     .map(item => item.units_per_pack === 1
       ? `${item.quantity} single`
@@ -266,10 +287,24 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, cur
   const hasOverage = cartUnits > totalUnits
 
   return (
-    <div className="border-2 border-gray-100 rounded-2xl p-4 flex items-center gap-4">
+    <div className={[
+      'border-2 rounded-2xl p-4 flex items-start gap-4',
+      isVarietyPack ? 'border-[#48C4B0]/40 bg-[#48C4B0]/5' : 'border-gray-100',
+    ].join(' ')}>
       <ProductIcon product={product} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
+          {isVarietyPack && savedAmount > 0 && (
+            <span className="text-xs font-bold text-white bg-[#48C4B0] px-1.5 py-0.5 rounded-full whitespace-nowrap">
+              Saves {currencySymbol}{savedAmount.toFixed(2)}
+            </span>
+          )}
+        </div>
+        {isVarietyPack
+          ? <VarietyPackContents product={product} region={region} />
+          : null
+        }
         <p className="text-xs text-gray-400 mt-1">
           {totalUnits} for race&nbsp;·&nbsp;{packSummary}
         </p>
@@ -752,9 +787,10 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
     (sum, row) => sum + row.cartItems.reduce((s, item) => s + item.quantity, 0), 0
   )
 
+  // Cart URL built from the already-optimised aggregated rows (may use variety pack)
   const cartURL = useMemo(
-    () => embedCartURL(buildCartURL(selection, 'NUTRIPLAN10', '', region)),
-    [selection, region]
+    () => embedCartURL(buildCartURLFromAggregated(aggregated, 'NUTRIPLAN10', '', region)),
+    [aggregated, region]
   )
 
   // Prefer athlete's race name → actual distance typed → race_type label
@@ -835,7 +871,14 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           <SectionLabel>What to take</SectionLabel>
           <div className="space-y-3">
             {aggregated.map(row => (
-              <ProductCard key={row.product.id} {...row} currencySymbol={regionConfig.currency_symbol} cartUnits={row.cartUnits} />
+              <ProductCard
+                key={row.product.id}
+                {...row}
+                currencySymbol={regionConfig.currency_symbol}
+                cartUnits={row.cartUnits}
+                savedAmount={row.savedAmount ?? 0}
+                region={region}
+              />
             ))}
           </div>
         </section>

@@ -135,6 +135,48 @@
     }
   },
   {
+    "id": "gel-variety-pack",
+    "name": "Energy Gel Variety Pack",
+    "type": "variety_pack",
+    "carbs_per_unit": 25,
+    "sodium_per_unit": 103,
+    "price_usd": 27.95,
+    "units_per_box": 12,
+    "shopify_variant_id": "7978660298799",
+    "caffeine": true,
+    "caffeine_mg": 80,
+    "ideal_time": ["during"],
+    "contains": {
+      "us": {
+        "gel-passion-fruit": 3,
+        "gel-coffee-cacao":  3,
+        "gel-banana":        2,
+        "gel-lime-ginger":   2,
+        "gel-kumquat-honey": 2
+      },
+      "de": {
+        "gel-passion-fruit": 3,
+        "gel-coffee-cacao":  3,
+        "gel-banana":        3,
+        "gel-lime-ginger":   3,
+        "gel-kumquat-honey": 3
+      }
+    },
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "7978660298799", "units_per_pack": 12, "price": 27.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "8317477322942", "units_per_pack": 15, "price": 36.99 }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
+  },
+  {
     "id": "bar-mango-coconut",
     "name": "Energy Bar Mango Coconut",
     "type": "bar",

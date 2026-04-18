@@ -2,6 +2,43 @@ import regionsConfig    from '../config/regions.json'
 import { computeCartItems } from './region-utils.js'
 
 /**
+ * Builds a Shopify cart URL directly from an already-aggregated product list.
+ * Each row must have a `cartItems` array of { shopify_variant_id, quantity } objects.
+ * This is the preferred path when variety-pack optimisation has already been applied.
+ *
+ * @param {Array}  aggregated     — output of aggregateByProduct() (or computeOptimalGelCart)
+ * @param {string} [discountCode]
+ * @param {string} [utmSource]
+ * @param {string} [region]
+ * @returns {string}
+ */
+export function buildCartURLFromAggregated(aggregated, discountCode = '', utmSource = '', region = 'us') {
+  const storeUrl = regionsConfig[region]?.store_url ?? regionsConfig['us'].store_url
+
+  const variantTotals = {}
+  for (const row of aggregated) {
+    for (const item of row.cartItems) {
+      const vid = String(item.shopify_variant_id)
+      if (!/^\d+$/.test(vid)) {
+        console.warn(`[Lecka] Non-numeric variant ID "${vid}" for "${row.product?.name}" — skipping`)
+        continue
+      }
+      variantTotals[vid] = (variantTotals[vid] || 0) + item.quantity
+    }
+  }
+
+  const cartItems = Object.entries(variantTotals).map(([vid, qty]) => `${vid}:${qty}`).join(',')
+  if (!cartItems) return storeUrl
+
+  const params = []
+  if (discountCode) params.push(`discount=${encodeURIComponent(discountCode)}`)
+  if (utmSource)    params.push(`utm_source=${encodeURIComponent(utmSource)}`)
+
+  const base = `${storeUrl}/cart/${cartItems}`
+  return params.length ? `${base}?${params.join('&')}` : base
+}
+
+/**
  * shopify-link.js
  *
  * Builds a Shopify cart URL for a list of selected products.

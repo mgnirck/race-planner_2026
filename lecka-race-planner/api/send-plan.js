@@ -31,7 +31,10 @@ import jsPDFModule from 'jspdf'
 // Do NOT change this to a default or namespace import.
 import 'jspdf-autotable'
 import { Resend }  from 'resend'
-import { computeCartItems } from '../src/engine/region-utils.js'
+import { computeCartItems, computeLinePrice, computeOptimalGelCart } from '../src/engine/region-utils.js'
+import { createRequire } from 'module'
+const _require = createRequire(import.meta.url)
+const allProductsCatalog = _require('../src/config/products.json')
 
 const { jsPDF } = jsPDFModule
 
@@ -130,29 +133,42 @@ const REGION_STORE_URLS = {
   dk: 'https://www.getlecka.dk',
 }
 
-/** Builds a Shopify cart URL using the greedy pack-fill algorithm from region-utils */
+/** Builds an optimised Shopify cart URL, using variety packs when cheaper */
 function buildCartURL(selectedProducts, region = 'us', discountCode = 'NUTRIPLAN10') {
   const storeUrl = REGION_STORE_URLS[region] ?? REGION_STORE_URLS.us
   if (!selectedProducts?.length) return storeUrl
 
-  // Accumulate total units per product
-  const unitsByProductId = {}
+  // Aggregate units per product
+  const unitsByPid = {}
   const productById = {}
   for (const item of selectedProducts) {
     const pid = item.product.id
-    unitsByProductId[pid] = (unitsByProductId[pid] ?? 0) + item.quantity
+    unitsByPid[pid] = (unitsByPid[pid] ?? 0) + item.quantity
     productById[pid] = item.product
   }
 
-  // Resolve to variant line items using greedy pack-fill
+  // Build aggregated rows with cart items (same shape as ResultsPage aggregateByProduct)
+  const allRows = Object.entries(unitsByPid).map(([pid, totalUnits]) => {
+    const product   = productById[pid]
+    const cartItems = computeCartItems(product, region, totalUnits)
+    const linePrice = computeLinePrice(product, region, totalUnits)
+    const cartUnits = cartItems.reduce((s, i) => s + i.quantity * i.units_per_pack, 0)
+    return { product, totalUnits, cartItems, linePrice, cartUnits }
+  }).filter(r => r.cartItems.length > 0)
+
+  // Apply variety-pack optimisation for gel rows
+  const gelRows   = allRows.filter(r => r.product.type === 'gel')
+  const otherRows = allRows.filter(r => r.product.type !== 'gel')
+  const { rows: optimalGelRows } = computeOptimalGelCart(gelRows, region, allProductsCatalog)
+  const optimisedRows = [...optimalGelRows, ...otherRows]
+
+  // Build variant totals from optimised rows
   const variantTotals = {}
-  for (const [pid, totalUnits] of Object.entries(unitsByProductId)) {
-    const product = productById[pid]
-    const lines = computeCartItems(product, region, totalUnits)
-    for (const line of lines) {
-      const vid = line.shopify_variant_id
+  for (const row of optimisedRows) {
+    for (const line of row.cartItems) {
+      const vid = String(line.shopify_variant_id)
       if (!/^\d+$/.test(vid)) {
-        console.warn(`[send-plan] Non-numeric variant ID "${vid}" for "${product.name}" — skipping`)
+        console.warn(`[send-plan] Non-numeric variant ID "${vid}" for "${row.product.name}" — skipping`)
         continue
       }
       variantTotals[vid] = (variantTotals[vid] ?? 0) + line.quantity
@@ -161,7 +177,7 @@ function buildCartURL(selectedProducts, region = 'us', discountCode = 'NUTRIPLAN
 
   if (!Object.keys(variantTotals).length) return storeUrl
   const parts = Object.entries(variantTotals).map(([vid, qty]) => `${vid}:${qty}`)
-  const base = `${storeUrl}/cart/${parts.join(',')}`
+  const base  = `${storeUrl}/cart/${parts.join(',')}`
   return discountCode ? `${base}?discount=${encodeURIComponent(discountCode)}` : base
 }
 
@@ -344,7 +360,42 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
 
   y = doc.lastAutoTable.finalY + 10
 
-  // ── Section 2b: Training preparation (when buying more than race needs) ──
+  // ── Section 2b: Shopping recommendation (variety pack when cheaper) ───────
+  {
+    const unitsByPid = {}
+    const productByPid = {}
+    for (const item of selectedProducts) {
+      const pid = item.product.id
+      unitsByPid[pid] = (unitsByPid[pid] ?? 0) + item.quantity
+      productByPid[pid] = item.product
+    }
+    const gelAgg = Object.entries(unitsByPid)
+      .filter(([pid]) => productByPid[pid].type === 'gel')
+      .map(([pid, totalUnits]) => ({
+        product:   productByPid[pid],
+        totalUnits,
+        cartItems: computeCartItems(productByPid[pid], region, totalUnits),
+        linePrice: computeLinePrice(productByPid[pid], region, totalUnits),
+        cartUnits: computeCartItems(productByPid[pid], region, totalUnits).reduce((s, i) => s + i.quantity * i.units_per_pack, 0),
+      }))
+    const { usesVarietyPack, savedAmount } = computeOptimalGelCart(gelAgg, region, allProductsCatalog)
+    if (usesVarietyPack && savedAmount > 0) {
+      y = ensureSpace(doc, y, 20)
+      const currencySymbol = region === 'de' ? '\u20ac' : region === 'dk' ? 'kr' : '$'
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(C.green)
+      doc.text(
+        `\u2714 Shopping tip: Buy 1\u00d7 Energy Gel Variety Pack (saves ${currencySymbol}${savedAmount.toFixed(2)} vs separate boxes) — covers all flavours in your plan`,
+        ML, y
+      )
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(C.black)
+      y += 8
+    }
+  }
+
+  // ── Section 2c: Training preparation (when buying more than race needs) ──
   const tInfo = computeTrainingInfo(selectedProducts, region)
   if (tInfo.hasOverage) {
     y = ensureSpace(doc, y, 55)
@@ -502,6 +553,34 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
     .map(item => `<li><strong>${item.product.name}</strong> &times;&nbsp;${item.quantity} &mdash; ${item.note ?? ''}</li>`)
     .join('\n')
 
+  // Check variety pack optimisation for email
+  const emailUnitsByPid = {}
+  const emailProductByPid = {}
+  for (const item of selectedProducts) {
+    const pid = item.product.id
+    emailUnitsByPid[pid] = (emailUnitsByPid[pid] ?? 0) + item.quantity
+    emailProductByPid[pid] = item.product
+  }
+  const emailGelAgg = Object.entries(emailUnitsByPid)
+    .filter(([pid]) => emailProductByPid[pid].type === 'gel')
+    .map(([pid, totalUnits]) => ({
+      product:   emailProductByPid[pid],
+      totalUnits,
+      cartItems: computeCartItems(emailProductByPid[pid], region, totalUnits),
+      linePrice: computeLinePrice(emailProductByPid[pid], region, totalUnits),
+      cartUnits: computeCartItems(emailProductByPid[pid], region, totalUnits).reduce((s, i) => s + i.quantity * i.units_per_pack, 0),
+    }))
+  const emailVpResult = computeOptimalGelCart(emailGelAgg, region, allProductsCatalog)
+  const currencySymbol = region === 'de' ? '&euro;' : region === 'dk' ? 'kr' : '$'
+  const varietyPackHtml = emailVpResult.usesVarietyPack && emailVpResult.savedAmount > 0 ? `
+    <div style="background:#f0fdf9;border:2px solid #48C4B0;border-radius:8px;padding:14px 16px;margin:12px 0;">
+      <p style="margin:0;font-size:13px;color:#1B1B1B;">
+        <strong>&#10003; Best value:</strong> Replace the individual gel boxes with <strong>1&times; Energy Gel Variety Pack</strong>
+        and save <strong>${currencySymbol}${emailVpResult.savedAmount.toFixed(2)}</strong>.
+        The variety pack includes all 5 gel flavours &mdash; perfect for both race day and training runs.
+      </p>
+    </div>` : ''
+
   const emailTInfo = computeTrainingInfo(selectedProducts, region)
   const trainingHtml = emailTInfo.hasOverage ? `
     <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:16px;margin:20px 0;">
@@ -581,6 +660,8 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
       <ul>
         ${productListHtml}
       </ul>
+
+      ${varietyPackHtml}
 
       ${trainingHtml}
 
