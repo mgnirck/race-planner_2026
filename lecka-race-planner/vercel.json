@@ -29,7 +29,7 @@
         { "key": "X-XSS-Protection",       "value": "1; mode=block" },
         {
           "key": "Content-Security-Policy",
-          "value": "frame-ancestors 'self' https://plan.getlecka.com https://www.getlecka.com https://getlecka.com https://getlecka.de https://www.getlecka.de https://getlecka.dk https://www.getlecka.dk https://getlecka.myshopify.com https://*.myshopify.com"
+          "value": "frame-ancestors https:"
         }
       ]
     }
