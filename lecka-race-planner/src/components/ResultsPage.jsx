@@ -118,12 +118,16 @@ function aggregateByProduct(selection, region = 'us') {
     })
     .filter(row => row.cartItems.length > 0)
 
-  // Separate gel products and apply variety-pack cost optimisation
   const gelRows   = allRows.filter(r => r.product.type === 'gel')
   const otherRows = allRows.filter(r => r.product.type !== 'gel')
-  const { rows: optimisedGelRows } = computeOptimalGelCart(gelRows, region, allProductsCatalog)
+  const gelResult = computeOptimalGelCart(gelRows, region, allProductsCatalog)
 
-  return [...optimisedGelRows, ...otherRows]
+  return {
+    optimizedRows:   [...gelResult.rows, ...otherRows],
+    individualRows:  [...(gelResult.individualRows ?? gelResult.rows), ...otherRows],
+    usesVarietyPack: gelResult.usesVarietyPack,
+    savedAmount:     gelResult.savedAmount,
+  }
 }
 
 function computeTrainingInfo(aggregated) {
@@ -776,11 +780,23 @@ function ResearchModal({ onClose }) {
 export default function ResultsPage({ targets, selection, form, onBack }) {
   const [showResearch, setShowResearch] = useState(false)
   const [region, setRegion] = useState(detectRegion)
+  const [preferSingleFlavors, setPreferSingleFlavors] = useState(false)
   const regionConfig = getRegionConfig(region)
 
-  const timeline      = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
-  const aggregated    = useMemo(() => aggregateByProduct(selection, region), [selection, region])
-  const trainingInfo  = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
+  const timeline = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
+
+  const { optimizedAggregated, individualAggregated, usesVarietyPack, savedAmount } = useMemo(() => {
+    const r = aggregateByProduct(selection, region)
+    return { optimizedAggregated: r.optimizedRows, individualAggregated: r.individualRows, usesVarietyPack: r.usesVarietyPack, savedAmount: r.savedAmount }
+  }, [selection, region])
+
+  useEffect(() => { setPreferSingleFlavors(false) }, [selection, region])
+
+  const aggregated  = useMemo(
+    () => preferSingleFlavors ? individualAggregated : optimizedAggregated,
+    [preferSingleFlavors, individualAggregated, optimizedAggregated]
+  )
+  const trainingInfo = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
@@ -869,6 +885,15 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         {/* ── Product cards ───────────────────────────────────────────────── */}
         <section>
           <SectionLabel>What to take</SectionLabel>
+          {usesVarietyPack && preferSingleFlavors && (
+            <button
+              type="button"
+              onClick={() => setPreferSingleFlavors(false)}
+              className="text-sm text-[#48C4B0] hover:underline mb-3 -mt-1 block"
+            >
+              ← Back to variety pack recommendation (saves {regionConfig.currency_symbol}{savedAmount.toFixed(2)})
+            </button>
+          )}
           <div className="space-y-3">
             {aggregated.map(row => (
               <ProductCard
@@ -880,6 +905,15 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
                 region={region}
               />
             ))}
+            {usesVarietyPack && !preferSingleFlavors && (
+              <button
+                type="button"
+                onClick={() => setPreferSingleFlavors(true)}
+                className="text-sm text-gray-400 hover:text-gray-600 underline mt-1 block"
+              >
+                Only want specific flavors? See single-flavor 12-packs →
+              </button>
+            )}
           </div>
         </section>
 

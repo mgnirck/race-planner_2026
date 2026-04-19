@@ -157,5 +157,5 @@ export function computeOptimalGelCart(gelAggregated, region, allProducts) {
     savedAmount: saved,
   }
 
-  return { rows: [vpRow], totalCost: varietyCost, usesVarietyPack: true, savedAmount: saved }
+  return { rows: [vpRow], individualRows: gelAggregated, totalCost: varietyCost, usesVarietyPack: true, savedAmount: saved }
 }
