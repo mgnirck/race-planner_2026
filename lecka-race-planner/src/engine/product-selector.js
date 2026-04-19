@@ -31,25 +31,19 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
   )
 
   // ── Resolve product pools ─────────────────────────────────────────────────
+  // Only products the user explicitly selected in step 3 are used.
+  // No defaults — if user selected no bars, no bars are added.
 
-  const preferred = preferredProductIds.length > 0
-    ? availableProducts.filter(p => preferredProductIds.includes(p.id))
-    : []
+  const preferred    = availableProducts.filter(p => preferredProductIds.includes(p.id))
+  const selectedGels = preferred.filter(p => p.type === 'gel')
 
-  // Non-caffeine gels — fall back to passion fruit if none preferred
+  // For plain slots: prefer non-caffeine gels; fall back to any selected gel
+  // (handles the case where user picked only caffeine gels).
   const plainGelPool = preferred.filter(p => p.type === 'gel' && !p.caffeine)
-  const defaultPlainGel = availableProducts.find(p => p.id === 'gel-passion-fruit')
-  const plainGels = plainGelPool.length > 0 ? plainGelPool : (defaultPlainGel ? [defaultPlainGel] : [])
+  const plainGels    = plainGelPool.length > 0 ? plainGelPool : selectedGels
 
-  // Caffeine gels — fall back to coffee cacao if none preferred
-  const cafGelPool = preferred.filter(p => p.type === 'gel' && p.caffeine)
-  const defaultCafGel = availableProducts.find(p => p.id === 'gel-coffee-cacao')
-  const cafGels = cafGelPool.length > 0 ? cafGelPool : (defaultCafGel ? [defaultCafGel] : [])
-
-  // Bars — fall back to mango coconut if none preferred
-  const barPool = preferred.filter(p => p.type === 'bar')
-  const defaultBar = availableProducts.find(p => p.id === 'bar-mango-coconut')
-  const bars = barPool.length > 0 ? barPool : (defaultBar ? [defaultBar] : [])
+  const cafGels = preferred.filter(p => p.type === 'gel' && p.caffeine)
+  const bars    = preferred.filter(p => p.type === 'bar')
 
   // ── Build gel timing slots ────────────────────────────────────────────────
 
