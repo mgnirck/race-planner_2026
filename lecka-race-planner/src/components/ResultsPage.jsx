@@ -1086,15 +1086,6 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
                 region={region}
               />
             ))}
-            {usesVarietyPack && !preferSingleFlavors && (
-              <button
-                type="button"
-                onClick={() => setPreferSingleFlavors(true)}
-                className="text-sm text-gray-400 hover:text-gray-600 underline mt-1 block"
-              >
-                Only want specific flavors? See single-flavor 12-packs →
-              </button>
-            )}
           </div>
         </section>
 
