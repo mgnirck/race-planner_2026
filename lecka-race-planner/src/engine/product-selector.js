@@ -32,24 +32,39 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
 
   // ── Resolve product pools ─────────────────────────────────────────────────
 
-  const preferred = preferredProductIds.length > 0
+  const userMadeSelection = preferredProductIds.length > 0
+  const preferred = userMadeSelection
     ? availableProducts.filter(p => preferredProductIds.includes(p.id))
     : []
 
-  // Non-caffeine gels — fall back to passion fruit if none preferred
+  const selectedGels = preferred.filter(p => p.type === 'gel')
+
+  // Non-caffeine gels:
+  //   1. User chose plain gels → use those
+  //   2. User chose gels but none are plain → use any selected gel for plain slots
+  //   3. No user selection → fall back to passion fruit
+  //   4. User chose only bars → no gels
   const plainGelPool = preferred.filter(p => p.type === 'gel' && !p.caffeine)
   const defaultPlainGel = availableProducts.find(p => p.id === 'gel-passion-fruit')
-  const plainGels = plainGelPool.length > 0 ? plainGelPool : (defaultPlainGel ? [defaultPlainGel] : [])
+  const plainGels = plainGelPool.length > 0
+    ? plainGelPool
+    : selectedGels.length > 0
+      ? selectedGels
+      : (!userMadeSelection && defaultPlainGel ? [defaultPlainGel] : [])
 
-  // Caffeine gels — fall back to coffee cacao if none preferred
+  // Caffeine gels — only fall back to coffee cacao when user made no selection
   const cafGelPool = preferred.filter(p => p.type === 'gel' && p.caffeine)
   const defaultCafGel = availableProducts.find(p => p.id === 'gel-coffee-cacao')
-  const cafGels = cafGelPool.length > 0 ? cafGelPool : (defaultCafGel ? [defaultCafGel] : [])
+  const cafGels = cafGelPool.length > 0
+    ? cafGelPool
+    : (!userMadeSelection && defaultCafGel ? [defaultCafGel] : [])
 
-  // Bars — fall back to mango coconut if none preferred
+  // Bars — only fall back to mango coconut when user made no selection
   const barPool = preferred.filter(p => p.type === 'bar')
   const defaultBar = availableProducts.find(p => p.id === 'bar-mango-coconut')
-  const bars = barPool.length > 0 ? barPool : (defaultBar ? [defaultBar] : [])
+  const bars = barPool.length > 0
+    ? barPool
+    : (!userMadeSelection && defaultBar ? [defaultBar] : [])
 
   // ── Build gel timing slots ────────────────────────────────────────────────
 

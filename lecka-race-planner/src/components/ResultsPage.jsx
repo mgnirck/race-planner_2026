@@ -13,7 +13,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
-import { computeCartItems, computeLinePrice, computeOptimalGelCart } from '../engine/region-utils.js'
+import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engine/region-utils.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
 import regionsConfig from '../config/regions.json'
 import allProductsCatalog from '../config/products.json'
@@ -102,14 +102,28 @@ function buildTimeline(selection, totalDuration) {
   return events
 }
 
-function aggregateByProduct(selection, region = 'us') {
+function aggregateByProduct(selection, region = 'us', manualQty = null) {
   const map = {}
   for (const item of selection) {
     const id = item.product.id
     if (!map[id]) map[id] = { product: item.product, totalUnits: 0 }
     map[id].totalUnits += item.quantity
   }
-  const allRows = Object.values(map)
+
+  if (manualQty !== null) {
+    for (const [id, units] of Object.entries(manualQty)) {
+      if (units <= 0) {
+        delete map[id]
+      } else if (map[id]) {
+        map[id].totalUnits = units
+      } else {
+        const product = allProductsCatalog.find(p => p.id === id && p.type !== 'variety_pack')
+        if (product) map[id] = { product, totalUnits: units }
+      }
+    }
+  }
+
+  return Object.values(map)
     .map(({ product, totalUnits }) => {
       const cartItems = computeCartItems(product, region, totalUnits)
       const linePrice = computeLinePrice(product, region, totalUnits)
@@ -117,27 +131,26 @@ function aggregateByProduct(selection, region = 'us') {
       return { product, totalUnits, cartItems, linePrice, cartUnits }
     })
     .filter(row => row.cartItems.length > 0)
-
-  // Separate gel products and apply variety-pack cost optimisation
-  const gelRows   = allRows.filter(r => r.product.type === 'gel')
-  const otherRows = allRows.filter(r => r.product.type !== 'gel')
-  const { rows: optimisedGelRows } = computeOptimalGelCart(gelRows, region, allProductsCatalog)
-
-  return [...optimisedGelRows, ...otherRows]
 }
 
 function computeTrainingInfo(aggregated) {
-  let totalRaceUnits = 0
-  let totalCartUnits = 0
+  let gelRaceUnits = 0, gelCartUnits = 0
+  let barRaceUnits = 0, barCartUnits = 0
   for (const row of aggregated) {
-    totalRaceUnits += row.totalUnits
-    totalCartUnits += row.cartUnits
+    if (row.product.type === 'gel' || row.product.type === 'variety_pack') {
+      gelRaceUnits += row.totalUnits
+      gelCartUnits += row.cartUnits
+    } else if (row.product.type === 'bar') {
+      barRaceUnits += row.totalUnits
+      barCartUnits += row.cartUnits
+    }
   }
+  const gelOverage = gelCartUnits - gelRaceUnits
+  const barOverage = barCartUnits - barRaceUnits
   return {
-    hasOverage:    totalCartUnits > totalRaceUnits,
-    totalRaceUnits,
-    totalCartUnits,
-    extraUnits:    totalCartUnits - totalRaceUnits,
+    hasOverage:    gelOverage > 0 || barOverage > 0,
+    gelRaceUnits, gelCartUnits, gelOverage,
+    barRaceUnits, barCartUnits, barOverage,
   }
 }
 
@@ -771,16 +784,188 @@ function ResearchModal({ onClose }) {
   )
 }
 
+// ── CartEditorModal ───────────────────────────────────────────────────────────
+
+function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig }) {
+  const availableProducts = useMemo(() =>
+    allProductsCatalog.filter(p => p.type !== 'variety_pack' && isAvailableInRegion(p, region)),
+    [region]
+  )
+
+  function getCurrentQty(productId) {
+    if (manualQty !== null && productId in manualQty) return manualQty[productId]
+    const row = aggregated.find(r => r.product.id === productId)
+    return row ? row.totalUnits : 0
+  }
+
+  function handleChange(productId, delta) {
+    const next = Math.max(0, getCurrentQty(productId) + delta)
+    setManualQty(prev => ({ ...(prev ?? {}), [productId]: next }))
+  }
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  const gels = availableProducts.filter(p => p.type === 'gel')
+  const bars = availableProducts.filter(p => p.type === 'bar')
+
+  function ProductRow({ product }) {
+    const qty = getCurrentQty(product.id)
+    return (
+      <div className="flex items-center gap-3 py-2">
+        <ProductIcon product={product} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
+          <p className="text-xs text-gray-400">
+            {product.carbs_per_unit}g carbs
+            {product.caffeine ? ` · ${product.caffeine_mg}mg caffeine` : ''}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => handleChange(product.id, -1)}
+            disabled={qty === 0}
+            className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center
+                       text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors
+                       disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none"
+          >−</button>
+          <span className="w-6 text-center text-sm font-bold text-[#1B1B1B]">{qty}</span>
+          <button
+            type="button"
+            onClick={() => handleChange(product.id, +1)}
+            className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center
+                       text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors text-lg leading-none"
+          >+</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="bg-white w-full sm:max-w-lg sm:mx-4 sm:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: '85vh' }}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-[#1B1B1B]">Adjust your plan</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Change quantities — cart updates live</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full
+                       bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors text-lg leading-none"
+            aria-label="Close"
+          >×</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+          {gels.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Gels</p>
+              <div className="space-y-1">
+                {gels.map(p => <ProductRow key={p.id} product={p} />)}
+              </div>
+            </div>
+          )}
+          {bars.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Bars</p>
+              <div className="space-y-1">
+                {bars.map(p => <ProductRow key={p.id} product={p} />)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0 space-y-2">
+          {manualQty !== null && (
+            <button
+              type="button"
+              onClick={() => setManualQty(null)}
+              className="w-full min-h-[44px] border-2 border-gray-200 text-gray-500 rounded-xl
+                         text-sm font-semibold hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
+            >
+              Reset to recommendation
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full min-h-[52px] bg-[#48C4B0] hover:bg-[#3db09d] text-white rounded-xl
+                       text-sm font-bold transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ResultsPage({ targets, selection, form, onBack }) {
-  const [showResearch, setShowResearch] = useState(false)
-  const [region, setRegion] = useState(detectRegion)
+  const [showResearch,   setShowResearch]   = useState(false)
+  const [showCartEditor, setShowCartEditor] = useState(false)
+  const [region,         setRegion]         = useState(detectRegion)
+  const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const regionConfig = getRegionConfig(region)
 
-  const timeline      = useMemo(() => buildTimeline(selection, targets.total_duration_minutes), [selection, targets])
-  const aggregated    = useMemo(() => aggregateByProduct(selection, region), [selection, region])
-  const trainingInfo  = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
+  // Reset manual overrides when plan inputs change
+  useEffect(() => { setManualQty(null) }, [selection, region])
+
+  const aggregated   = useMemo(
+    () => aggregateByProduct(selection, region, manualQty),
+    [selection, region, manualQty]
+  )
+  const trainingInfo = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
+
+  // Variety pack CTA — compute separately, not mixed into the main cart
+  const vpCartURL = useMemo(() => {
+    const gelRows = aggregated.filter(r => r.product.type === 'gel')
+    const totalGelUnits = gelRows.reduce((s, r) => s + r.totalUnits, 0)
+    if (totalGelUnits === 0) return null
+    const vpProduct = allProductsCatalog.find(p => p.type === 'variety_pack')
+    if (!vpProduct) return null
+    const vpVariants = vpProduct.regions?.[region]?.variants ?? []
+    if (!vpVariants.length) return null
+    const vpVariant = vpVariants[0]
+    const vpCount   = Math.ceil(totalGelUnits / vpVariant.units_per_pack)
+    const nonGelRows = aggregated.filter(r => r.product.type !== 'gel')
+    const vpAggregated = [
+      { product: vpProduct, totalUnits: totalGelUnits, cartItems: [{ ...vpVariant, quantity: vpCount }], linePrice: vpCount * vpVariant.price, cartUnits: vpCount * vpVariant.units_per_pack },
+      ...nonGelRows,
+    ]
+    return embedCartURL(buildCartURLFromAggregated(vpAggregated, 'NUTRIPLAN10', '', region))
+  }, [aggregated, region])
+
+  // Filter timeline when products are manually removed (Task 5)
+  const removedProductIds = useMemo(() => {
+    if (!manualQty) return new Set()
+    return new Set(Object.entries(manualQty).filter(([, q]) => q <= 0).map(([id]) => id))
+  }, [manualQty])
+
+  const timeline = useMemo(() => {
+    const effectiveSelection = removedProductIds.size > 0
+      ? selection.filter(item => !removedProductIds.has(item.product.id))
+      : selection
+    return buildTimeline(effectiveSelection, targets.total_duration_minutes)
+  }, [selection, targets, removedProductIds])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
@@ -808,6 +993,18 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
 
       {/* ── Research modal ─────────────────────────────────────────────────── */}
       {showResearch && <ResearchModal onClose={() => setShowResearch(false)} />}
+
+      {/* ── Cart editor modal ───────────────────────────────────────────────── */}
+      {showCartEditor && (
+        <CartEditorModal
+          region={region}
+          aggregated={aggregated}
+          manualQty={manualQty}
+          setManualQty={setManualQty}
+          onClose={() => setShowCartEditor(false)}
+          regionConfig={regionConfig}
+        />
+      )}
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
@@ -868,7 +1065,16 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
 
         {/* ── Product cards ───────────────────────────────────────────────── */}
         <section>
-          <SectionLabel>What to take</SectionLabel>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">What to take</p>
+            <button
+              type="button"
+              onClick={() => setShowCartEditor(true)}
+              className="text-xs text-[#48C4B0] font-semibold hover:underline"
+            >
+              Adjust plan
+            </button>
+          </div>
           <div className="space-y-3">
             {aggregated.map(row => (
               <ProductCard
@@ -890,13 +1096,22 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
               Race day vs. what you buy
             </p>
             <p className="text-sm text-[#1B1B1B] mb-4">
-              Your race needs{' '}
-              <span className="font-bold">{trainingInfo.totalRaceUnits} gel{trainingInfo.totalRaceUnits !== 1 ? 's' : ''}</span>{' '}
-              total. Because {regionConfig.label} only sells multi-packs, your cart includes{' '}
-              <span className="font-bold">{trainingInfo.totalCartUnits} gels</span> —{' '}
-              the extra{' '}
-              <span className="font-bold">{trainingInfo.extraUnits}</span>{' '}
-              are perfect for training runs before race day.
+              {trainingInfo.gelOverage > 0 && (
+                <>
+                  Your race needs{' '}
+                  <span className="font-bold">{trainingInfo.gelRaceUnits} gel{trainingInfo.gelRaceUnits !== 1 ? 's' : ''}</span>.{' '}
+                  Sold in multi-packs, your cart includes{' '}
+                  <span className="font-bold">{trainingInfo.gelCartUnits} gels</span> —{' '}
+                  the extra <span className="font-bold">{trainingInfo.gelOverage}</span> are perfect for training.
+                  {trainingInfo.barOverage > 0 ? ' ' : ''}
+                </>
+              )}
+              {trainingInfo.barOverage > 0 && (
+                <>
+                  {trainingInfo.gelOverage > 0 ? 'Your cart also includes' : 'Your cart includes'}{' '}
+                  an extra <span className="font-bold">{trainingInfo.barOverage} bar{trainingInfo.barOverage !== 1 ? 's' : ''}</span> for training.
+                </>
+              )}
             </p>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
               How to use them for race prep
@@ -969,6 +1184,23 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
               ? 'Ships to US only. Free shipping on orders over $60.'
               : `Ships to ${regionConfig.label}. Visit ${regionConfig.store_url} for shipping info.`}
           </p>
+          {vpCartURL && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <a
+                href={vpCartURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-full min-h-[48px]
+                           border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl
+                           text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors"
+              >
+                Keen to try all flavors? Get our Variety Pack →
+              </a>
+              <p className="text-xs text-gray-400 text-center mt-1.5">
+                Great for training — all 5 flavors in one box · NUTRIPLAN10 applied
+              </p>
+            </div>
+          )}
         </section>
 
         {/* ── Race timeline ────────────────────────────────────────────────── */}
