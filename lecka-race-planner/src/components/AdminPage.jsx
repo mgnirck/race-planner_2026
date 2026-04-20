@@ -20,23 +20,11 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = 'lecka_plans_v1'
-
-const RACE_LABELS = {
-  '5k':               '5 km',
-  '10k':              '10 km',
-  'half_marathon':    'Half marathon',
-  'marathon':         'Marathon',
-  'ultra_50k':        'Ultra 50 km',
-  'ultra_100k':       'Ultra 100 km',
-  'triathlon_sprint': 'Sprint triathlon',
-  'triathlon_olympic':'Olympic triathlon',
-  'triathlon_70_3':   '70.3 triathlon',
-  'triathlon_140_6':  'Ironman 140.6',
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -59,14 +47,14 @@ function thisMonthPlans(plans) {
   })
 }
 
-function countByRaceType(plans) {
+function countByRaceType(plans, tFn) {
   const counts = {}
   for (const p of plans) {
     counts[p.race_type] = (counts[p.race_type] ?? 0) + 1
   }
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
-    .map(([key, count]) => ({ key, label: RACE_LABELS[key] ?? key, count }))
+    .map(([key, count]) => ({ key, label: tFn ? tFn(`common:racetype.${key}`, { defaultValue: key }) : key, count }))
 }
 
 // ── Password gate ─────────────────────────────────────────────────────────────
@@ -74,7 +62,7 @@ function countByRaceType(plans) {
 const CONFIGURED_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? ''
 const IS_DEV              = import.meta.env.MODE === 'development'
 
-function usePasswordGate() {
+function usePasswordGate(t) {
   const [entered, setEntered] = useState('')
   const [unlocked, setUnlocked] = useState(IS_DEV && !CONFIGURED_PASSWORD)
   const [error, setError]    = useState(false)
@@ -113,7 +101,8 @@ function StatBox({ value, label, sub }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
-  const gate = usePasswordGate()
+  const { t, i18n } = useTranslation(['admin', 'common'])
+  const gate = usePasswordGate(t)
 
   // ── Server stats ────────────────────────────────────────────────────────────
   // null = not yet fetched | object = success | 'error' = failed
@@ -139,7 +128,7 @@ export default function AdminPage() {
   // ── localStorage fallback ────────────────────────────────────────────────────
   const localPlans     = useMemo(loadPlans, [gate.unlocked])
   const localMonthLen  = useMemo(() => thisMonthPlans(localPlans).length, [localPlans])
-  const localBreakdown = useMemo(() => countByRaceType(localPlans), [localPlans])
+  const localBreakdown = useMemo(() => countByRaceType(localPlans, t), [localPlans, t])
 
   // ── Derived display values — prefer server, fall back to local ───────────────
   const serverOk = serverStats && serverStats !== 'error'
@@ -149,7 +138,7 @@ export default function AdminPage() {
   const displayBreakdown = serverOk
     ? serverStats.by_race_type.map(r => ({
         key:   r.key,
-        label: RACE_LABELS[r.key] ?? r.key,
+        label: t(`common:racetype.${r.key}`, { defaultValue: r.key }),
         count: r.count,
       }))
     : localBreakdown
@@ -159,7 +148,7 @@ export default function AdminPage() {
   const topRaceType = displayBreakdown[0]
 
   const now = new Date()
-  const monthLabel = now.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
+  const monthLabel = now.toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' })
 
   // ── Password screen ─────────────────────────────────────────────────────────
   if (!gate.unlocked) {
@@ -167,13 +156,13 @@ export default function AdminPage() {
       <div className="min-h-screen bg-white flex items-center justify-center px-5">
         <div className="w-full max-w-xs">
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
-            Lecka Admin
+            {t('title')}
           </p>
-          <h1 className="text-xl font-bold text-[#1B1B1B] mb-6">Enter password</h1>
+          <h1 className="text-xl font-bold text-[#1B1B1B] mb-6">{t('enterPassword')}</h1>
 
           {!CONFIGURED_PASSWORD && !IS_DEV && (
             <p className="text-sm text-red-500 mb-4">
-              VITE_ADMIN_PASSWORD is not set. Access is blocked in production.
+              {t('noPasswordSet')}
             </p>
           )}
 
@@ -182,7 +171,7 @@ export default function AdminPage() {
             value={gate.entered}
             onChange={e => { gate.setEntered(e.target.value); }}
             onKeyDown={e => e.key === 'Enter' && gate.attempt()}
-            placeholder="Password"
+            placeholder={t('passwordPlaceholder')}
             className={[
               'w-full border-2 rounded-xl px-4 py-3 text-sm',
               'focus:outline-none focus:border-[#2D6A4F]',
@@ -191,7 +180,7 @@ export default function AdminPage() {
             autoFocus
           />
           {gate.error && (
-            <p className="text-xs text-red-500 mt-2">Incorrect password.</p>
+            <p className="text-xs text-red-500 mt-2">{t('incorrectPassword')}</p>
           )}
           <button
             type="button"
@@ -199,7 +188,7 @@ export default function AdminPage() {
             className="mt-3 w-full min-h-[44px] bg-[#2D6A4F] text-white rounded-xl
                        text-sm font-semibold hover:bg-[#235a3e] transition-colors"
           >
-            Unlock
+            {t('unlock')}
           </button>
         </div>
       </div>
@@ -212,11 +201,11 @@ export default function AdminPage() {
       {/* Header */}
       <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between max-w-2xl mx-auto">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Lecka</p>
-          <h1 className="text-lg font-bold text-[#1B1B1B]">Planner admin</h1>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('header.label')}</p>
+          <h1 className="text-lg font-bold text-[#1B1B1B]">{t('header.title')}</h1>
         </div>
         <a href="/" className="text-sm text-[#2D6A4F] font-medium hover:underline">
-          ← Back to planner
+          {t('common:nav.backToPlanner')}
         </a>
       </div>
 
@@ -225,12 +214,12 @@ export default function AdminPage() {
         {/* Data source indicator */}
         <div className="flex items-center gap-2">
           {serverFetching ? (
-            <span className="text-xs text-gray-400">Loading server stats…</span>
+            <span className="text-xs text-gray-400">{t('status.loading')}</span>
           ) : serverOk ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold
                              text-[#2D6A4F] bg-[#2D6A4F]/8 px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F] inline-block" />
-              Live — all users
+              {t('status.live')}
               {serverStats.generated_at && (
                 <span className="text-[#2D6A4F]/60 font-normal">
                   · {new Date(serverStats.generated_at).toLocaleTimeString()}
@@ -241,7 +230,7 @@ export default function AdminPage() {
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold
                              text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
-              {serverStats === 'error' ? 'Server unavailable — showing local data' : 'Local data'}
+              {serverStats === 'error' ? t('status.serverUnavailable') : t('status.localData')}
             </span>
           )}
           <button
@@ -251,7 +240,7 @@ export default function AdminPage() {
             className="ml-auto text-xs text-[#2D6A4F] font-medium hover:underline
                        disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {serverFetching ? 'Refreshing…' : '↺ Refresh'}
+            {serverFetching ? t('status.refreshing') : t('status.refresh')}
           </button>
         </div>
 
@@ -261,8 +250,8 @@ export default function AdminPage() {
             {monthLabel}
           </p>
           <div className="grid grid-cols-2 gap-4">
-            <StatBox value={displayMonth} label="Plans this month" />
-            <StatBox value={displayTotal} label="Plans all time" />
+            <StatBox value={displayMonth} label={t('stats.plansThisMonth')} />
+            <StatBox value={displayTotal} label={t('stats.plansAllTime')} />
           </div>
         </section>
 
@@ -270,15 +259,15 @@ export default function AdminPage() {
         {topRaceType && (
           <section>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-              Most popular race type (all time)
+              {t('stats.mostPopular')}
             </p>
             <div className="border-2 border-[#2D6A4F]/20 rounded-2xl p-5 flex items-center gap-4">
               <div className="flex-1">
                 <p className="text-lg font-bold text-[#1B1B1B]">{topRaceType.label}</p>
                 <p className="text-sm text-gray-400 mt-0.5">
-                  {topRaceType.count} plan{topRaceType.count !== 1 ? 's' : ''}
+                  {t('stats.planCount', { count: topRaceType.count })}
                   {displayTotal > 0 && (
-                    <> ({Math.round((topRaceType.count / displayTotal) * 100)}% of total)</>
+                    <> {t('stats.pctOfTotal', { pct: Math.round((topRaceType.count / displayTotal) * 100) })}</>
                   )}
                 </p>
               </div>
@@ -291,7 +280,7 @@ export default function AdminPage() {
         {displayBreakdown.length > 0 && (
           <section>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-              All race types
+              {t('stats.allRaceTypes')}
             </p>
             <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
               {displayBreakdown.map((row, i) => (
@@ -321,11 +310,11 @@ export default function AdminPage() {
         {displayRegions && displayRegions.length > 0 && (
           <section>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-              Plans by region
+              {t('stats.byRegion')}
             </p>
             <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
               {displayRegions.map((row, i) => {
-                const regionLabel = { us: 'United States', de: 'Germany', dk: 'Denmark', unknown: 'Unknown' }[row.key] ?? row.key.toUpperCase()
+                const regionLabel = t(`region.${row.key}`, { defaultValue: row.key.toUpperCase() })
                 return (
                   <div
                     key={row.key}
@@ -352,13 +341,13 @@ export default function AdminPage() {
 
         {displayTotal === 0 && !serverFetching && (
           <p className="text-sm text-gray-400 text-center py-12">
-            No plans generated yet. Stats appear here after athletes use the planner.
+            {t('stats.noPlans')}
           </p>
         )}
 
         {/* Footer */}
         <p className="text-xs text-gray-300 text-center pb-4">
-          No personal data is recorded — only race type, region, and timestamp per plan.
+          {t('footer')}
         </p>
       </div>
     </div>

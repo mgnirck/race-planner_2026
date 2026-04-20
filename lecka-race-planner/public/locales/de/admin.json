@@ -1,0 +1,36 @@
+{
+  "title": "Lecka Admin",
+  "enterPassword": "Passwort eingeben",
+  "passwordPlaceholder": "Passwort",
+  "unlock": "Entsperren",
+  "incorrectPassword": "Falsches Passwort.",
+  "noPasswordSet": "VITE_ADMIN_PASSWORD ist nicht gesetzt. Zugriff ist in der Produktion gesperrt.",
+
+  "header.label": "Lecka",
+  "header.title": "Planer-Admin",
+
+  "status.loading": "Server-Statistiken werden geladen…",
+  "status.live": "Live — alle Nutzer",
+  "status.serverUnavailable": "Server nicht verfügbar — lokale Daten werden angezeigt",
+  "status.localData": "Lokale Daten",
+  "status.refresh": "↺ Aktualisieren",
+  "status.refreshing": "Wird aktualisiert…",
+
+  "stats.plansThisMonth": "Pläne diesen Monat",
+  "stats.plansAllTime": "Pläne gesamt",
+  "stats.mostPopular": "Beliebtester Renntyp (gesamt)",
+  "stats.allRaceTypes": "Alle Renntypen",
+  "stats.byRegion": "Pläne nach Region",
+  "stats.noPlans": "Noch keine Pläne erstellt. Statistiken erscheinen hier, nachdem Athleten den Planer genutzt haben.",
+  "stats.planCount_one": "{{count}} Plan",
+  "stats.planCount_other": "{{count}} Pläne",
+  "stats.pctOfTotal": "({{pct}}% des Gesamtwerts)",
+
+  "region.us": "Vereinigte Staaten",
+  "region.de": "Deutschland",
+  "region.dk": "Dänemark",
+  "region.ch": "Schweiz",
+  "region.unknown": "Unbekannt",
+
+  "footer": "Es werden keine persönlichen Daten gespeichert — nur Renntyp, Region und Zeitstempel pro Plan."
+}

@@ -1,0 +1,68 @@
+{
+  "steps.race": "Dein Rennen",
+  "steps.body": "Dein Körper & Präferenzen",
+  "steps.products": "Produktpräferenzen",
+
+  "field.raceName": "Rennen- oder Laufname",
+  "field.raceName.placeholder": "z.B. Berlin Marathon 2026",
+  "field.raceName.hint": "Optional — wird auf deinem Plan angezeigt",
+
+  "field.gpx": "GPX-Datei hochladen (optional)",
+  "field.gpx.drop": "GPX-Datei hier ablegen oder klicken zum Durchsuchen",
+  "field.gpx.hint": "Füllt Distanz, Höhenmeter & Untergrund automatisch aus",
+  "field.gpx.loaded": "GPX geladen: {{km}} km · {{elevation}} m Höhenunterschied · {{label}}",
+  "field.gpx.error": "GPX-Datei konnte nicht gelesen werden — bitte eine andere versuchen",
+
+  "field.distance": "Renndistanz",
+  "field.distance.hint": "{{value}} {{unit}} — personalisierter Ernährungsplan",
+
+  "field.elevation": "Höhenunterschied",
+  "field.elevation.hintDefault": "Optional — verbessert die Berechnung für hügelige Strecken. Standard ist 0 (flach).",
+  "field.elevation.hintGpx": "Aus GPX übernommen · {{label}}",
+
+  "field.surface": "Untergrund",
+
+  "field.goalTime": "Zielzeit",
+  "field.goalTime.placeholder": "h:mm",
+  "field.goalTime.hint": "z.B. 2:15 oder 2.15 für 2 Stunden 15 Minuten",
+  "field.goalTime.parsed": "{{hours}}h {{mins}}min",
+  "field.goalTime.error": "Zeit als h:mm oder h.mm eingeben, z.B. 2:15 oder 2.15",
+
+  "field.weight": "Körpergewicht",
+  "field.weight.error": "Gewicht zwischen {{min}}–{{max}} {{unit}} eingeben",
+
+  "field.gender": "Geschlecht",
+
+  "field.conditions": "Rennbedingungen",
+  "field.conditions.cool.sub": "unter 15°C",
+  "field.conditions.mild.sub": "15–20°C",
+  "field.conditions.warm.sub": "20–26°C",
+  "field.conditions.hot.sub": "über 26°C",
+
+  "field.effort": "Intensitätsniveau",
+  "field.effort.easy.desc": "Angenehmes, gesprächiges Tempo",
+  "field.effort.race_pace.desc": "Zieltempo — kontrolliert aber fordernd",
+  "field.effort.hard.desc": "Schwelle oder darüber — es brennt",
+
+  "field.training": "Dein Trainingsstatus",
+  "field.training.untrained": "Untrainiert",
+  "field.training.untrained.desc": "Neu im Ausdauersport, niedrigere Schweißrate",
+  "field.training.intermediate": "Fortgeschritten",
+  "field.training.intermediate.desc": "Moderates Ausdauertraining (empfohlen für die meisten)",
+  "field.training.trained": "Trainiert",
+  "field.training.trained.desc": "Regelmäßiger Ausdauersportler, höhere Schweißrate",
+  "field.training.elite": "Elite",
+  "field.training.elite.desc": "Profi- oder Wettkampfsportler",
+
+  "field.caffeine": "Koffeinprodukte",
+  "field.caffeine.yes": "Ja, mit Koffein",
+  "field.caffeine.no": "Kein Koffein",
+
+  "field.products.intro": "Wähle deine Lieblingsaromen — dein Plan verwendet diese. Bei längeren Rennen wechseln wir sie ab. Keine Präferenz? Wir stellen eine ausgewogene Mischung zusammen.",
+  "field.gels": "Energie-Gels",
+  "field.bars": "Energie-Riegel",
+
+  "product.carbs": "{{value}}g Kohlenhydrate",
+  "product.sodium": "{{value}}mg Natrium",
+  "product.caffeine": "{{value}}mg Koffein"
+}
