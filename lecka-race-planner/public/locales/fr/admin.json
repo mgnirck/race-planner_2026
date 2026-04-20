@@ -1,0 +1,36 @@
+{
+  "title": "Lecka Admin",
+  "enterPassword": "Saisir le mot de passe",
+  "passwordPlaceholder": "Mot de passe",
+  "unlock": "Déverrouiller",
+  "incorrectPassword": "Mot de passe incorrect.",
+  "noPasswordSet": "VITE_ADMIN_PASSWORD n'est pas défini. L'accès est bloqué en production.",
+
+  "header.label": "Lecka",
+  "header.title": "Admin planificateur",
+
+  "status.loading": "Chargement des statistiques serveur…",
+  "status.live": "En direct — tous les utilisateurs",
+  "status.serverUnavailable": "Serveur indisponible — affichage des données locales",
+  "status.localData": "Données locales",
+  "status.refresh": "↺ Actualiser",
+  "status.refreshing": "Actualisation…",
+
+  "stats.plansThisMonth": "Plans ce mois",
+  "stats.plansAllTime": "Plans au total",
+  "stats.mostPopular": "Type de course le plus populaire (total)",
+  "stats.allRaceTypes": "Tous les types de course",
+  "stats.byRegion": "Plans par région",
+  "stats.noPlans": "Aucun plan généré pour l'instant. Les statistiques s'afficheront ici après que des athlètes auront utilisé le planificateur.",
+  "stats.planCount_one": "{{count}} plan",
+  "stats.planCount_other": "{{count}} plans",
+  "stats.pctOfTotal": "({{pct}}% du total)",
+
+  "region.us": "États-Unis",
+  "region.de": "Allemagne",
+  "region.dk": "Danemark",
+  "region.ch": "Suisse",
+  "region.unknown": "Inconnu",
+
+  "footer": "Aucune donnée personnelle n'est enregistrée — uniquement le type de course, la région et l'horodatage par plan."
+}

@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engine/region-utils.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
@@ -42,11 +42,12 @@ function formatDuration(minutes) {
   return `${h}h ${m}min`
 }
 
-function formatTimingLabel(minutes, totalDuration) {
+function formatTimingLabel(minutes, totalDuration, t) {
   if (minutes < 0) return `T-${Math.abs(minutes)} min`
   if (minutes >= totalDuration) {
     const postMin = minutes - totalDuration
-    return postMin > 0 ? `+${postMin} min` : 'Finish'
+    if (postMin > 0) return `+${postMin} min`
+    return t ? t('timing.finish') : 'Finish'
   }
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -144,14 +145,14 @@ function buildDuringGroups(duringEvents, t) {
   return Object.values(byProduct).map(({ product, note, times }) => {
     let scheduleText
     if (times.length === 1) {
-      scheduleText = t('results:timeline.atTime', { time: formatTimingLabel(times[0], Infinity) })
+      scheduleText = t('results:timeline.atTime', { time: formatTimingLabel(times[0], Infinity, t) })
     } else {
       const intervals = times.slice(1).map((tv, i) => tv - times[i])
       const allSame   = intervals.every(iv => iv === intervals[0])
       if (allSame) {
-        scheduleText = t('results:timeline.every', { interval: intervals[0], start: formatTimingLabel(times[0], Infinity) })
+        scheduleText = t('results:timeline.every', { interval: intervals[0], start: formatTimingLabel(times[0], Infinity, t) })
       } else {
-        const labels = times.map(tv => formatTimingLabel(tv, Infinity))
+        const labels = times.map(tv => formatTimingLabel(tv, Infinity, t))
         scheduleText = labels.length > 4
           ? `${labels.slice(0, 3).join(', ')} … ${t('results:timeline.moreSlots', { count: labels.length - 3 })}`
           : t('results:timeline.atTime', { time: labels.join(', ') })
@@ -386,12 +387,13 @@ const PHASE_BADGE = {
 }
 
 function TimelineRow({ event, totalDuration, isLast }) {
+  const { t } = useTranslation('results')
   return (
     <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="w-24 flex-shrink-0 pt-0.5">
         <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
                           whitespace-nowrap ${PHASE_BADGE[event.phase]}`}>
-          {formatTimingLabel(event.time, totalDuration)}
+          {formatTimingLabel(event.time, totalDuration, t)}
         </span>
       </div>
       <div className="flex-1 min-w-0">
@@ -403,6 +405,7 @@ function TimelineRow({ event, totalDuration, isLast }) {
 }
 
 function DuringGroupRow({ group, isLast }) {
+  const { t } = useTranslation('results')
   return (
     <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="w-24 flex-shrink-0 pt-0.5">
@@ -415,7 +418,7 @@ function DuringGroupRow({ group, isLast }) {
         <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{group.product.name}</p>
         <p className="text-xs text-gray-400 mt-0.5">{group.scheduleText}</p>
         {group.product.caffeine && (
-          <span className="text-xs font-medium text-[#48C4B0]">+ caffeine</span>
+          <span className="text-xs font-medium text-[#48C4B0]">+ {t('hero.caffeineTag').toLowerCase()}</span>
         )}
       </div>
     </div>
@@ -769,7 +772,7 @@ function ResearchModal({ onClose }) {
 // ── CartEditorModal ───────────────────────────────────────────────────────────
 
 function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig }) {
-  const { t } = useTranslation('results')
+  const { t } = useTranslation(['results', 'form'])
   const availableProducts = useMemo(() =>
     allProductsCatalog.filter(p => p.type !== 'variety_pack' && isAvailableInRegion(p, region)),
     [region]
@@ -807,8 +810,8 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
           <p className="text-xs text-gray-400">
-            {product.carbs_per_unit}g carbs
-            {product.caffeine ? ` · ${product.caffeine_mg}mg caffeine` : ''}
+            {t('form:product.carbs', { value: product.carbs_per_unit })}
+            {product.caffeine ? ` · ${t('form:product.caffeine', { value: product.caffeine_mg })}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -1083,19 +1086,24 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             <p className="text-sm text-[#1B1B1B] mb-4">
               {trainingInfo.gelOverage > 0 && (
                 <>
-                  Your race needs{' '}
-                  <span className="font-bold">{trainingInfo.gelRaceUnits} gel{trainingInfo.gelRaceUnits !== 1 ? 's' : ''}</span>.{' '}
-                  Sold in multi-packs, your cart includes{' '}
-                  <span className="font-bold">{trainingInfo.gelCartUnits} gels</span> —{' '}
-                  the extra <span className="font-bold">{trainingInfo.gelOverage}</span> are perfect for training.
+                  <Trans
+                    t={t}
+                    i18nKey="results:training.gelOverage"
+                    count={trainingInfo.gelRaceUnits}
+                    values={{ race: trainingInfo.gelRaceUnits, cart: trainingInfo.gelCartUnits, extra: trainingInfo.gelOverage }}
+                    components={{ bold: <strong /> }}
+                  />
                   {trainingInfo.barOverage > 0 ? ' ' : ''}
                 </>
               )}
               {trainingInfo.barOverage > 0 && (
-                <>
-                  {trainingInfo.gelOverage > 0 ? 'Your cart also includes' : 'Your cart includes'}{' '}
-                  an extra <span className="font-bold">{trainingInfo.barOverage} bar{trainingInfo.barOverage !== 1 ? 's' : ''}</span> for training.
-                </>
+                <Trans
+                  t={t}
+                  i18nKey={trainingInfo.gelOverage > 0 ? 'results:training.barOverage' : 'results:training.barOverageOnly'}
+                  count={trainingInfo.barOverage}
+                  values={{ extra: trainingInfo.barOverage }}
+                  components={{ bold: <strong /> }}
+                />
               )}
             </p>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">

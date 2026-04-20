@@ -21,6 +21,8 @@
   "product.saves": "Saves {{symbol}}{{amount}}",
   "product.single": "single",
 
+  "timing.finish": "Finish",
+
   "timeline.start": "Start",
   "timeline.finish": "Finish · {{duration}}",
   "timeline.raceStart": "Race start",

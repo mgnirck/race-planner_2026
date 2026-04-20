@@ -21,6 +21,8 @@
   "product.saves": "Sparer {{symbol}}{{amount}}",
   "product.single": "enkelt",
 
+  "timing.finish": "Mål",
+
   "timeline.start": "Start",
   "timeline.finish": "Mål · {{duration}}",
   "timeline.raceStart": "Løbsstart",

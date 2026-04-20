@@ -21,6 +21,8 @@
   "product.saves": "Spart {{symbol}}{{amount}}",
   "product.single": "einzeln",
 
+  "timing.finish": "Ziel",
+
   "timeline.start": "Start",
   "timeline.finish": "Ziel · {{duration}}",
   "timeline.raceStart": "Rennstart",
