@@ -117,7 +117,7 @@ function aggregateByProduct(selection, region = 'us', manualQty = null) {
       } else if (map[id]) {
         map[id].totalUnits = units
       } else {
-        const product = allProductsCatalog.find(p => p.id === id && p.type !== 'variety_pack')
+        const product = allProductsCatalog.find(p => p.id === id && (p.type === 'gel' || p.type === 'bar'))
         if (product) map[id] = { product, totalUnits: units }
       }
     }
@@ -184,6 +184,90 @@ function buildDuringGroups(duringEvents) {
     }
     return { product, note, count: times.length, scheduleText }
   })
+}
+
+/**
+ * Rebuilds a selection array that reflects manual quantity overrides so the
+ * race timeline stays in sync with the product quantities the user has set.
+ *
+ * - Removed products (qty = 0) are dropped entirely.
+ * - Reduced quantities trim timing events from the end of the sorted list.
+ * - Increased quantities extend the last detected interval forward, capped at
+ *   totalDuration-1 for gels so they stay in the "during" phase.
+ * - Products added fresh (not in the original selection) get evenly-spaced
+ *   timings: gels during the race (every 30 min from 20 min), bars split
+ *   equally between before (-30 min) and after (finish +15 min).
+ */
+function adjustTimelineSelection(selection, manualQty, totalDuration, allProducts) {
+  if (!manualQty) return selection
+
+  // Group all selection items by product ID
+  const grouped = {}
+  for (const item of selection) {
+    const id = item.product.id
+    if (!grouped[id]) grouped[id] = { product: item.product, items: [], allTimings: [], note: '' }
+    grouped[id].items.push(item)
+    for (const t of item.timing_minutes) grouped[id].allTimings.push(t)
+    if (!grouped[id].note && item.note) grouped[id].note = item.note
+  }
+
+  const result = []
+
+  // Process products that already exist in the selection
+  for (const [productId, group] of Object.entries(grouped)) {
+    const overrideQty = manualQty[productId]
+    if (overrideQty === undefined) {
+      result.push(...group.items)
+      continue
+    }
+    if (overrideQty <= 0) continue
+
+    const sorted = [...group.allTimings].sort((a, b) => a - b)
+    const originalQty = sorted.length
+    let newTimings
+
+    if (overrideQty <= originalQty) {
+      newTimings = sorted.slice(0, overrideQty)
+    } else {
+      const duringTimings = sorted.filter(t => t >= 0 && t < totalDuration)
+      let interval = 30
+      if (duringTimings.length > 1) {
+        const span = duringTimings[duringTimings.length - 1] - duringTimings[0]
+        interval = Math.max(1, Math.round(span / (duringTimings.length - 1)))
+      }
+      const lastDuring = duringTimings.length > 0
+        ? duringTimings[duringTimings.length - 1]
+        : sorted.filter(t => t >= 0).at(-1) ?? 0
+      const extra = Array.from({ length: overrideQty - originalQty }, (_, i) =>
+        Math.min(lastDuring + (i + 1) * interval, totalDuration - 1)
+      )
+      newTimings = [...sorted, ...extra]
+    }
+
+    result.push({ product: group.product, quantity: overrideQty, timing_minutes: newTimings, note: group.note })
+  }
+
+  // Products newly introduced via manualQty (not in original selection)
+  for (const [productId, qty] of Object.entries(manualQty)) {
+    if (qty <= 0 || grouped[productId]) continue
+    const product = allProducts.find(p => p.id === productId)
+    if (!product) continue
+
+    const timings = []
+    if (product.type === 'gel') {
+      for (let i = 0; i < qty; i++) timings.push(Math.min(20 + i * 30, totalDuration - 1))
+    } else if (product.type === 'bar') {
+      const beforeQty = Math.ceil(qty / 2)
+      const afterQty  = qty - beforeQty
+      for (let i = 0; i < beforeQty; i++) timings.push(-30 - i * 15)
+      for (let i = 0; i < afterQty; i++)  timings.push(totalDuration + 15 + i * 15)
+    }
+    if (timings.length > 0) {
+      result.push({ product, quantity: qty, timing_minutes: timings, note: '' })
+    }
+  }
+
+  return result
 }
 
 // ── Shared UI ─────────────────────────────────────────────────────────────────
@@ -788,7 +872,7 @@ function ResearchModal({ onClose }) {
 
 function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig }) {
   const availableProducts = useMemo(() =>
-    allProductsCatalog.filter(p => p.type !== 'variety_pack' && isAvailableInRegion(p, region)),
+    allProductsCatalog.filter(p => (p.type === 'gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
     [region]
   )
 
@@ -862,7 +946,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
           <div>
             <h2 className="text-base font-bold text-[#1B1B1B]">Adjust your plan</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Change quantities — cart updates live</p>
+            <p className="text-xs text-gray-400 mt-0.5">Change single item quantities — cart updates live</p>
           </div>
           <button
             type="button"
@@ -876,7 +960,10 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
           {gels.length > 0 && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Gels</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Gels</p>
+                <p className="text-xs text-gray-400">Single Item Quantity</p>
+              </div>
               <div className="space-y-1">
                 {gels.map(p => <ProductRow key={p.id} product={p} />)}
               </div>
@@ -884,7 +971,10 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
           )}
           {bars.length > 0 && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Bars</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Bars</p>
+                <p className="text-xs text-gray-400">Single Item Quantity</p>
+              </div>
               <div className="space-y-1">
                 {bars.map(p => <ProductRow key={p.id} product={p} />)}
               </div>
@@ -935,37 +1025,48 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   )
   const trainingInfo = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
 
-  // Variety pack CTA — compute separately, not mixed into the main cart
+  // Variety pack CTA — always just 1× gel variety pack + 1× bar variety pack, nothing else
   const vpCartURL = useMemo(() => {
-    const gelRows = aggregated.filter(r => r.product.type === 'gel')
-    const totalGelUnits = gelRows.reduce((s, r) => s + r.totalUnits, 0)
-    if (totalGelUnits === 0) return null
-    const vpProduct = allProductsCatalog.find(p => p.type === 'variety_pack')
-    if (!vpProduct) return null
-    const vpVariants = vpProduct.regions?.[region]?.variants ?? []
-    if (!vpVariants.length) return null
-    const vpVariant = vpVariants[0]
-    const vpCount   = Math.ceil(totalGelUnits / vpVariant.units_per_pack)
-    const nonGelRows = aggregated.filter(r => r.product.type !== 'gel')
-    const vpAggregated = [
-      { product: vpProduct, totalUnits: totalGelUnits, cartItems: [{ ...vpVariant, quantity: vpCount }], linePrice: vpCount * vpVariant.price, cartUnits: vpCount * vpVariant.units_per_pack },
-      ...nonGelRows,
-    ]
-    return embedCartURL(buildCartURLFromAggregated(vpAggregated, 'NUTRIPLAN10', '', region))
-  }, [aggregated, region])
+    const gelVP = allProductsCatalog.find(p => p.type === 'variety_pack')
+    if (!gelVP) return null
+    const gelVPVariants = gelVP.regions?.[region]?.variants ?? []
+    if (!gelVPVariants.length) return null
 
-  // Filter timeline when products are manually removed
-  const removedProductIds = useMemo(() => {
-    if (!manualQty) return new Set()
-    return new Set(Object.entries(manualQty).filter(([, q]) => q <= 0).map(([id]) => id))
-  }, [manualQty])
+    const vpItems = []
+
+    const gelVPVariant = gelVPVariants[0]
+    vpItems.push({
+      product:    gelVP,
+      totalUnits: gelVPVariant.units_per_pack,
+      cartItems:  [{ ...gelVPVariant, quantity: 1 }],
+      linePrice:  gelVPVariant.price,
+      cartUnits:  gelVPVariant.units_per_pack,
+    })
+
+    const barVP = allProductsCatalog.find(p => p.type === 'bar_variety_pack')
+    if (barVP) {
+      const barVPVariants = barVP.regions?.[region]?.variants ?? []
+      if (barVPVariants.length > 0) {
+        const barVPVariant = barVPVariants[0]
+        vpItems.push({
+          product:    barVP,
+          totalUnits: barVPVariant.units_per_pack,
+          cartItems:  [{ ...barVPVariant, quantity: 1 }],
+          linePrice:  barVPVariant.price,
+          cartUnits:  barVPVariant.units_per_pack,
+        })
+      }
+    }
+
+    return embedCartURL(buildCartURLFromAggregated(vpItems, 'NUTRIPLAN10', '', region))
+  }, [region])
 
   const timeline = useMemo(() => {
-    const effectiveSelection = removedProductIds.size > 0
-      ? selection.filter(item => !removedProductIds.has(item.product.id))
-      : selection
+    const effectiveSelection = adjustTimelineSelection(
+      selection, manualQty, targets.total_duration_minutes, allProductsCatalog
+    )
     return buildTimeline(effectiveSelection, targets.total_duration_minutes)
-  }, [selection, targets, removedProductIds])
+  }, [selection, manualQty, targets])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
@@ -1194,10 +1295,10 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
                            border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl
                            text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors"
               >
-                Keen to try all flavors? Get our Variety Pack →
+                Keen to try all our products? Get our Variety Packs →
               </a>
               <p className="text-xs text-gray-400 text-center mt-1.5">
-                Great for training — all 5 flavors in one box · NUTRIPLAN10 applied
+                Great for training - all our products for testing and fueling · NUTRIPLAN10 applied
               </p>
             </div>
           )}
