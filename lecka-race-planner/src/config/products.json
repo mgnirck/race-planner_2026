@@ -177,6 +177,32 @@
     }
   },
   {
+    "id": "bar-variety-pack",
+    "name": "Energy Bar Variety Pack",
+    "type": "bar_variety_pack",
+    "carbs_per_unit": 24,
+    "sodium_per_unit": 78,
+    "price_usd": 29.95,
+    "units_per_box": 12,
+    "shopify_variant_id": "7835568046127",
+    "caffeine": false,
+    "caffeine_mg": 0,
+    "ideal_time": ["before", "after"],
+    "regions": {
+      "us": {
+        "variants": [
+          { "shopify_variant_id": "7835568046127", "units_per_pack": 12, "price": 29.95 }
+        ]
+      },
+      "de": {
+        "variants": [
+          { "shopify_variant_id": "7887727624382", "units_per_pack": 8, "price": 19.95 }
+        ]
+      },
+      "dk": { "variants": [] }
+    }
+  },
+  {
     "id": "bar-mango-coconut",
     "name": "Energy Bar Mango Coconut",
     "type": "bar",
