@@ -10,7 +10,7 @@
  * onComplete({ targets, selection, form }) — called on final submit
  */
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
 import products             from '../config/products.json'
@@ -42,14 +42,13 @@ const STEP_TITLES = ['Your race', 'Your body & preferences', 'Product preference
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function parseGoalTime(str) {
-  // Accepts H:MM, HH:MM, H.MM, HH.MM (colon or dot separator)
-  const match = str.trim().match(/^(\d{1,2})[:.](\d{2})$/)
-  if (!match) return null
-  const hours = parseInt(match[1], 10)
-  const mins  = parseInt(match[2], 10)
-  if (mins > 59) return null
-  const total = hours * 60 + mins
+function goalMinutesFromParts(hStr, mStr) {
+  if (hStr === '' || mStr === '') return null
+  const h = parseInt(hStr, 10)
+  const m = parseInt(mStr, 10)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  if (h < 0 || m < 0 || m > 59) return null
+  const total = h * 60 + m
   return total > 0 ? total : null
 }
 
@@ -184,9 +183,11 @@ function ProductPreferenceCard({ product, selected, onToggle }) {
 
 function StepOne({ form, setForm }) {
   const [gpxError, setGpxError] = useState(false)
+  const minutesRef = useRef(null)
 
-  const goalMinutes   = parseGoalTime(form.goal_time)
-  const timeIsInvalid = form.goal_time.length > 0 && goalMinutes === null
+  const goalMinutes    = goalMinutesFromParts(form.goal_time_h, form.goal_time_m)
+  const minutesInvalid = form.goal_time_m !== '' &&
+    (isNaN(parseInt(form.goal_time_m, 10)) || parseInt(form.goal_time_m, 10) > 59)
 
   function handleDistChange(rawValue) {
     setForm(f => {
@@ -443,32 +444,63 @@ function StepOne({ form, setForm }) {
       {/* Goal finish time */}
       <div>
         <FieldLabel>Goal finish time</FieldLabel>
-        <input
-          type="text"
-          inputMode="numeric"
-          placeholder="h:mm"
-          value={form.goal_time}
-          onChange={e => setForm(f => ({ ...f, goal_time: e.target.value }))}
-          className={[
-            'w-28 border-2 rounded-lg px-3 py-2.5 text-sm font-mono tracking-wide',
-            'focus:outline-none',
-            goalMinutes !== null
-              ? 'border-[#48C4B0]'
-              : timeIsInvalid
-              ? 'border-red-300'
-              : 'border-gray-200 focus:border-[#48C4B0]',
-          ].join(' ')}
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={2}
+            placeholder="hh"
+            value={form.goal_time_h}
+            onChange={e => {
+              const val = e.target.value.replace(/\D/g, '').slice(0, 2)
+              setForm(f => ({ ...f, goal_time_h: val }))
+              if (val.length === 2) minutesRef.current?.focus()
+            }}
+            className={[
+              'w-16 border-2 rounded-lg px-3 py-2.5 text-sm font-mono text-center',
+              'focus:outline-none',
+              goalMinutes !== null
+                ? 'border-[#48C4B0]'
+                : 'border-gray-200 focus:border-[#48C4B0]',
+            ].join(' ')}
+          />
+          <span className="text-xl font-bold text-gray-300 select-none">:</span>
+          <input
+            ref={minutesRef}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={2}
+            placeholder="mm"
+            value={form.goal_time_m}
+            onChange={e => {
+              const val = e.target.value.replace(/\D/g, '').slice(0, 2)
+              setForm(f => ({ ...f, goal_time_m: val }))
+            }}
+            className={[
+              'w-16 border-2 rounded-lg px-3 py-2.5 text-sm font-mono text-center',
+              'focus:outline-none',
+              minutesInvalid
+                ? 'border-red-300'
+                : goalMinutes !== null
+                ? 'border-[#48C4B0]'
+                : 'border-gray-200 focus:border-[#48C4B0]',
+            ].join(' ')}
+          />
+        </div>
         {goalMinutes !== null && (
           <p className="text-xs text-[#48C4B0] mt-1.5">
             {Math.floor(goalMinutes / 60)}h {goalMinutes % 60}min
           </p>
         )}
-        {timeIsInvalid && (
-          <p className="text-xs text-red-400 mt-1.5">Enter time as h:mm or h.mm, e.g. 2:15 or 2.15</p>
+        {minutesInvalid && (
+          <p className="text-xs text-red-400 mt-1.5">Minutes must be between 0 and 59</p>
         )}
-        {!timeIsInvalid && goalMinutes === null && (
-          <p className="text-xs text-gray-400 mt-1.5">e.g. 2:15 or 2.15 for 2 hours 15 minutes</p>
+        {!minutesInvalid && goalMinutes === null && (
+          <p className="text-xs text-gray-400 mt-1.5">
+            Hours and minutes — e.g. 02 : 15, or 50 : 20 for a 50h race
+          </p>
         )}
       </div>
 
@@ -707,7 +739,7 @@ function isStep1Valid(form) {
     form.custom_km !== '' &&
     form.race_type !== '' &&
     form.surface_type !== '' &&
-    parseGoalTime(form.goal_time) !== null
+    goalMinutesFromParts(form.goal_time_h, form.goal_time_m) !== null
   )
 }
 
@@ -738,7 +770,8 @@ export default function StepForm({ onComplete }) {
     dist_unit:         'km',
     surface_type:      '',
     race_type:         '',
-    goal_time:         '',
+    goal_time_h:       '',
+    goal_time_m:       '',
     elevation_gain_m:  0,
     elev_display:      '',
     elev_unit:         'm',
@@ -764,7 +797,7 @@ export default function StepForm({ onComplete }) {
       return
     }
     const weight_kg    = toKg(form.weight_value, form.weight_unit)
-    const goal_minutes = parseGoalTime(form.goal_time)
+    const goal_minutes = goalMinutesFromParts(form.goal_time_h, form.goal_time_m)
 
     const targets   = calculateTargets({
       race_type:        form.race_type,
@@ -780,7 +813,12 @@ export default function StepForm({ onComplete }) {
     })
     const selection = selectProducts(targets, form.preferred_product_ids, detectRegion)
 
-    onComplete({ targets, selection, form })
+    // Reconstruct goal_time string for the send-plan API and plan recording
+    const h = parseInt(form.goal_time_h, 10)
+    const m = parseInt(form.goal_time_m, 10)
+    const formOut = { ...form, goal_time: `${h}:${String(m).padStart(2, '0')}` }
+
+    onComplete({ targets, selection, form: formOut })
   }
 
   return (
