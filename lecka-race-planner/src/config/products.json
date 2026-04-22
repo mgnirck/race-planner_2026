@@ -170,7 +170,7 @@
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "8317477322942", "units_per_pack": 15, "price": 36.99 }
+          { "shopify_variant_id": "45341759996094", "units_per_pack": 15, "price": 36.99 }
         ]
       },
       "dk": { "variants": [] }
@@ -196,7 +196,7 @@
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "7887727624382", "units_per_pack": 8, "price": 19.95 }
+          { "shopify_variant_id": "43525358878910", "units_per_pack": 8, "price": 19.50 }
         ]
       },
       "dk": { "variants": [] }
