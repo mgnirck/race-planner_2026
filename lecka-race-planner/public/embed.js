@@ -55,28 +55,32 @@
   // ── Haravan cart handler ────────────────────────────────────────────────────
   // Called when the planner iframe sends lecka:haravanCart.
   // Runs in the parent-page context (www.getlecka.vn), so /cart/add.js is same-origin.
+  // Uses sequential URLencoded POSTs (Haravan doesn't support the JSON {items:[]} format).
+  // /cart/clear.js failure is non-fatal — we always redirect to cart at the end.
   function handleHaravanCart(items, discount) {
     if (!items || !items.length) return;
 
-    var apiItems = items.map(function (item) {
-      return { id: parseInt(item.id, 10), quantity: item.quantity };
-    });
+    function redirect() {
+      var qs = discount ? '?discount=' + encodeURIComponent(discount) : '';
+      win.location.href = '/cart' + qs;
+    }
 
+    function addItem(index) {
+      if (index >= items.length) { redirect(); return; }
+      var item = items[index];
+      fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'id=' + encodeURIComponent(item.id) + '&quantity=' + encodeURIComponent(item.quantity),
+      })
+        .catch(function (err) { console.warn('[Lecka] cart/add.js error:', err); })
+        .then(function () { addItem(index + 1); });
+    }
+
+    // Clear existing cart (best-effort — Haravan may not support this endpoint)
     fetch('/cart/clear.js', { method: 'POST' })
-      .then(function () {
-        return fetch('/cart/add.js', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: apiItems }),
-        });
-      })
-      .then(function () {
-        var qs = discount ? '?discount=' + encodeURIComponent(discount) : '';
-        win.location.href = '/cart' + qs;
-      })
-      .catch(function (err) {
-        console.error('[Lecka] Haravan cart error:', err);
-      });
+      .catch(function () {})
+      .then(function () { addItem(0); });
   }
 
   // ── Auto-resize a single iframe ─────────────────────────────────────────────
