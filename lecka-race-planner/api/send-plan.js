@@ -381,12 +381,12 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
     const { usesVarietyPack, savedAmount } = computeOptimalGelCart(gelAgg, region, allProductsCatalog)
     if (usesVarietyPack && savedAmount > 0) {
       y = ensureSpace(doc, y, 20)
-      const currencySymbol = region === 'de' ? '\u20ac' : region === 'dk' ? 'kr' : '$'
+      const currencySymbol = region === 'de' ? '\u20ac' : region === 'dk' ? 'kr' : region === 'vn' ? '\u20ab' : '$'
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(9)
       doc.setTextColor(C.green)
       doc.text(
-        `\u2714 Shopping tip: Buy 1\u00d7 Energy Gel Variety Pack (saves ${currencySymbol}${savedAmount.toFixed(2)} vs separate boxes) — covers all flavours in your plan`,
+        `\u2714 Shopping tip: Buy 1\u00d7 Energy Gel Variety Pack (saves ${currencySymbol}${region === 'vn' ? Math.round(savedAmount).toLocaleString('en-US') : savedAmount.toFixed(2)} vs separate boxes) — covers all flavours in your plan`,
         ML, y
       )
       doc.setFont('helvetica', 'normal')
@@ -571,12 +571,12 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
       cartUnits: computeCartItems(emailProductByPid[pid], region, totalUnits).reduce((s, i) => s + i.quantity * i.units_per_pack, 0),
     }))
   const emailVpResult = computeOptimalGelCart(emailGelAgg, region, allProductsCatalog)
-  const currencySymbol = region === 'de' ? '&euro;' : region === 'dk' ? 'kr' : '$'
+  const currencySymbol = region === 'de' ? '&euro;' : region === 'dk' ? 'kr' : region === 'vn' ? '&#8363;' : '$'
   const varietyPackHtml = emailVpResult.usesVarietyPack && emailVpResult.savedAmount > 0 ? `
     <div style="background:#f0fdf9;border:2px solid #48C4B0;border-radius:8px;padding:14px 16px;margin:12px 0;">
       <p style="margin:0;font-size:13px;color:#1B1B1B;">
         <strong>&#10003; Best value:</strong> Replace the individual gel boxes with <strong>1&times; Energy Gel Variety Pack</strong>
-        and save <strong>${currencySymbol}${emailVpResult.savedAmount.toFixed(2)}</strong>.
+        and save <strong>${currencySymbol}${region === 'vn' ? Math.round(emailVpResult.savedAmount).toLocaleString('en-US') : emailVpResult.savedAmount.toFixed(2)}</strong>.
         The variety pack includes all 5 gel flavours &mdash; perfect for both race day and training runs.
       </p>
     </div>` : ''

@@ -67,6 +67,13 @@ function formatDuration(minutes) {
   return `${h}h ${m}min`
 }
 
+function formatPrice(amount, symbol, decimals = 2) {
+  const num = decimals === 0
+    ? Math.round(amount).toLocaleString('en-US')
+    : amount.toFixed(decimals)
+  return `${symbol}${num}`
+}
+
 function formatTimingLabel(minutes, totalDuration) {
   if (minutes < 0) return `T-${Math.abs(minutes)} min`
   if (minutes >= totalDuration) {
@@ -372,7 +379,7 @@ function VarietyPackContents({ product, region }) {
   )
 }
 
-function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, currencySymbol = '$', savedAmount = 0, region = 'us' }) {
+function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, currencySymbol = '$', decimals = 2, savedAmount = 0, region = 'us' }) {
   const isVarietyPack = product.type === 'variety_pack'
   const packSummary = cartItems
     .map(item => item.units_per_pack === 1
@@ -394,7 +401,7 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, cur
           <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
           {isVarietyPack && savedAmount > 0 && (
             <span className="text-xs font-bold text-white bg-[#48C4B0] px-1.5 py-0.5 rounded-full whitespace-nowrap">
-              Saves {currencySymbol}{savedAmount.toFixed(2)}
+              Saves {formatPrice(savedAmount, currencySymbol, decimals)}
             </span>
           )}
         </div>
@@ -412,7 +419,7 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, cur
         )}
       </div>
       <div className="text-right flex-shrink-0">
-        <p className="text-sm font-bold text-[#1B1B1B]">{currencySymbol}{linePrice.toFixed(2)}</p>
+        <p className="text-sm font-bold text-[#1B1B1B]">{formatPrice(linePrice, currencySymbol, decimals)}</p>
       </div>
     </div>
   )
@@ -1182,6 +1189,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
                 key={row.product.id}
                 {...row}
                 currencySymbol={regionConfig.currency_symbol}
+                decimals={regionConfig.decimals ?? 2}
                 cartUnits={row.cartUnits}
                 savedAmount={row.savedAmount ?? 0}
                 region={region}
@@ -1264,7 +1272,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
               {totalPacks} pack{totalPacks !== 1 ? 's' : ''}
             </span>
             <span className="text-xl font-bold text-[#1B1B1B]">
-              {regionConfig.currency_symbol}{subtotal.toFixed(2)}
+              {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
             </span>
           </div>
           <a
@@ -1283,6 +1291,8 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           <p className="text-xs text-gray-400 text-center mt-1">
             {region === 'us'
               ? 'Ships to US only. Free shipping on orders over $60.'
+              : region === 'vn'
+              ? 'Giao hàng toàn quốc. Miễn phí vận chuyển cho đơn từ 500.000₫.'
               : `Ships to ${regionConfig.label}. Visit ${regionConfig.store_url} for shipping info.`}
           </p>
           {vpCartURL && (

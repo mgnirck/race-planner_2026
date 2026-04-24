@@ -19,5 +19,13 @@
     "currency_symbol": "kr",
     "label": "Denmark",
     "referrer_hosts": ["getlecka.dk", "www.getlecka.dk"]
+  },
+  "vn": {
+    "store_url": "https://www.getlecka.vn",
+    "currency": "VND",
+    "currency_symbol": "₫",
+    "label": "Vietnam",
+    "decimals": 0,
+    "referrer_hosts": ["getlecka.vn", "www.getlecka.vn"]
   }
 }
