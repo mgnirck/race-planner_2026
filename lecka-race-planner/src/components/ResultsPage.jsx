@@ -1079,7 +1079,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         const [id, qty] = p.split(':')
         return { id, quantity: parseInt(qty, 10) }
       }).filter(item => item.id && item.quantity > 0)
-      notifyHaravanCart(items, 'NUTRIPLAN10')
+      notifyHaravanCart(items, '')
     } catch { /* malformed URL — ignore */ }
   }
 
