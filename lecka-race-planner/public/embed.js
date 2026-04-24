@@ -106,6 +106,7 @@
         break;
 
       case 'lecka:haravanCart':
+        console.log('[Lecka] haravanCart received, items:', data.items);
         handleHaravanCart(data.items, data.discount);
         break;
 

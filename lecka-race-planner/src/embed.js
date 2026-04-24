@@ -104,7 +104,10 @@ export function notifyEmailCapture(email, race_type) {
  */
 export function notifyHaravanCart(items, discountCode) {
   if (!isEmbedded) return
-  window.parent.postMessage({ type: 'lecka:haravanCart', items, discount: discountCode }, parentOrigin)
+  // Use '*' — variant IDs are not sensitive, and parentOrigin may be wrong
+  // if the Haravan page strips the Referer header (common with some CSP setups).
+  console.log('[Lecka] sending haravanCart postMessage', items)
+  window.parent.postMessage({ type: 'lecka:haravanCart', items, discount: discountCode }, '*')
 }
 
 /**
