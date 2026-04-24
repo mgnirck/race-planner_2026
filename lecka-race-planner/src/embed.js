@@ -95,6 +95,19 @@ export function notifyEmailCapture(email, race_type) {
 // ── Cart URL helper ───────────────────────────────────────────────────────────
 
 /**
+ * For Haravan (VN) storefronts: send cart items to the parent page so that
+ * embed.js can add them via the Haravan AJAX cart API (/cart/add.js) and
+ * then redirect the parent to /cart?discount=CODE.
+ *
+ * @param {Array<{id: string, quantity: number}>} items
+ * @param {string} discountCode
+ */
+export function notifyHaravanCart(items, discountCode) {
+  if (!isEmbedded) return
+  window.parent.postMessage({ type: 'lecka:haravanCart', items, discount: discountCode }, parentOrigin)
+}
+
+/**
  * Append utm_source=shopify_embed to a Shopify cart URL when embedded.
  * Pass-through (unchanged) when not embedded.
  *

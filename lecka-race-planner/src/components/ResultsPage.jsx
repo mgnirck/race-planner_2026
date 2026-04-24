@@ -15,7 +15,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engine/region-utils.js'
-import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
+import { isEmbedded, notifyEmailCapture, embedCartURL, notifyHaravanCart, detectRegion, getRegionConfig } from '../embed.js'
 import regionsConfig from '../config/regions.json'
 import allProductsCatalog from '../config/products.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
@@ -1067,6 +1067,22 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
     [aggregated, region]
   )
 
+  // For Haravan (VN): intercept cart link clicks, POST items via postMessage
+  // instead of following the /cart/... URL (which Haravan ignores as a GET permalink).
+  function handleShopClick(e, url) {
+    if (region !== 'vn') return
+    e.preventDefault()
+    try {
+      const cartPath = new URL(url).pathname.split('/cart/')[1]
+      if (!cartPath) return
+      const items = cartPath.split(',').map(p => {
+        const [id, qty] = p.split(':')
+        return { id, quantity: parseInt(qty, 10) }
+      }).filter(item => item.id && item.quantity > 0)
+      notifyHaravanCart(items, 'NUTRIPLAN10')
+    } catch { /* malformed URL — ignore */ }
+  }
+
   // Prefer athlete's race name → actual distance typed → race_type label
   const heroTitle      = form.race_name ||
     (form.custom_km_display ? `${form.custom_km_display} ${form.dist_unit || 'km'}` : null) ||
@@ -1264,6 +1280,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           </div>
           <a
             href={cartURL}
+            onClick={(e) => handleShopClick(e, cartURL)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center w-full min-h-[52px]
@@ -1286,6 +1303,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             <div className="mt-4 pt-4 border-t border-gray-100">
               <a
                 href={vpCartURL}
+                onClick={(e) => handleShopClick(e, vpCartURL)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center w-full min-h-[48px]

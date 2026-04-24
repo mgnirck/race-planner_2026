@@ -52,6 +52,33 @@
     });
   }
 
+  // ── Haravan cart handler ────────────────────────────────────────────────────
+  // Called when the planner iframe sends lecka:haravanCart.
+  // Runs in the parent-page context (www.getlecka.vn), so /cart/add.js is same-origin.
+  function handleHaravanCart(items, discount) {
+    if (!items || !items.length) return;
+
+    var apiItems = items.map(function (item) {
+      return { id: parseInt(item.id, 10), quantity: item.quantity };
+    });
+
+    fetch('/cart/clear.js', { method: 'POST' })
+      .then(function () {
+        return fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: apiItems }),
+        });
+      })
+      .then(function () {
+        var qs = discount ? '?discount=' + encodeURIComponent(discount) : '';
+        win.location.href = '/cart' + qs;
+      })
+      .catch(function (err) {
+        console.error('[Lecka] Haravan cart error:', err);
+      });
+  }
+
   // ── Auto-resize a single iframe ─────────────────────────────────────────────
   function resizeAll(height) {
     var px = Math.max(height, 400) + 'px';
@@ -72,6 +99,10 @@
       case 'lecka:resize':
       case 'lecka-resize':
         if (typeof data.height === 'number') resizeAll(data.height);
+        break;
+
+      case 'lecka:haravanCart':
+        handleHaravanCart(data.items, data.discount);
         break;
 
       case 'lecka:emailCapture':
