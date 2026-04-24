@@ -1,0 +1,40 @@
+{
+  "nav.back": "← Tilbage",
+  "nav.startOver": "← Start forfra",
+  "nav.backToPlanner": "← Tilbage til planlæggeren",
+
+  "step.ofTotal": "Trin {{step}} af 3",
+  "step.next": "Næste",
+  "step.back": "Tilbage",
+  "step.buildMyPlan": "Byg min plan",
+
+  "racetype.5k": "5 km",
+  "racetype.10k": "10 km",
+  "racetype.half_marathon": "Halvmaraton",
+  "racetype.marathon": "Maraton",
+  "racetype.ultra_50k": "Ultra 50 km",
+  "racetype.ultra_100k": "Ultra 100 km+",
+  "racetype.triathlon_sprint": "Sprint-triatlon",
+  "racetype.triathlon_olympic": "Olympisk triatlon",
+  "racetype.triathlon_70_3": "70.3 Triatlon",
+  "racetype.triathlon_140_6": "Ironman 140.6",
+
+  "effort.easy": "Let / lang dag",
+  "effort.race_pace": "Løbstempo",
+  "effort.hard": "Fuld indsats",
+  "effort.easy.label": "Let tempo",
+  "effort.race_pace.label": "Løbstempo",
+  "effort.hard.label": "Hård indsats",
+
+  "conditions.cool": "Kølig",
+  "conditions.mild": "Mild",
+  "conditions.warm": "Varm",
+  "conditions.hot": "Hed",
+  "conditions.humid": "Fugtig",
+
+  "surface.road": "Vej",
+  "surface.trail": "Sti",
+
+  "gender.female": "Kvinde",
+  "gender.male": "Mand"
+}

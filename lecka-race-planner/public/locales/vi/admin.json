@@ -1,0 +1,37 @@
+{
+  "title": "Lecka Admin",
+  "enterPassword": "Nhập mật khẩu",
+  "passwordPlaceholder": "Mật khẩu",
+  "unlock": "Mở khoá",
+  "incorrectPassword": "Mật khẩu không đúng.",
+  "noPasswordSet": "VITE_ADMIN_PASSWORD chưa được thiết lập. Truy cập bị chặn trên môi trường production.",
+
+  "header.label": "Lecka",
+  "header.title": "Quản trị Planner",
+
+  "status.loading": "Đang tải thống kê máy chủ…",
+  "status.live": "Trực tiếp — tất cả người dùng",
+  "status.serverUnavailable": "Máy chủ không khả dụng — hiển thị dữ liệu cục bộ",
+  "status.localData": "Dữ liệu cục bộ",
+  "status.refresh": "↺ Làm mới",
+  "status.refreshing": "Đang làm mới…",
+
+  "stats.plansThisMonth": "Kế hoạch tháng này",
+  "stats.plansAllTime": "Tổng kế hoạch",
+  "stats.mostPopular": "Loại cuộc đua phổ biến nhất (mọi thời điểm)",
+  "stats.allRaceTypes": "Tất cả loại cuộc đua",
+  "stats.byRegion": "Kế hoạch theo khu vực",
+  "stats.noPlans": "Chưa có kế hoạch nào được tạo. Thống kê sẽ hiện ở đây sau khi vận động viên sử dụng planner.",
+  "stats.planCount_one": "{{count}} kế hoạch",
+  "stats.planCount_other": "{{count}} kế hoạch",
+  "stats.pctOfTotal": "({{pct}}% tổng số)",
+
+  "region.us": "Hoa Kỳ",
+  "region.de": "Đức",
+  "region.dk": "Đan Mạch",
+  "region.ch": "Thuỵ Sĩ",
+  "region.vn": "Việt Nam",
+  "region.unknown": "Không xác định",
+
+  "footer": "Không lưu dữ liệu cá nhân — chỉ loại cuộc đua, khu vực và thời điểm tạo kế hoạch."
+}

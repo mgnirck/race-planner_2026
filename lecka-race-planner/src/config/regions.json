@@ -4,20 +4,45 @@
     "currency": "USD",
     "currency_symbol": "$",
     "label": "United States",
-    "referrer_hosts": ["getlecka.com", "www.getlecka.com"]
+    "referrer_hosts": ["getlecka.com", "www.getlecka.com"],
+    "defaultLanguage": "en",
+    "languages": ["en"]
   },
   "de": {
     "store_url": "https://www.getlecka.de",
     "currency": "EUR",
     "currency_symbol": "€",
     "label": "Germany",
-    "referrer_hosts": ["getlecka.de", "www.getlecka.de"]
+    "referrer_hosts": ["getlecka.de", "www.getlecka.de"],
+    "defaultLanguage": "de",
+    "languages": ["de"]
   },
   "dk": {
     "store_url": "https://www.getlecka.dk",
     "currency": "DKK",
     "currency_symbol": "kr",
     "label": "Denmark",
-    "referrer_hosts": ["getlecka.dk", "www.getlecka.dk"]
+    "referrer_hosts": ["getlecka.dk", "www.getlecka.dk"],
+    "defaultLanguage": "da",
+    "languages": ["da"]
+  },
+  "ch": {
+    "store_url": "https://www.getlecka.ch",
+    "currency": "CHF",
+    "currency_symbol": "CHF",
+    "label": "Switzerland",
+    "referrer_hosts": ["getlecka.ch", "www.getlecka.ch"],
+    "defaultLanguage": "de",
+    "languages": ["de", "fr"]
+  },
+  "vn": {
+    "store_url": "https://www.getlecka.vn",
+    "currency": "VND",
+    "currency_symbol": "₫",
+    "label": "Vietnam",
+    "decimals": 0,
+    "referrer_hosts": ["getlecka.vn", "www.getlecka.vn"],
+    "defaultLanguage": "vi",
+    "languages": ["vi"]
   }
 }

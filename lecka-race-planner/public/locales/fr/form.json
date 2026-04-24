@@ -1,0 +1,68 @@
+{
+  "steps.race": "Votre course",
+  "steps.body": "Votre corps & préférences",
+  "steps.products": "Préférences produits",
+
+  "field.raceName": "Nom de la course ou de la sortie",
+  "field.raceName.placeholder": "ex. Marathon de Paris 2026",
+  "field.raceName.hint": "Facultatif — apparaît sur votre plan",
+
+  "field.gpx": "Importer un fichier GPX (facultatif)",
+  "field.gpx.drop": "Déposez votre fichier GPX ici, ou cliquez pour parcourir",
+  "field.gpx.hint": "Remplit automatiquement la distance, le dénivelé et le terrain",
+  "field.gpx.loaded": "GPX chargé : {{km}} km · {{elevation}} m de dénivelé · {{label}}",
+  "field.gpx.error": "Impossible de lire le fichier GPX — veuillez en essayer un autre",
+
+  "field.distance": "Distance de course",
+  "field.distance.hint": "{{value}} {{unit}} — plan nutritionnel personnalisé",
+
+  "field.elevation": "Dénivelé positif",
+  "field.elevation.hintDefault": "Facultatif — améliore le calcul pour les parcours vallonnés. Par défaut 0 (plat).",
+  "field.elevation.hintGpx": "Rempli depuis GPX · {{label}}",
+
+  "field.surface": "Terrain",
+
+  "field.goalTime": "Temps objectif",
+  "field.goalTime.placeholder": "h:mm",
+  "field.goalTime.hint": "ex. 2:15 ou 2.15 pour 2 heures 15 minutes",
+  "field.goalTime.parsed": "{{hours}}h {{mins}}min",
+  "field.goalTime.error": "Saisissez le temps au format h:mm ou h.mm, ex. 2:15 ou 2.15",
+
+  "field.weight": "Poids corporel",
+  "field.weight.error": "Saisissez un poids entre {{min}}–{{max}} {{unit}}",
+
+  "field.gender": "Genre",
+
+  "field.conditions": "Conditions de course",
+  "field.conditions.cool.sub": "moins de 15°C",
+  "field.conditions.mild.sub": "15–20°C",
+  "field.conditions.warm.sub": "20–26°C",
+  "field.conditions.hot.sub": "plus de 26°C",
+
+  "field.effort": "Niveau d'effort",
+  "field.effort.easy.desc": "Allure confortable et conversationnelle",
+  "field.effort.race_pace.desc": "Allure cible — contrôlée mais exigeante",
+  "field.effort.hard.desc": "Seuil ou au-delà — ça fait mal",
+
+  "field.training": "Votre niveau d'entraînement",
+  "field.training.untrained": "Débutant",
+  "field.training.untrained.desc": "Nouveau dans les sports d'endurance, taux de transpiration faible",
+  "field.training.intermediate": "Intermédiaire",
+  "field.training.intermediate.desc": "Entraînement d'endurance modéré (recommandé pour la plupart)",
+  "field.training.trained": "Entraîné",
+  "field.training.trained.desc": "Athlète d'endurance régulier, taux de transpiration élevé",
+  "field.training.elite": "Élite",
+  "field.training.elite.desc": "Athlète professionnel ou compétiteur",
+
+  "field.caffeine": "Produits avec caféine",
+  "field.caffeine.yes": "Oui, inclure la caféine",
+  "field.caffeine.no": "Sans caféine",
+
+  "field.products.intro": "Choisissez vos saveurs préférées — votre plan les utilisera. Pour les courses plus longues, nous les varierons. Pas de préférence ? Nous choisirons un mélange équilibré.",
+  "field.gels": "Gels énergétiques",
+  "field.bars": "Barres énergétiques",
+
+  "product.carbs": "{{value}}g glucides",
+  "product.sodium": "{{value}}mg sodium",
+  "product.caffeine": "{{value}}mg caféine"
+}
