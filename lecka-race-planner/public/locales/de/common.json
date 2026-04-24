@@ -1,0 +1,40 @@
+{
+  "nav.back": "← Zurück",
+  "nav.startOver": "← Von vorne beginnen",
+  "nav.backToPlanner": "← Zurück zum Planer",
+
+  "step.ofTotal": "Schritt {{step}} von 3",
+  "step.next": "Weiter",
+  "step.back": "Zurück",
+  "step.buildMyPlan": "Plan erstellen",
+
+  "racetype.5k": "5 km",
+  "racetype.10k": "10 km",
+  "racetype.half_marathon": "Halbmarathon",
+  "racetype.marathon": "Marathon",
+  "racetype.ultra_50k": "Ultra 50 km",
+  "racetype.ultra_100k": "Ultra 100 km+",
+  "racetype.triathlon_sprint": "Sprint-Triathlon",
+  "racetype.triathlon_olympic": "Olympischer Triathlon",
+  "racetype.triathlon_70_3": "70.3 Triathlon",
+  "racetype.triathlon_140_6": "Ironman 140.6",
+
+  "effort.easy": "Locker / langer Tag",
+  "effort.race_pace": "Renntempo",
+  "effort.hard": "Volleinsatz",
+  "effort.easy.label": "Lockeres Tempo",
+  "effort.race_pace.label": "Renntempo",
+  "effort.hard.label": "Maximale Intensität",
+
+  "conditions.cool": "Kühl",
+  "conditions.mild": "Mild",
+  "conditions.warm": "Warm",
+  "conditions.hot": "Heiß",
+  "conditions.humid": "Feucht",
+
+  "surface.road": "Straße",
+  "surface.trail": "Trail",
+
+  "gender.female": "Weiblich",
+  "gender.male": "Männlich"
+}

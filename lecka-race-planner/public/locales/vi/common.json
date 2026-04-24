@@ -1,0 +1,40 @@
+{
+  "nav.back": "← Quay lại",
+  "nav.startOver": "← Bắt đầu lại",
+  "nav.backToPlanner": "← Quay lại kế hoạch",
+
+  "step.ofTotal": "Bước {{step}} / 3",
+  "step.next": "Tiếp theo",
+  "step.back": "Quay lại",
+  "step.buildMyPlan": "Tạo kế hoạch",
+
+  "racetype.5k": "5 km",
+  "racetype.10k": "10 km",
+  "racetype.half_marathon": "Bán marathon",
+  "racetype.marathon": "Marathon",
+  "racetype.ultra_50k": "Ultra 50 km",
+  "racetype.ultra_100k": "Ultra 100 km+",
+  "racetype.triathlon_sprint": "Triathlon Sprint",
+  "racetype.triathlon_olympic": "Triathlon Olympic",
+  "racetype.triathlon_70_3": "Triathlon 70.3",
+  "racetype.triathlon_140_6": "Ironman 140.6",
+
+  "effort.easy": "Nhẹ nhàng / chạy dài",
+  "effort.race_pace": "Pace thi đấu",
+  "effort.hard": "Nỗ lực tối đa",
+  "effort.easy.label": "Pace nhẹ",
+  "effort.race_pace.label": "Pace thi đấu",
+  "effort.hard.label": "Nỗ lực cao",
+
+  "conditions.cool": "Mát",
+  "conditions.mild": "Bình thường",
+  "conditions.warm": "Ấm",
+  "conditions.hot": "Nóng",
+  "conditions.humid": "Ẩm",
+
+  "surface.road": "Đường nhựa",
+  "surface.trail": "Trail",
+
+  "gender.female": "Nữ",
+  "gender.male": "Nam"
+}

@@ -1,0 +1,68 @@
+{
+  "steps.race": "Thông tin cuộc đua",
+  "steps.body": "Thể trạng & sở thích",
+  "steps.products": "Sản phẩm yêu thích",
+
+  "field.raceName": "Tên cuộc đua",
+  "field.raceName.placeholder": "VD: VPBank Hanoi Marathon 2026",
+  "field.raceName.hint": "Tuỳ chọn — hiển thị trên kế hoạch của bạn",
+
+  "field.gpx": "Tải file GPX (tuỳ chọn)",
+  "field.gpx.drop": "Kéo thả file GPX của cuộc đua vào đây, hoặc nhấn để chọn",
+  "field.gpx.hint": "Tự động điền cự ly, độ tăng độ cao & địa hình",
+  "field.gpx.loaded": "GPX đã tải: {{km}} km · {{elevation}} m độ cao · {{label}}",
+  "field.gpx.error": "Không đọc được file GPX — vui lòng thử file khác",
+
+  "field.distance": "Cự ly",
+  "field.distance.hint": "{{value}} {{unit}} — kế hoạch dinh dưỡng cá nhân hoá",
+
+  "field.elevation": "Độ tăng độ cao",
+  "field.elevation.hintDefault": "Tuỳ chọn — cải thiện tính toán cho cung đường đồi núi. Mặc định là 0 (bằng phẳng).",
+  "field.elevation.hintGpx": "Tự động lấy từ GPX · {{label}}",
+
+  "field.surface": "Địa hình",
+
+  "field.goalTime": "Thời gian hoàn thành mục tiêu",
+  "field.goalTime.placeholder": "h:mm",
+  "field.goalTime.hint": "VD: 2:15 hoặc 2.15 cho 2 giờ 15 phút",
+  "field.goalTime.parsed": "{{hours}}h {{mins}}phút",
+  "field.goalTime.error": "Nhập thời gian theo dạng h:mm hoặc h.mm, VD: 2:15 hoặc 2.15",
+
+  "field.weight": "Cân nặng",
+  "field.weight.error": "Nhập cân nặng từ {{min}}–{{max}} {{unit}}",
+
+  "field.gender": "Giới tính",
+
+  "field.conditions": "Điều kiện thi đấu",
+  "field.conditions.cool.sub": "dưới 15°C",
+  "field.conditions.mild.sub": "15–20°C",
+  "field.conditions.warm.sub": "20–26°C",
+  "field.conditions.hot.sub": "trên 26°C",
+
+  "field.effort": "Mức độ nỗ lực",
+  "field.effort.easy.desc": "Thoải mái, có thể vừa chạy vừa nói chuyện",
+  "field.effort.race_pace.desc": "Pace mục tiêu — kiểm soát nhưng phải cố gắng",
+  "field.effort.hard.desc": "Ngưỡng hoặc hơn — cảm thấy nặng",
+
+  "field.training": "Trình độ luyện tập",
+  "field.training.untrained": "Mới bắt đầu",
+  "field.training.untrained.desc": "Mới tiếp cận môn thể thao sức bền, mồ hôi ít hơn",
+  "field.training.intermediate": "Trung cấp",
+  "field.training.intermediate.desc": "Luyện tập sức bền vừa phải (phù hợp với đa số)",
+  "field.training.trained": "Có kinh nghiệm",
+  "field.training.trained.desc": "Vận động viên sức bền thường xuyên, mồ hôi nhiều hơn",
+  "field.training.elite": "Elite",
+  "field.training.elite.desc": "Vận động viên chuyên nghiệp hoặc cạnh tranh cao",
+
+  "field.caffeine": "Sản phẩm có caffeine",
+  "field.caffeine.yes": "Có, bao gồm caffeine",
+  "field.caffeine.no": "Không có caffeine",
+
+  "field.products.intro": "Chọn hương vị yêu thích — kế hoạch sẽ sử dụng chúng. Với các cuộc đua dài, chúng tôi sẽ xen kẽ hương vị cho đa dạng. Không có sở thích? Chúng tôi sẽ chọn giúp bạn.",
+  "field.gels": "Gel năng lượng",
+  "field.bars": "Thanh năng lượng",
+
+  "product.carbs": "{{value}}g carb",
+  "product.sodium": "{{value}}mg natri",
+  "product.caffeine": "{{value}}mg caffeine"
+}

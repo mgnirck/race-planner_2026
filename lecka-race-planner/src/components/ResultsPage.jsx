@@ -12,12 +12,16 @@
  */
 
 import React, { useState, useMemo, useEffect, useRef } from 'react'
+import { useTranslation, Trans } from 'react-i18next'
 import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engine/region-utils.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
 import regionsConfig from '../config/regions.json'
 import allProductsCatalog from '../config/products.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
+import LanguageSwitcher from './LanguageSwitcher.jsx'
+import i18n from '../i18n.js'
+import { getRaceLabel, getEffortLabel, getConditionLabel } from '../i18n-utils.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -26,35 +30,6 @@ const ELEVATION_MODIFIER_PCT = {
   hilly:      10,
   very_hilly: 15,
   mountain:   22,
-}
-
-// ── Label maps ────────────────────────────────────────────────────────────────
-
-const RACE_LABELS = {
-  '5k':                '5 km',
-  '10k':               '10 km',
-  'half_marathon':     'Half Marathon',
-  'marathon':          'Marathon',
-  'ultra_50k':         'Ultra 50 km',
-  'ultra_100k':        'Ultra 100 km',
-  'triathlon_sprint':  'Sprint Triathlon',
-  'triathlon_olympic': 'Olympic Triathlon',
-  'triathlon_70_3':    '70.3 Triathlon',
-  'triathlon_140_6':   'Ironman 140.6',
-}
-
-const EFFORT_LABELS = {
-  'easy':      'Easy pace',
-  'race_pace': 'Race pace',
-  'hard':      'Hard effort',
-}
-
-const CONDITION_LABELS = {
-  'cool':  'Cool',
-  'mild':  'Mild',
-  'warm':  'Warm',
-  'hot':   'Hot',
-  'humid': 'Humid',
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -74,11 +49,12 @@ function formatPrice(amount, symbol, decimals = 2) {
   return `${symbol}${num}`
 }
 
-function formatTimingLabel(minutes, totalDuration) {
+function formatTimingLabel(minutes, totalDuration, t) {
   if (minutes < 0) return `T-${Math.abs(minutes)} min`
   if (minutes >= totalDuration) {
     const postMin = minutes - totalDuration
-    return postMin > 0 ? `+${postMin} min` : 'Finish'
+    if (postMin > 0) return `+${postMin} min`
+    return t ? t('timing.finish') : 'Finish'
   }
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -165,7 +141,7 @@ function computeTrainingInfo(aggregated) {
  * Group during-phase events by product and derive a compact schedule string.
  * Returns array of { product, note, count, scheduleText }
  */
-function buildDuringGroups(duringEvents) {
+function buildDuringGroups(duringEvents, t) {
   const byProduct = {}
   for (const ev of duringEvents) {
     const id = ev.product.id
@@ -176,17 +152,17 @@ function buildDuringGroups(duringEvents) {
   return Object.values(byProduct).map(({ product, note, times }) => {
     let scheduleText
     if (times.length === 1) {
-      scheduleText = `at ${formatTimingLabel(times[0], Infinity)}`
+      scheduleText = t('results:timeline.atTime', { time: formatTimingLabel(times[0], Infinity, t) })
     } else {
-      const intervals = times.slice(1).map((t, i) => t - times[i])
+      const intervals = times.slice(1).map((tv, i) => tv - times[i])
       const allSame   = intervals.every(iv => iv === intervals[0])
       if (allSame) {
-        scheduleText = `every ${intervals[0]} min, from ${formatTimingLabel(times[0], Infinity)}`
+        scheduleText = t('results:timeline.every', { interval: intervals[0], start: formatTimingLabel(times[0], Infinity, t) })
       } else {
-        const labels = times.map(t => formatTimingLabel(t, Infinity))
+        const labels = times.map(tv => formatTimingLabel(tv, Infinity, t))
         scheduleText = labels.length > 4
-          ? `${labels.slice(0, 3).join(', ')} … +${labels.length - 3} more`
-          : `at ${labels.join(', ')}`
+          ? `${labels.slice(0, 3).join(', ')} … ${t('results:timeline.moreSlots', { count: labels.length - 3 })}`
+          : t('results:timeline.atTime', { time: labels.join(', ') })
       }
     }
     return { product, note, count: times.length, scheduleText }
@@ -306,10 +282,11 @@ function ProductIcon({ product }) {
 // ── Warnings ──────────────────────────────────────────────────────────────────
 
 function WarningBox({ warnings }) {
+  const { t } = useTranslation('results')
   if (!warnings || warnings.length === 0) return null
   return (
     <section>
-      <SectionLabel>Notes & tips</SectionLabel>
+      <SectionLabel>{t('section.notesAndTips')}</SectionLabel>
       <div className="space-y-2">
         {warnings.map((w, i) => (
           <div
@@ -327,37 +304,38 @@ function WarningBox({ warnings }) {
 // ── NutritionSummary ──────────────────────────────────────────────────────────
 
 function NutritionSummary({ targets }) {
+  const { t } = useTranslation('results')
   return (
     <section>
-      <SectionLabel>Nutrition targets</SectionLabel>
+      <SectionLabel>{t('section.nutritionTargets')}</SectionLabel>
       <div className="border-2 border-gray-100 rounded-2xl p-5">
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <p className="text-2xl font-bold text-[#48C4B0]">{targets.carb_per_hour}</p>
-            <p className="text-xs text-gray-400 mt-0.5 leading-tight">g carbs<br />per hour</p>
+            <p className="text-xs text-gray-400 mt-0.5 leading-tight">{t('nutrition.carbsPerHour').split('\n').map((line, i) => <React.Fragment key={i}>{line}{i === 0 && <br />}</React.Fragment>)}</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-[#48C4B0]">{targets.sodium_per_hour}</p>
-            <p className="text-xs text-gray-400 mt-0.5 leading-tight">mg sodium<br />per hour</p>
+            <p className="text-xs text-gray-400 mt-0.5 leading-tight">{t('nutrition.sodiumPerHour').split('\n').map((line, i) => <React.Fragment key={i}>{line}{i === 0 && <br />}</React.Fragment>)}</p>
           </div>
           <div>
             <p className="text-2xl font-bold text-[#48C4B0]">{targets.fluid_ml_per_hour}</p>
-            <p className="text-xs text-gray-400 mt-0.5 leading-tight">ml fluid<br />per hour</p>
+            <p className="text-xs text-gray-400 mt-0.5 leading-tight">{t('nutrition.fluidPerHour').split('\n').map((line, i) => <React.Fragment key={i}>{line}{i === 0 && <br />}</React.Fragment>)}</p>
           </div>
         </div>
         <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between text-xs text-gray-400">
           <span>
-            Total carbs:{' '}
+            {t('nutrition.totalCarbs')}{' '}
             <span className="font-semibold text-[#1B1B1B]">{targets.total_carbs}g</span>
           </span>
           <span>
-            Total sodium:{' '}
+            {t('nutrition.totalSodium')}{' '}
             <span className="font-semibold text-[#1B1B1B]">{targets.total_sodium}mg</span>
           </span>
         </div>
         {targets.elevation_tier && targets.elevation_tier !== 'flat' && (
           <p className="text-xs text-[#48C4B0] italic mt-2">
-            Carbs and sodium adjusted +{ELEVATION_MODIFIER_PCT[targets.elevation_tier]}% for hilly course
+            {t('nutrition.elevationAdjust', { pct: ELEVATION_MODIFIER_PCT[targets.elevation_tier] })}
           </p>
         )}
       </div>
@@ -380,10 +358,11 @@ function VarietyPackContents({ product, region }) {
 }
 
 function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, currencySymbol = '$', decimals = 2, savedAmount = 0, region = 'us' }) {
+  const { t } = useTranslation('results')
   const isVarietyPack = product.type === 'variety_pack'
   const packSummary = cartItems
     .map(item => item.units_per_pack === 1
-      ? `${item.quantity} single`
+      ? `${item.quantity} ${t('product.single')}`
       : `${item.quantity}×${item.units_per_pack}-pack`
     )
     .join(' + ')
@@ -401,7 +380,7 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, cur
           <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
           {isVarietyPack && savedAmount > 0 && (
             <span className="text-xs font-bold text-white bg-[#48C4B0] px-1.5 py-0.5 rounded-full whitespace-nowrap">
-              Saves {formatPrice(savedAmount, currencySymbol, decimals)}
+              {t('product.saves', { symbol: currencySymbol, amount: decimals === 0 ? Math.round(savedAmount).toLocaleString('en-US') : savedAmount.toFixed(decimals) })}
             </span>
           )}
         </div>
@@ -410,11 +389,11 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, cur
           : null
         }
         <p className="text-xs text-gray-400 mt-1">
-          {totalUnits} for race&nbsp;·&nbsp;{packSummary}
+          {t('product.forRace', { count: totalUnits })}&nbsp;·&nbsp;{packSummary}
         </p>
         {hasOverage && (
           <p className="text-xs text-[#48C4B0] mt-0.5">
-            +{cartUnits - totalUnits} extra for training
+            {t('product.extraForTraining', { count: cartUnits - totalUnits })}
           </p>
         )}
       </div>
@@ -432,14 +411,15 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, cur
  * Works well for any race length; a 14-hour ultra simply has closely-spaced dots.
  */
 function FuelBar({ events, totalDuration }) {
+  const { t } = useTranslation('results')
   const duringEvents = events.filter(e => e.phase === 'during')
   const hasCaf       = duringEvents.some(e => e.product.caffeine)
 
   return (
     <div>
       <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-        <span>Start</span>
-        <span>Finish · {formatDuration(totalDuration)}</span>
+        <span>{t('timeline.start')}</span>
+        <span>{t('timeline.finish', { duration: formatDuration(totalDuration) })}</span>
       </div>
 
       {/* Track */}
@@ -479,11 +459,11 @@ function FuelBar({ events, totalDuration }) {
         <div className="flex gap-4 mt-2 justify-end">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-[#48C4B0]" />
-            <span className="text-xs text-gray-400">Gel</span>
+            <span className="text-xs text-gray-400">{t('timeline.gel')}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-[#1B1B1B]" />
-            <span className="text-xs text-gray-400">Caffeine gel</span>
+            <span className="text-xs text-gray-400">{t('timeline.caffeineGel')}</span>
           </div>
         </div>
       )}
@@ -498,12 +478,13 @@ const PHASE_BADGE = {
 }
 
 function TimelineRow({ event, totalDuration, isLast }) {
+  const { t } = useTranslation('results')
   return (
     <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="w-24 flex-shrink-0 pt-0.5">
         <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
                           whitespace-nowrap ${PHASE_BADGE[event.phase]}`}>
-          {formatTimingLabel(event.time, totalDuration)}
+          {formatTimingLabel(event.time, totalDuration, t)}
         </span>
       </div>
       <div className="flex-1 min-w-0">
@@ -515,6 +496,7 @@ function TimelineRow({ event, totalDuration, isLast }) {
 }
 
 function DuringGroupRow({ group, isLast }) {
+  const { t } = useTranslation('results')
   return (
     <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="w-24 flex-shrink-0 pt-0.5">
@@ -527,7 +509,7 @@ function DuringGroupRow({ group, isLast }) {
         <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{group.product.name}</p>
         <p className="text-xs text-gray-400 mt-0.5">{group.scheduleText}</p>
         {group.product.caffeine && (
-          <span className="text-xs font-medium text-[#48C4B0]">+ caffeine</span>
+          <span className="text-xs font-medium text-[#48C4B0]">+ {t('hero.caffeineTag').toLowerCase()}</span>
         )}
       </div>
     </div>
@@ -535,11 +517,12 @@ function DuringGroupRow({ group, isLast }) {
 }
 
 function RaceStartDivider() {
+  const { t } = useTranslation('results')
   return (
     <div className="flex items-center gap-3 px-5 py-2 bg-[#48C4B0]/5">
       <div className="flex-1 h-px bg-[#48C4B0]/30" />
       <span className="text-xs font-semibold text-[#48C4B0] uppercase tracking-wider whitespace-nowrap">
-        Race start
+        {t('timeline.raceStart')}
       </span>
       <div className="flex-1 h-px bg-[#48C4B0]/30" />
     </div>
@@ -547,11 +530,12 @@ function RaceStartDivider() {
 }
 
 function FinishDivider({ totalDuration }) {
+  const { t } = useTranslation('results')
   return (
     <div className="flex items-center gap-3 px-5 py-2 bg-gray-50">
       <div className="flex-1 h-px bg-gray-200" />
       <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-        Finish — {formatDuration(totalDuration)}
+        {t('timeline.finishLine', { duration: formatDuration(totalDuration) })}
       </span>
       <div className="flex-1 h-px bg-gray-200" />
     </div>
@@ -566,16 +550,17 @@ function FinishDivider({ totalDuration }) {
  * - Before / After retain individual rows (typically 1–2 items each).
  */
 function RaceTimeline({ events, totalDuration }) {
+  const { t } = useTranslation('results')
   if (events.length === 0) return null
 
   const beforeEvents = events.filter(e => e.phase === 'before')
   const duringEvents = events.filter(e => e.phase === 'during')
   const afterEvents  = events.filter(e => e.phase === 'after')
-  const duringGroups = buildDuringGroups(duringEvents)
+  const duringGroups = buildDuringGroups(duringEvents, t)
 
   return (
     <section>
-      <SectionLabel>Race timeline</SectionLabel>
+      <SectionLabel>{t('section.raceTimeline')}</SectionLabel>
 
       {/* Visual fuel bar */}
       {duringEvents.length > 0 && (
@@ -629,6 +614,7 @@ function RaceTimeline({ events, totalDuration }) {
 // ── EmailCapture ──────────────────────────────────────────────────────────────
 
 function EmailCapture({ targets, selection, form, region = 'us' }) {
+  const { t } = useTranslation('results')
   const [email,   setEmail]   = useState('')
   const [state,   setState]   = useState('idle')
   const [touched, setTouched] = useState(false)
@@ -645,7 +631,7 @@ function EmailCapture({ targets, selection, form, region = 'us' }) {
       const res = await fetch('/api/send-plan', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection, region }),
+        body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setState('success')
@@ -658,11 +644,9 @@ function EmailCapture({ targets, selection, form, region = 'us' }) {
   if (state === 'success') {
     return (
       <section className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5">
-        <p className="text-sm font-bold text-[#48C4B0]">Plan sent!</p>
+        <p className="text-sm font-bold text-[#48C4B0]">{t('email.successTitle')}</p>
         <p className="text-xs text-gray-500 mt-1">
-          Check your inbox at{' '}
-          <span className="font-medium text-[#1B1B1B]">{email}</span>.
-          Your PDF nutrition plan is attached.
+          {t('email.successBody', { email })}
         </p>
       </section>
     )
@@ -670,10 +654,10 @@ function EmailCapture({ targets, selection, form, region = 'us' }) {
 
   return (
     <section>
-      <SectionLabel>Email me this plan</SectionLabel>
+      <SectionLabel>{t('section.emailPlan')}</SectionLabel>
       <div className="border-2 border-gray-100 rounded-2xl p-5">
         <p className="text-sm text-gray-500 mb-4">
-          Get a PDF of your plan with timing guide and product list — straight to your inbox.
+          {t('email.intro')}
         </p>
         <form onSubmit={handleSubmit} noValidate>
           <div className="flex gap-2">
@@ -682,7 +666,7 @@ function EmailCapture({ targets, selection, form, region = 'us' }) {
               value={email}
               onChange={e => { setEmail(e.target.value); setTouched(false) }}
               onBlur={() => setTouched(true)}
-              placeholder="your@email.com"
+              placeholder={t('email.placeholder')}
               disabled={state === 'sending'}
               className={[
                 'flex-1 min-w-0 border-2 rounded-xl px-4 py-3 text-sm',
@@ -698,19 +682,19 @@ function EmailCapture({ targets, selection, form, region = 'us' }) {
                          font-semibold hover:bg-[#e03558] transition-colors
                          disabled:opacity-50 whitespace-nowrap flex-shrink-0"
             >
-              {state === 'sending' ? 'Sending…' : 'Send plan'}
+              {state === 'sending' ? t('email.sending') : t('email.send')}
             </button>
           </div>
           {showError && (
-            <p className="text-xs text-red-500 mt-2">Please enter a valid email address.</p>
+            <p className="text-xs text-red-500 mt-2">{t('email.invalidEmail')}</p>
           )}
           {state === 'error' && (
             <p className="text-xs text-red-500 mt-2">
-              Something went wrong — please try again or email us at info@getlecka.com
+              {t('email.error')}
             </p>
           )}
           <p className="text-xs text-gray-400 mt-3">
-            By providing your email, you agree to receive the Lecka newsletter.
+            {t('email.consent')}
           </p>
         </form>
       </div>
@@ -814,6 +798,7 @@ function markdownToHtml(md) {
 }
 
 function ResearchModal({ onClose }) {
+  const { t } = useTranslation('results')
   const contentRef = useRef(null)
   const htmlContent = useMemo(() => markdownToHtml(researchMarkdown), [])
 
@@ -842,8 +827,8 @@ function ResearchModal({ onClose }) {
         {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0]">Science</p>
-            <h2 className="text-base font-bold text-[#1B1B1B]">How your numbers are calculated</h2>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0]">{t('research.science')}</p>
+            <h2 className="text-base font-bold text-[#1B1B1B]">{t('research.title')}</h2>
           </div>
           <button
             type="button"
@@ -867,7 +852,7 @@ function ResearchModal({ onClose }) {
             className="w-full min-h-[44px] bg-[#48C4B0] text-white rounded-xl
                        text-sm font-semibold hover:bg-[#3db09d] transition-colors"
           >
-            Back to my plan
+            {t('research.backToPlan')}
           </button>
         </div>
       </div>
@@ -878,6 +863,7 @@ function ResearchModal({ onClose }) {
 // ── CartEditorModal ───────────────────────────────────────────────────────────
 
 function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig }) {
+  const { t } = useTranslation(['results', 'form'])
   const availableProducts = useMemo(() =>
     allProductsCatalog.filter(p => (p.type === 'gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
     [region]
@@ -915,8 +901,8 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
           <p className="text-xs text-gray-400">
-            {product.carbs_per_unit}g carbs
-            {product.caffeine ? ` · ${product.caffeine_mg}mg caffeine` : ''}
+            {t('form:product.carbs', { value: product.carbs_per_unit })}
+            {product.caffeine ? ` · ${t('form:product.caffeine', { value: product.caffeine_mg })}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -952,8 +938,8 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
           <div>
-            <h2 className="text-base font-bold text-[#1B1B1B]">Adjust your plan</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Change single item quantities — cart updates live</p>
+            <h2 className="text-base font-bold text-[#1B1B1B]">{t('adjust.title')}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{t('adjust.subtitle')}</p>
           </div>
           <button
             type="button"
@@ -967,10 +953,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
           {gels.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Gels</p>
-                <p className="text-xs text-gray-400">Single Item Quantity</p>
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.gels')}</p>
               <div className="space-y-1">
                 {gels.map(p => <ProductRow key={p.id} product={p} />)}
               </div>
@@ -978,10 +961,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
           )}
           {bars.length > 0 && (
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Bars</p>
-                <p className="text-xs text-gray-400">Single Item Quantity</p>
-              </div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.bars')}</p>
               <div className="space-y-1">
                 {bars.map(p => <ProductRow key={p.id} product={p} />)}
               </div>
@@ -997,7 +977,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
               className="w-full min-h-[44px] border-2 border-gray-200 text-gray-500 rounded-xl
                          text-sm font-semibold hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
             >
-              Reset to recommendation
+              {t('adjust.reset')}
             </button>
           )}
           <button
@@ -1006,7 +986,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
             className="w-full min-h-[52px] bg-[#48C4B0] hover:bg-[#3db09d] text-white rounded-xl
                        text-sm font-bold transition-colors"
           >
-            Done
+            {t('adjust.done')}
           </button>
         </div>
       </div>
@@ -1017,6 +997,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ResultsPage({ targets, selection, form, onBack }) {
+  const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
   const [showCartEditor, setShowCartEditor] = useState(false)
   const [region,         setRegion]         = useState(detectRegion)
@@ -1089,9 +1070,9 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   // Prefer athlete's race name → actual distance typed → race_type label
   const heroTitle      = form.race_name ||
     (form.custom_km_display ? `${form.custom_km_display} ${form.dist_unit || 'km'}` : null) ||
-    (RACE_LABELS[targets.race_type] ?? targets.race_type)
-  const effortLabel    = EFFORT_LABELS[targets.effort]      ?? targets.effort
-  const conditionLabel = CONDITION_LABELS[targets.conditions] ?? targets.conditions
+    getRaceLabel(t, targets.race_type)
+  const effortLabel    = getEffortLabel(t, targets.effort)
+  const conditionLabel = getConditionLabel(t, targets.conditions)
   const surfaceLabel   = form.surface_type
     ? (form.surface_type.charAt(0).toUpperCase() + form.surface_type.slice(1))
     : null
@@ -1123,9 +1104,10 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             className="text-sm text-[#48C4B0] font-medium hover:underline
                        min-h-[44px] flex items-center"
           >
-            ← Back
+            {t('common:nav.back')}
           </button>
           <img src="/logo.svg" alt="Lecka" className="h-6" />
+          <LanguageSwitcher region={region} />
         </div>
       </div>
 
@@ -1134,7 +1116,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-1">
-            Your plan
+            {t('results:hero.plan')}
           </p>
           <h1 className="text-2xl font-bold text-[#1B1B1B]">{heroTitle}</h1>
           <p className="text-sm text-gray-400 mt-1.5">
@@ -1142,7 +1124,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             {surfaceLabel ? ` · ${surfaceLabel}` : ''}
             {' · '}{effortLabel}
             {' · '}{conditionLabel}
-            {targets.caffeine_ok ? ' · Caffeine' : ''}
+            {targets.caffeine_ok ? ` · ${t('results:hero.caffeineTag')}` : ''}
           </p>
           {targets.elevation_gain_m > 0 && (
             <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full
@@ -1168,19 +1150,19 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           className="text-xs text-[#48C4B0] underline underline-offset-2 hover:text-[#3db09d]
                      transition-colors -mt-4 text-left"
         >
-          Learn more how the numbers were calculated
+          {t('results:research.learnMore')}
         </button>
 
         {/* ── Product cards ───────────────────────────────────────────────── */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">What to take</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('results:section.whatToTake')}</p>
             <button
               type="button"
               onClick={() => setShowCartEditor(true)}
               className="text-xs text-[#48C4B0] font-semibold hover:underline"
             >
-              Adjust plan
+              {t('results:cta.adjustPlan')}
             </button>
           </div>
           <div className="space-y-3">
@@ -1202,35 +1184,40 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         {trainingInfo.hasOverage && (
           <section className="border-2 border-[#48C4B0]/30 rounded-2xl p-5 bg-[#48C4B0]/5">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-2">
-              Race day vs. what you buy
+              {t('results:training.title')}
             </p>
             <p className="text-sm text-[#1B1B1B] mb-4">
               {trainingInfo.gelOverage > 0 && (
                 <>
-                  Your race needs{' '}
-                  <span className="font-bold">{trainingInfo.gelRaceUnits} gel{trainingInfo.gelRaceUnits !== 1 ? 's' : ''}</span>.{' '}
-                  Sold in multi-packs, your cart includes{' '}
-                  <span className="font-bold">{trainingInfo.gelCartUnits} gels</span> —{' '}
-                  the extra <span className="font-bold">{trainingInfo.gelOverage}</span> are perfect for training.
+                  <Trans
+                    t={t}
+                    i18nKey="results:training.gelOverage"
+                    count={trainingInfo.gelRaceUnits}
+                    values={{ race: trainingInfo.gelRaceUnits, cart: trainingInfo.gelCartUnits, extra: trainingInfo.gelOverage }}
+                    components={{ bold: <strong /> }}
+                  />
                   {trainingInfo.barOverage > 0 ? ' ' : ''}
                 </>
               )}
               {trainingInfo.barOverage > 0 && (
-                <>
-                  {trainingInfo.gelOverage > 0 ? 'Your cart also includes' : 'Your cart includes'}{' '}
-                  an extra <span className="font-bold">{trainingInfo.barOverage} bar{trainingInfo.barOverage !== 1 ? 's' : ''}</span> for training.
-                </>
+                <Trans
+                  t={t}
+                  i18nKey={trainingInfo.gelOverage > 0 ? 'results:training.barOverage' : 'results:training.barOverageOnly'}
+                  count={trainingInfo.barOverage}
+                  values={{ extra: trainingInfo.barOverage }}
+                  components={{ bold: <strong /> }}
+                />
               )}
             </p>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
-              How to use them for race prep
+              {t('results:training.prepTitle')}
             </p>
             <ul className="space-y-2">
               {[
-                'Practice with gels on long runs 3–4 weeks before your race to train your gut',
-                'Replicate your race-day fuelling schedule during training (same timing, same products)',
-                'Start with 1 gel per hour and build up to your target race frequency',
-                'Never try a new product on race day — always test in training first',
+                t('results:training.tip1'),
+                t('results:training.tip2'),
+                t('results:training.tip3'),
+                t('results:training.tip4'),
               ].map((tip, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-[#1B1B1B]">
                   <span className="text-[#48C4B0] font-bold flex-shrink-0 mt-0.5">→</span>
@@ -1244,7 +1231,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         {/* ── Region picker ────────────────────────────────────────────────── */}
         {!isEmbedded && (
           <section>
-            <SectionLabel>Shipping to</SectionLabel>
+            <SectionLabel>{t('results:section.shippingTo')}</SectionLabel>
             <div className="flex gap-2">
               {Object.entries(regionsConfig).map(([key, cfg]) => (
                 <button
@@ -1269,7 +1256,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-gray-500">
-              {totalPacks} pack{totalPacks !== 1 ? 's' : ''}
+              {t('results:cta.packs', { count: totalPacks })}
             </span>
             <span className="text-xl font-bold text-[#1B1B1B]">
               {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
@@ -1283,17 +1270,17 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
                        bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
                        text-base font-bold transition-colors"
           >
-            Buy My Plan – 10% Off →
+            {t('results:cta.buyPlan')}
           </a>
           <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
-            Get 10% Discount — code NUTRIPLAN10 applied automatically
+            {t('results:cta.discount')}
           </p>
           <p className="text-xs text-gray-400 text-center mt-1">
             {region === 'us'
-              ? 'Ships to US only. Free shipping on orders over $60.'
+              ? t('results:cta.shipping.us')
               : region === 'vn'
-              ? 'Giao hàng toàn quốc. Miễn phí vận chuyển cho đơn từ 500.000₫.'
-              : `Ships to ${regionConfig.label}. Visit ${regionConfig.store_url} for shipping info.`}
+              ? t('results:cta.shipping.vn')
+              : t('results:cta.shipping.other', { label: regionConfig.label, url: regionConfig.store_url })}
           </p>
           {vpCartURL && (
             <div className="mt-4 pt-4 border-t border-gray-100">
@@ -1305,10 +1292,10 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
                            border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl
                            text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors"
               >
-                Keen to try all our products? Get our Variety Packs →
+                {t('results:cta.varietyPack')}
               </a>
               <p className="text-xs text-gray-400 text-center mt-1.5">
-                Great for training - all our products for testing and fueling · NUTRIPLAN10 applied
+                {t('results:cta.varietyPack.hint')}
               </p>
             </div>
           )}
@@ -1327,7 +1314,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
             onClick={onBack}
             className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
           >
-            ← Start over
+            {t('common:nav.startOver')}
           </button>
         </div>
 

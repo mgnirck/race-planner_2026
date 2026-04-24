@@ -1,0 +1,68 @@
+{
+  "steps.race": "Your race",
+  "steps.body": "Your body & preferences",
+  "steps.products": "Product preferences",
+
+  "field.raceName": "Race or run name",
+  "field.raceName.placeholder": "e.g. Boston Marathon 2026",
+  "field.raceName.hint": "Optional — shown on your plan",
+
+  "field.gpx": "Upload GPX file (optional)",
+  "field.gpx.drop": "Drop your race GPX file here, or click to browse",
+  "field.gpx.hint": "Auto-fills distance, elevation & surface",
+  "field.gpx.loaded": "GPX loaded: {{km}} km · {{elevation}} m elevation gain · {{label}}",
+  "field.gpx.error": "Could not read GPX file — please try another",
+
+  "field.distance": "Race distance",
+  "field.distance.hint": "{{value}} {{unit}} — personalised nutrition plan",
+
+  "field.elevation": "Elevation gain",
+  "field.elevation.hintDefault": "Optional — improves calculation for hilly courses. Default is 0 (flat).",
+  "field.elevation.hintGpx": "Auto-filled from GPX · {{label}}",
+
+  "field.surface": "Surface",
+
+  "field.goalTime": "Goal finish time",
+  "field.goalTime.placeholder": "h:mm",
+  "field.goalTime.hint": "e.g. 2:15 or 2.15 for 2 hours 15 minutes",
+  "field.goalTime.parsed": "{{hours}}h {{mins}}min",
+  "field.goalTime.error": "Enter time as h:mm or h.mm, e.g. 2:15 or 2.15",
+
+  "field.weight": "Body weight",
+  "field.weight.error": "Enter a weight between {{min}}–{{max}} {{unit}}",
+
+  "field.gender": "Gender",
+
+  "field.conditions": "Race conditions",
+  "field.conditions.cool.sub": "under 15°C / 59°F",
+  "field.conditions.mild.sub": "15–20°C / 59–68°F",
+  "field.conditions.warm.sub": "20–26°C / 68–79°F",
+  "field.conditions.hot.sub": "over 26°C / 79°F",
+
+  "field.effort": "Effort level",
+  "field.effort.easy.desc": "Comfortable, conversational pace",
+  "field.effort.race_pace.desc": "Goal pace — controlled but working",
+  "field.effort.hard.desc": "Threshold or beyond — it hurts",
+
+  "field.training": "Your training status",
+  "field.training.untrained": "Untrained",
+  "field.training.untrained.desc": "New to endurance sports, lower sweat rate",
+  "field.training.intermediate": "Intermediate",
+  "field.training.intermediate.desc": "Moderate endurance training (recommended for most)",
+  "field.training.trained": "Trained",
+  "field.training.trained.desc": "Regular endurance athlete, higher sweat rate",
+  "field.training.elite": "Elite",
+  "field.training.elite.desc": "Professional or competitive athlete",
+
+  "field.caffeine": "Caffeine products",
+  "field.caffeine.yes": "Yes, include caffeine",
+  "field.caffeine.no": "No caffeine",
+
+  "field.products.intro": "Pick your favourite flavours — your plan uses these. For longer races we'll mix them up for variety. No preference? We'll choose a balanced mix for you.",
+  "field.gels": "Energy gels",
+  "field.bars": "Energy bars",
+
+  "product.carbs": "{{value}}g carbs",
+  "product.sodium": "{{value}}mg sodium",
+  "product.caffeine": "{{value}}mg caffeine"
+}

@@ -1,4 +1,5 @@
-import React from 'react'
+import './i18n.js'
+import React, { Suspense } from 'react'
 import ReactDOM from 'react-dom/client'
 import { inject } from '@vercel/analytics'
 import App from './App.jsx'
@@ -13,6 +14,8 @@ initHeightSync()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <Suspense fallback={<div />}>
+      <App />
+    </Suspense>
   </React.StrictMode>,
 )

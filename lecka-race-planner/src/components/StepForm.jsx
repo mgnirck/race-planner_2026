@@ -10,45 +10,26 @@
  * onComplete({ targets, selection, form }) — called on final submit
  */
 
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
 import products             from '../config/products.json'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
 import { detectRegion }     from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const SURFACE_TYPES = [
-  { label: 'Road',  key: 'road'  },
-  { label: 'Trail', key: 'trail' },
-]
-
-const CONDITIONS = [
-  { label: 'Cool',  sublabel: 'under 15°C / 59°F',  key: 'cool' },
-  { label: 'Mild',  sublabel: '15–20°C / 59–68°F',  key: 'mild' },
-  { label: 'Warm',  sublabel: '20–26°C / 68–79°F',  key: 'warm' },
-  { label: 'Hot',   sublabel: 'over 26°C / 79°F',   key: 'hot'  },
-]
-
-const EFFORT_OPTIONS = [
-  { label: 'Easy / long day',  desc: 'Comfortable, conversational pace',     key: 'easy'      },
-  { label: 'Race pace',        desc: 'Goal pace — controlled but working',    key: 'race_pace' },
-  { label: 'All-out effort',   desc: 'Threshold or beyond — it hurts',        key: 'hard'      },
-]
-
-const STEP_TITLES = ['Your race', 'Your body & preferences', 'Product preferences']
+import LanguageSwitcher     from './LanguageSwitcher.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function goalMinutesFromParts(hStr, mStr) {
-  if (hStr === '' || mStr === '') return null
-  const h = parseInt(hStr, 10)
-  const m = parseInt(mStr, 10)
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
-  if (h < 0 || m < 0 || m > 59) return null
-  const total = h * 60 + m
+function parseGoalTime(str) {
+  // Accepts H:MM, HH:MM, H.MM, HH.MM (colon or dot separator)
+  const match = str.trim().match(/^(\d{1,2})[:.](\d{2})$/)
+  if (!match) return null
+  const hours = parseInt(match[1], 10)
+  const mins  = parseInt(match[2], 10)
+  if (mins > 59) return null
+  const total = hours * 60 + mins
   return total > 0 ? total : null
 }
 
@@ -59,15 +40,6 @@ function distanceToRaceType(km) {
   if (km <  51) return 'marathon'
   if (km <  81) return 'ultra_50k'
   return 'ultra_100k'
-}
-
-const RACE_TYPE_LABELS = {
-  '5k':            '5 km',
-  '10k':           '10 km',
-  'half_marathon': 'Half marathon',
-  'marathon':      'Marathon',
-  'ultra_50k':     'Ultra 50 km',
-  'ultra_100k':    'Ultra 100 km+',
 }
 
 function toKg(value, unit) {
@@ -136,7 +108,7 @@ function FieldLabel({ children }) {
   )
 }
 
-function ProductPreferenceCard({ product, selected, onToggle }) {
+function ProductPreferenceCard({ product, selected, onToggle, t }) {
   return (
     <button
       type="button"
@@ -154,10 +126,10 @@ function ProductPreferenceCard({ product, selected, onToggle }) {
             {product.name}
           </p>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-            <span className="text-xs text-gray-400">{product.carbs_per_unit}g carbs</span>
-            <span className="text-xs text-gray-400">{product.sodium_per_unit}mg sodium</span>
+            <span className="text-xs text-gray-400">{t('form:product.carbs', { value: product.carbs_per_unit })}</span>
+            <span className="text-xs text-gray-400">{t('form:product.sodium', { value: product.sodium_per_unit })}</span>
             {product.caffeine && (
-              <span className="text-xs font-medium text-[#48C4B0]">{product.caffeine_mg}mg caffeine</span>
+              <span className="text-xs font-medium text-[#48C4B0]">{t('form:product.caffeine', { value: product.caffeine_mg })}</span>
             )}
           </div>
         </div>
@@ -182,12 +154,11 @@ function ProductPreferenceCard({ product, selected, onToggle }) {
 // ── Step 1: Race ──────────────────────────────────────────────────────────────
 
 function StepOne({ form, setForm }) {
+  const { t } = useTranslation(['form', 'common'])
   const [gpxError, setGpxError] = useState(false)
-  const minutesRef = useRef(null)
 
-  const goalMinutes    = goalMinutesFromParts(form.goal_time_h, form.goal_time_m)
-  const minutesInvalid = form.goal_time_m !== '' &&
-    (isNaN(parseInt(form.goal_time_m, 10)) || parseInt(form.goal_time_m, 10) > 59)
+  const goalMinutes   = parseGoalTime(form.goal_time)
+  const timeIsInvalid = form.goal_time.length > 0 && goalMinutes === null
 
   function handleDistChange(rawValue) {
     setForm(f => {
@@ -287,21 +258,21 @@ function StepOne({ form, setForm }) {
 
       {/* Race / run name */}
       <div>
-        <FieldLabel>Race or run name</FieldLabel>
+        <FieldLabel>{t('form:field.raceName')}</FieldLabel>
         <input
           type="text"
-          placeholder="e.g. Boston Marathon 2026"
+          placeholder={t('form:field.raceName.placeholder')}
           value={form.race_name}
           onChange={e => setForm(f => ({ ...f, race_name: e.target.value }))}
           className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
                      focus:outline-none focus:border-[#48C4B0]"
         />
-        <p className="text-xs text-gray-400 mt-1.5">Optional — shown on your plan</p>
+        <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceName.hint')}</p>
       </div>
 
       {/* GPX upload */}
       <div>
-        <FieldLabel>Upload GPX file (optional)</FieldLabel>
+        <FieldLabel>{t('form:field.gpx')}</FieldLabel>
         <label
           className="flex flex-col items-center justify-center gap-1.5 w-full
                      border-2 border-dashed border-gray-200 rounded-xl bg-gray-50
@@ -326,27 +297,27 @@ function StepOne({ form, setForm }) {
             <path d="M4 20h16"/>
           </svg>
           <p className="text-sm text-gray-500 text-center">
-            Drop your race GPX file here, or click to browse
+            {t('form:field.gpx.drop')}
           </p>
           <p className="text-xs text-gray-400 text-center">
-            Auto-fills distance, elevation &amp; surface
+            {t('form:field.gpx.hint')}
           </p>
         </label>
         {form.gpx_parsed && !gpxError && (
           <p className="text-xs text-[#48C4B0] mt-1.5">
-            GPX loaded: {form.custom_km} km · {form.elevation_gain_m} m elevation gain · {gpxSummaryLabel}
+            {t('form:field.gpx.loaded', { km: form.custom_km, elevation: form.elevation_gain_m, label: gpxSummaryLabel })}
           </p>
         )}
         {gpxError && (
           <p className="text-xs text-red-400 mt-1.5">
-            Could not read GPX file — please try another
+            {t('form:field.gpx.error')}
           </p>
         )}
       </div>
 
       {/* Distance */}
       <div>
-        <FieldLabel>Race distance</FieldLabel>
+        <FieldLabel>{t('form:field.distance')}</FieldLabel>
         <div className="flex items-center gap-3">
           <input
             type="number"
@@ -379,14 +350,14 @@ function StepOne({ form, setForm }) {
         </div>
         {form.custom_km_display && (
           <p className="text-xs text-[#48C4B0] mt-1.5">
-            {form.custom_km_display} {form.dist_unit} — personalised nutrition plan
+            {t('form:field.distance.hint', { value: form.custom_km_display, unit: form.dist_unit })}
           </p>
         )}
       </div>
 
       {/* Elevation gain */}
       <div>
-        <FieldLabel>Elevation gain</FieldLabel>
+        <FieldLabel>{t('form:field.elevation')}</FieldLabel>
         <div className="flex items-center gap-3">
           <input
             type="number"
@@ -418,19 +389,22 @@ function StepOne({ form, setForm }) {
           </div>
         </div>
         {form.gpx_parsed && form.elevation_gain_m > 0 ? (
-          <p className="text-xs text-[#48C4B0] mt-1.5">Auto-filled from GPX · {gpxSummaryLabel}</p>
+          <p className="text-xs text-[#48C4B0] mt-1.5">{t('form:field.elevation.hintGpx', { label: gpxSummaryLabel })}</p>
         ) : (
           <p className="text-xs text-gray-400 mt-1.5">
-            Optional — improves calculation for hilly courses. Default is 0 (flat).
+            {t('form:field.elevation.hintDefault')}
           </p>
         )}
       </div>
 
       {/* Surface */}
       <div>
-        <FieldLabel>Surface</FieldLabel>
+        <FieldLabel>{t('form:field.surface')}</FieldLabel>
         <div className="flex gap-2">
-          {SURFACE_TYPES.map(s => (
+          {[
+            { label: t('common:surface.road'),  key: 'road'  },
+            { label: t('common:surface.trail'), key: 'trail' },
+          ].map(s => (
             <Pill
               key={s.key}
               label={s.label}
@@ -443,64 +417,33 @@ function StepOne({ form, setForm }) {
 
       {/* Goal finish time */}
       <div>
-        <FieldLabel>Goal finish time</FieldLabel>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={2}
-            placeholder="hh"
-            value={form.goal_time_h}
-            onChange={e => {
-              const val = e.target.value.replace(/\D/g, '').slice(0, 2)
-              setForm(f => ({ ...f, goal_time_h: val }))
-              if (val.length === 2) minutesRef.current?.focus()
-            }}
-            className={[
-              'w-16 border-2 rounded-lg px-3 py-2.5 text-sm font-mono text-center',
-              'focus:outline-none',
-              goalMinutes !== null
-                ? 'border-[#48C4B0]'
-                : 'border-gray-200 focus:border-[#48C4B0]',
-            ].join(' ')}
-          />
-          <span className="text-xl font-bold text-gray-300 select-none">:</span>
-          <input
-            ref={minutesRef}
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={2}
-            placeholder="mm"
-            value={form.goal_time_m}
-            onChange={e => {
-              const val = e.target.value.replace(/\D/g, '').slice(0, 2)
-              setForm(f => ({ ...f, goal_time_m: val }))
-            }}
-            className={[
-              'w-16 border-2 rounded-lg px-3 py-2.5 text-sm font-mono text-center',
-              'focus:outline-none',
-              minutesInvalid
-                ? 'border-red-300'
-                : goalMinutes !== null
-                ? 'border-[#48C4B0]'
-                : 'border-gray-200 focus:border-[#48C4B0]',
-            ].join(' ')}
-          />
-        </div>
+        <FieldLabel>{t('form:field.goalTime')}</FieldLabel>
+        <input
+          type="text"
+          inputMode="numeric"
+          placeholder={t('form:field.goalTime.placeholder')}
+          value={form.goal_time}
+          onChange={e => setForm(f => ({ ...f, goal_time: e.target.value }))}
+          className={[
+            'w-28 border-2 rounded-lg px-3 py-2.5 text-sm font-mono tracking-wide',
+            'focus:outline-none',
+            goalMinutes !== null
+              ? 'border-[#48C4B0]'
+              : timeIsInvalid
+              ? 'border-red-300'
+              : 'border-gray-200 focus:border-[#48C4B0]',
+          ].join(' ')}
+        />
         {goalMinutes !== null && (
           <p className="text-xs text-[#48C4B0] mt-1.5">
-            {Math.floor(goalMinutes / 60)}h {goalMinutes % 60}min
+            {t('form:field.goalTime.parsed', { hours: Math.floor(goalMinutes / 60), mins: goalMinutes % 60 })}
           </p>
         )}
-        {minutesInvalid && (
-          <p className="text-xs text-red-400 mt-1.5">Minutes must be between 0 and 59</p>
+        {timeIsInvalid && (
+          <p className="text-xs text-red-400 mt-1.5">{t('form:field.goalTime.error')}</p>
         )}
-        {!minutesInvalid && goalMinutes === null && (
-          <p className="text-xs text-gray-400 mt-1.5">
-            Hours and minutes — e.g. 02 : 15, or 50 : 20 for a 50h race
-          </p>
+        {!timeIsInvalid && goalMinutes === null && (
+          <p className="text-xs text-gray-400 mt-1.5">{t('form:field.goalTime.hint')}</p>
         )}
       </div>
 
@@ -511,6 +454,7 @@ function StepOne({ form, setForm }) {
 // ── Step 2: Body, conditions & preferences ────────────────────────────────────
 
 function StepTwo({ form, setForm }) {
+  const { t } = useTranslation(['form', 'common'])
   const weightOk      = toKg(form.weight_value, form.weight_unit) !== null
   const weightTouched = form.weight_value !== ''
 
@@ -536,7 +480,7 @@ function StepTwo({ form, setForm }) {
 
       {/* Weight */}
       <div>
-        <FieldLabel>Body weight</FieldLabel>
+        <FieldLabel>{t('form:field.weight')}</FieldLabel>
         <div className="flex items-center gap-3">
           <input
             type="number"
@@ -570,18 +514,18 @@ function StepTwo({ form, setForm }) {
         </div>
         {weightTouched && !weightOk && (
           <p className="text-xs text-red-400 mt-1.5">
-            Enter a weight between {weightMin}–{weightMax} {form.weight_unit}
+            {t('form:field.weight.error', { min: weightMin, max: weightMax, unit: form.weight_unit })}
           </p>
         )}
       </div>
 
       {/* Gender */}
       <div>
-        <FieldLabel>Gender</FieldLabel>
+        <FieldLabel>{t('form:field.gender')}</FieldLabel>
         <div className="flex gap-2">
           {[
-            { label: 'Female', key: 'female' },
-            { label: 'Male',   key: 'male'   },
+            { label: t('common:gender.female'), key: 'female' },
+            { label: t('common:gender.male'),   key: 'male'   },
           ].map(g => (
             <Pill
               key={g.key}
@@ -595,9 +539,14 @@ function StepTwo({ form, setForm }) {
 
       {/* Race conditions */}
       <div>
-        <FieldLabel>Race conditions</FieldLabel>
+        <FieldLabel>{t('form:field.conditions')}</FieldLabel>
         <div className="flex flex-wrap gap-2">
-          {CONDITIONS.map(c => (
+          {[
+            { label: t('common:conditions.cool'), sublabel: t('form:field.conditions.cool.sub'), key: 'cool' },
+            { label: t('common:conditions.mild'), sublabel: t('form:field.conditions.mild.sub'), key: 'mild' },
+            { label: t('common:conditions.warm'), sublabel: t('form:field.conditions.warm.sub'), key: 'warm' },
+            { label: t('common:conditions.hot'),  sublabel: t('form:field.conditions.hot.sub'),  key: 'hot'  },
+          ].map(c => (
             <Pill
               key={c.key}
               label={c.label}
@@ -611,9 +560,13 @@ function StepTwo({ form, setForm }) {
 
       {/* Effort level */}
       <div>
-        <FieldLabel>Effort level</FieldLabel>
+        <FieldLabel>{t('form:field.effort')}</FieldLabel>
         <div className="space-y-2">
-          {EFFORT_OPTIONS.map(e => (
+          {[
+            { label: t('common:effort.easy'),      desc: t('form:field.effort.easy.desc'),      key: 'easy'      },
+            { label: t('common:effort.race_pace'), desc: t('form:field.effort.race_pace.desc'), key: 'race_pace' },
+            { label: t('common:effort.hard'),      desc: t('form:field.effort.hard.desc'),      key: 'hard'      },
+          ].map(e => (
             <OptionCard
               key={e.key}
               label={e.label}
@@ -627,29 +580,29 @@ function StepTwo({ form, setForm }) {
 
       {/* Training status */}
       <div>
-        <FieldLabel>Your training status</FieldLabel>
+        <FieldLabel>{t('form:field.training')}</FieldLabel>
         <div className="space-y-2">
           <OptionCard
-            label="Untrained"
-            desc="New to endurance sports, lower sweat rate"
+            label={t('form:field.training.untrained')}
+            desc={t('form:field.training.untrained.desc')}
             selected={form.athlete_profile === 'untrained'}
             onClick={() => setForm(f => ({ ...f, athlete_profile: 'untrained' }))}
           />
           <OptionCard
-            label="Intermediate"
-            desc="Moderate endurance training (recommended for most)"
+            label={t('form:field.training.intermediate')}
+            desc={t('form:field.training.intermediate.desc')}
             selected={form.athlete_profile === 'intermediate'}
             onClick={() => setForm(f => ({ ...f, athlete_profile: 'intermediate' }))}
           />
           <OptionCard
-            label="Trained"
-            desc="Regular endurance athlete, higher sweat rate"
+            label={t('form:field.training.trained')}
+            desc={t('form:field.training.trained.desc')}
             selected={form.athlete_profile === 'trained'}
             onClick={() => setForm(f => ({ ...f, athlete_profile: 'trained' }))}
           />
           <OptionCard
-            label="Elite"
-            desc="Professional or competitive athlete"
+            label={t('form:field.training.elite')}
+            desc={t('form:field.training.elite.desc')}
             selected={form.athlete_profile === 'elite'}
             onClick={() => setForm(f => ({ ...f, athlete_profile: 'elite' }))}
           />
@@ -658,15 +611,15 @@ function StepTwo({ form, setForm }) {
 
       {/* Caffeine */}
       <div>
-        <FieldLabel>Caffeine products</FieldLabel>
+        <FieldLabel>{t('form:field.caffeine')}</FieldLabel>
         <div className="flex gap-2">
           <Pill
-            label="Yes, include caffeine"
+            label={t('form:field.caffeine.yes')}
             selected={form.caffeine_ok === true}
             onClick={() => setForm(f => ({ ...f, caffeine_ok: true }))}
           />
           <Pill
-            label="No caffeine"
+            label={t('form:field.caffeine.no')}
             selected={form.caffeine_ok === false}
             onClick={() => setForm(f => ({ ...f, caffeine_ok: false }))}
           />
@@ -680,6 +633,7 @@ function StepTwo({ form, setForm }) {
 // ── Step 3: Product preferences ───────────────────────────────────────────────
 
 function StepThree({ form, setForm }) {
+  const { t } = useTranslation(['form', 'common'])
   const gels = products.filter(p => p.type === 'gel' && isAvailableInRegion(p, detectRegion))
   const bars = products.filter(p => p.type === 'bar' && isAvailableInRegion(p, detectRegion))
 
@@ -695,13 +649,12 @@ function StepThree({ form, setForm }) {
   return (
     <div className="space-y-7">
       <p className="text-sm text-gray-500 -mt-2">
-        Pick your favourite flavours — your plan uses these. For longer races we'll mix them up for
-        variety. No preference? We'll choose a balanced mix for you.
+        {t('form:field.products.intro')}
       </p>
 
       {/* Gels */}
       <div>
-        <FieldLabel>Energy gels</FieldLabel>
+        <FieldLabel>{t('form:field.gels')}</FieldLabel>
         <div className="space-y-2">
           {gels.map(gel => (
             <ProductPreferenceCard
@@ -709,6 +662,7 @@ function StepThree({ form, setForm }) {
               product={gel}
               selected={form.preferred_product_ids.includes(gel.id)}
               onToggle={() => toggleProduct(gel.id)}
+              t={t}
             />
           ))}
         </div>
@@ -716,7 +670,7 @@ function StepThree({ form, setForm }) {
 
       {/* Bars */}
       <div>
-        <FieldLabel>Energy bars</FieldLabel>
+        <FieldLabel>{t('form:field.bars')}</FieldLabel>
         <div className="space-y-2">
           {bars.map(bar => (
             <ProductPreferenceCard
@@ -724,6 +678,7 @@ function StepThree({ form, setForm }) {
               product={bar}
               selected={form.preferred_product_ids.includes(bar.id)}
               onToggle={() => toggleProduct(bar.id)}
+              t={t}
             />
           ))}
         </div>
@@ -739,7 +694,7 @@ function isStep1Valid(form) {
     form.custom_km !== '' &&
     form.race_type !== '' &&
     form.surface_type !== '' &&
-    goalMinutesFromParts(form.goal_time_h, form.goal_time_m) !== null
+    parseGoalTime(form.goal_time) !== null
   )
 }
 
@@ -761,6 +716,7 @@ function isStep3Valid(_form) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function StepForm({ onComplete }) {
+  const { t } = useTranslation(['form', 'common'])
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     // Step 1
@@ -770,8 +726,7 @@ export default function StepForm({ onComplete }) {
     dist_unit:         'km',
     surface_type:      '',
     race_type:         '',
-    goal_time_h:       '',
-    goal_time_m:       '',
+    goal_time:         '',
     elevation_gain_m:  0,
     elev_display:      '',
     elev_unit:         'm',
@@ -797,7 +752,7 @@ export default function StepForm({ onComplete }) {
       return
     }
     const weight_kg    = toKg(form.weight_value, form.weight_unit)
-    const goal_minutes = goalMinutesFromParts(form.goal_time_h, form.goal_time_m)
+    const goal_minutes = parseGoalTime(form.goal_time)
 
     const targets   = calculateTargets({
       race_type:        form.race_type,
@@ -813,12 +768,7 @@ export default function StepForm({ onComplete }) {
     })
     const selection = selectProducts(targets, form.preferred_product_ids, detectRegion)
 
-    // Reconstruct goal_time string for the send-plan API and plan recording
-    const h = parseInt(form.goal_time_h, 10)
-    const m = parseInt(form.goal_time_m, 10)
-    const formOut = { ...form, goal_time: `${h}:${String(m).padStart(2, '0')}` }
-
-    onComplete({ targets, selection, form: formOut })
+    onComplete({ targets, selection, form })
   }
 
   return (
@@ -834,12 +784,15 @@ export default function StepForm({ onComplete }) {
 
       {/* ── Logo + Step header ── */}
       <div className="max-w-md mx-auto w-full px-5 pt-6 pb-4">
-        <img src="/logo.svg" alt="Lecka" className="h-7 mb-5" />
+        <div className="flex items-center justify-between mb-5">
+          <img src="/logo.svg" alt="Lecka" className="h-7" />
+          <LanguageSwitcher region={detectRegion} />
+        </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-          Step {step} of 3
+          {t('common:step.ofTotal', { step })}
         </p>
         <h1 className="text-2xl font-bold text-[#1B1B1B] mt-1">
-          {STEP_TITLES[step - 1]}
+          {[t('form:steps.race'), t('form:steps.body'), t('form:steps.products')][step - 1]}
         </h1>
       </div>
 
@@ -860,7 +813,7 @@ export default function StepForm({ onComplete }) {
                        text-sm font-medium text-[#1B1B1B]
                        hover:border-[#48C4B0] transition-colors"
           >
-            Back
+            {t('common:step.back')}
           </button>
         )}
         <button
@@ -874,7 +827,7 @@ export default function StepForm({ onComplete }) {
               : 'bg-gray-100 text-gray-400 cursor-not-allowed',
           ].join(' ')}
         >
-          {step === 3 ? 'Build my plan' : 'Next'}
+          {step === 3 ? t('common:step.buildMyPlan') : t('common:step.next')}
         </button>
       </div>
 

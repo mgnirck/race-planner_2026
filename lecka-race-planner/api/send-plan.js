@@ -35,6 +35,7 @@ import { computeCartItems, computeLinePrice, computeOptimalGelCart } from '../sr
 import { createRequire } from 'module'
 const _require = createRequire(import.meta.url)
 const allProductsCatalog = _require('../src/config/products.json')
+import { getServerT } from './i18n-server.js'
 
 const { jsPDF } = jsPDFModule
 
@@ -94,18 +95,20 @@ const CONDITIONS_LABELS = {
  *   135  → "2:15"
  *   150  (past 135) → "+15m after"
  */
-function fmtMin(minutes, totalDuration) {
-  if (minutes < 0)               return `${Math.abs(minutes)}m before`
+function fmtMin(minutes, totalDuration, t) {
+  if (minutes < 0)
+    return t ? t('pdf.time.before', { n: Math.abs(minutes) }) : `${Math.abs(minutes)}m before`
   if (totalDuration !== undefined && minutes > totalDuration)
-                                  return `+${minutes - totalDuration}m after`
+    return t ? t('pdf.time.after', { n: minutes - totalDuration }) : `+${minutes - totalDuration}m after`
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   return `${h}:${m.toString().padStart(2, '0')}`
 }
 
-/** Race label — prefer the athlete's own race name, fall back to engine key label */
-function raceLabel(inputs) {
+/** Race label — prefer the athlete's own race name, fall back to translated key label */
+function raceLabel(inputs, t) {
   if (inputs.race_name && inputs.race_name.trim()) return inputs.race_name.trim()
+  if (t) return t(`racetype.${inputs.race_type}`, { defaultValue: inputs.race_type })
   return RACE_LABELS[inputs.race_type] ?? inputs.race_type
 }
 
@@ -131,6 +134,7 @@ const REGION_STORE_URLS = {
   us: 'https://www.getlecka.com',
   de: 'https://www.getlecka.de',
   dk: 'https://www.getlecka.dk',
+  ch: 'https://www.getlecka.ch',
 }
 
 /** Builds an optimised Shopify cart URL, using variety packs when cheaper */
@@ -210,7 +214,8 @@ function computeTrainingInfo(selectedProducts, region) {
 
 // ── PDF generation ────────────────────────────────────────────────────────────
 
-function generatePDF(inputs, targets, selectedProducts, region = 'us') {
+function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'en') {
+  const t  = getServerT(lang)
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const W  = 210   // page width (A4)
   const ML = 20    // left margin
@@ -231,14 +236,15 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(200, 240, 235)
-  doc.text('Real food. Real performance.', ML, 28)
+  doc.text(t('pdf.header.tagline'), ML, 28)
 
   // Right side — plan title + date
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(13)
-  doc.text('Race Nutrition Plan', W - MR, 17, { align: 'right' })
+  doc.text(t('pdf.header.title'), W - MR, 17, { align: 'right' })
 
-  const dateStr = new Date().toLocaleDateString('en-AU', {
+  const localeMap = { en: 'en-AU', de: 'de-DE', da: 'da-DK', fr: 'fr-CH' }
+  const dateStr = new Date().toLocaleDateString(localeMap[lang] ?? 'en-AU', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
   doc.setFont('helvetica', 'normal')
@@ -253,12 +259,12 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
   doc.roundedRect(ML, y, CW, 30, 2, 2, 'F')
 
   const summaryItems = [
-    ['Race',       raceLabel(inputs)],
-    ['Goal time',  inputs.goal_time],
-    ['Conditions', CONDITIONS_LABELS[inputs.conditions] ?? inputs.conditions],
-    ['Effort',     EFFORT_LABELS[inputs.effort]         ?? inputs.effort],
-    ['Weight',     `${inputs.weight_value}\u202f${inputs.weight_unit}`],
-    ['Caffeine',   inputs.caffeine_ok ? 'Yes' : 'No'],
+    [t('pdf.summary.race'),       raceLabel(inputs, t)],
+    [t('pdf.summary.goalTime'),   inputs.goal_time],
+    [t('pdf.summary.conditions'), t(`conditions.${inputs.conditions}`, { defaultValue: inputs.conditions })],
+    [t('pdf.summary.effort'),     t(`effort.${inputs.effort}`,         { defaultValue: inputs.effort })],
+    [t('pdf.summary.weight'),     `${inputs.weight_value}\u202f${inputs.weight_unit}`],
+    [t('pdf.summary.caffeine'),   inputs.caffeine_ok ? t('pdf.summary.yes') : t('pdf.summary.no')],
   ]
 
   const colW = CW / 3
@@ -283,7 +289,7 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
 
   // ── Section 1: Nutrition targets ──────────────────────────────────────────
   y = ensureSpace(doc, y, 60)
-  y = sectionHeading(doc, 'Nutrition Targets', y, ML, CW)
+  y = sectionHeading(doc, t('pdf.section.nutritionTargets'), y, ML, CW)
 
   const durH = targets.total_duration_minutes / 60
   const totalFluid = Math.round(targets.fluid_ml_per_hour * durH)
@@ -291,11 +297,11 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
   doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
-    head: [['Metric', 'Per Hour', 'Total Race']],
+    head: [[t('pdf.nutrition.metric'), t('pdf.nutrition.perHour'), t('pdf.nutrition.totalRace')]],
     body: [
-      ['Carbohydrates', `${targets.carb_per_hour} g`,       `${targets.total_carbs} g`],
-      ['Sodium',        `${targets.sodium_per_hour} mg`,    `${targets.total_sodium} mg`],
-      ['Fluid',         `${targets.fluid_ml_per_hour} ml`,  `${totalFluid} ml`],
+      [t('pdf.nutrition.carbohydrates'), `${targets.carb_per_hour} g`,       `${targets.total_carbs} g`],
+      [t('pdf.nutrition.sodium'),        `${targets.sodium_per_hour} mg`,    `${targets.total_sodium} mg`],
+      [t('pdf.nutrition.fluid'),         `${targets.fluid_ml_per_hour} ml`,  `${totalFluid} ml`],
     ],
     styles: {
       fontSize: 10,
@@ -322,19 +328,19 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
 
   // ── Section 2: Product plan ───────────────────────────────────────────────
   y = ensureSpace(doc, y, 50)
-  y = sectionHeading(doc, 'Your Product Plan', y, ML, CW)
+  y = sectionHeading(doc, t('pdf.section.productPlan'), y, ML, CW)
 
   const productRows = selectedProducts.map(item => [
     item.product.name,
     String(item.quantity),
-    item.timing_minutes.map(t => fmtMin(t, targets.total_duration_minutes)).join(', '),
+    item.timing_minutes.map(min => fmtMin(min, targets.total_duration_minutes, t)).join(', '),
     item.note ?? '',
   ])
 
   doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
-    head: [['Product', 'Qty', 'When', 'Instructions']],
+    head: [[t('pdf.product.product'), t('pdf.product.qty'), t('pdf.product.when'), t('pdf.product.instructions')]],
     body: productRows,
     styles: {
       fontSize: 9,
@@ -386,7 +392,7 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
       doc.setFontSize(9)
       doc.setTextColor(C.green)
       doc.text(
-        `\u2714 Shopping tip: Buy 1\u00d7 Energy Gel Variety Pack (saves ${currencySymbol}${region === 'vn' ? Math.round(savedAmount).toLocaleString('en-US') : savedAmount.toFixed(2)} vs separate boxes) — covers all flavours in your plan`,
+        t('pdf.product.shoppingTip', { currency: currencySymbol, amount: region === 'vn' ? Math.round(savedAmount).toLocaleString('en-US') : savedAmount.toFixed(2) }),
         ML, y
       )
       doc.setFont('helvetica', 'normal')
@@ -399,18 +405,17 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
   const tInfo = computeTrainingInfo(selectedProducts, region)
   if (tInfo.hasOverage) {
     y = ensureSpace(doc, y, 55)
-    y = sectionHeading(doc, 'Training Preparation', y, ML, CW)
+    y = sectionHeading(doc, t('pdf.section.trainingPrep'), y, ML, CW)
 
     const trainingLines = [
-      `Your race needs ${tInfo.totalRaceUnits} gel${tInfo.totalRaceUnits !== 1 ? 's' : ''} total.`,
-      `Because your region sells in multi-packs, your cart includes ${tInfo.totalCartUnits} gels — ` +
-        `with ${tInfo.extraUnits} extra perfect for training runs before race day.`,
+      t('pdf.training.intro', { count: tInfo.totalRaceUnits }),
+      t('pdf.training.multipack', { cart: tInfo.totalCartUnits, extra: tInfo.extraUnits }),
       '',
-      'How to use the extras for race prep:',
-      '  \u2022  Practice with gels on long runs 3\u20134 weeks before your race to train your gut',
-      '  \u2022  Replicate your race-day fuelling schedule during training (same timing, same products)',
-      '  \u2022  Start with 1 gel per hour and build up to your target race frequency',
-      '  \u2022  Never try a new product on race day \u2014 always test in training first',
+      t('pdf.training.prepTitle'),
+      `  \u2022  ${t('pdf.training.tip1')}`,
+      `  \u2022  ${t('pdf.training.tip2')}`,
+      `  \u2022  ${t('pdf.training.tip3')}`,
+      `  \u2022  ${t('pdf.training.tip4')}`,
     ]
 
     doc.setFont('helvetica', 'normal')
@@ -427,19 +432,19 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
 
   // ── Section 3: Race day timeline ──────────────────────────────────────────
   y = ensureSpace(doc, y, 60)
-  y = sectionHeading(doc, 'Race Day Timeline', y, ML, CW)
+  y = sectionHeading(doc, t('pdf.section.raceTimeline'), y, ML, CW)
 
   // Build a flat sorted list of events, inserting race start + finish markers
   const events = [
-    { time: 0,                              action: 'Race start',         product: '—',  marker: true },
-    { time: targets.total_duration_minutes, action: 'Finish line',        product: '—',  marker: true },
+    { time: 0,                              action: t('pdf.timeline.raceStart'),  product: '—', marker: true },
+    { time: targets.total_duration_minutes, action: t('pdf.timeline.finishLine'), product: '—', marker: true },
     ...selectedProducts.flatMap(item =>
-      item.timing_minutes.map(t => ({
-        time: t,
+      item.timing_minutes.map(min => ({
+        time: min,
         action:
-          t < 0                                    ? 'Pre-race fuel' :
-          t >= targets.total_duration_minutes      ? 'Post-race recovery' :
-          item.product.caffeine                    ? 'Fuel  +  caffeine' : 'Fuel',
+          min < 0                                    ? t('pdf.timeline.preRaceFuel') :
+          min >= targets.total_duration_minutes      ? t('pdf.timeline.postRace') :
+          item.product.caffeine                      ? t('pdf.timeline.fuelCaffeine') : t('pdf.timeline.fuel'),
         product: item.product.name,
         marker: false,
       }))
@@ -447,16 +452,16 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
   ]
   events.sort((a, b) => a.time - b.time)
 
-  const timelineBody = events.map(e => [
-    fmtMin(e.time, targets.total_duration_minutes),
-    e.action,
-    e.product,
-  ])
+  const markerIndices = new Set()
+  const timelineBody = events.map((e, i) => {
+    if (e.marker) markerIndices.add(i)
+    return [fmtMin(e.time, targets.total_duration_minutes, t), e.action, e.product]
+  })
 
   doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
-    head: [['Time', 'Action', 'Product']],
+    head: [[t('pdf.timeline.time'), t('pdf.timeline.action'), t('pdf.timeline.product')]],
     body: timelineBody,
     styles: {
       fontSize: 9,
@@ -480,11 +485,10 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
     // Highlight the race start and finish rows in accent green
     didParseCell(data) {
       if (data.section !== 'body') return
-      const action = Array.isArray(data.row.raw) ? data.row.raw[1] : null
-      if (action === 'Race start' || action === 'Finish line') {
-        data.cell.styles.fillColor    = C.accentRgb
-        data.cell.styles.textColor    = C.whiteRgb
-        data.cell.styles.fontStyle    = 'bold'
+      if (markerIndices.has(data.row.index)) {
+        data.cell.styles.fillColor = C.accentRgb
+        data.cell.styles.textColor = C.whiteRgb
+        data.cell.styles.fontStyle = 'bold'
       }
     },
   })
@@ -496,18 +500,18 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
   const isLongRace = targets.total_duration_minutes >= 240
   if (isHotCondition && isLongRace) {
     y = ensureSpace(doc, y, 50)
-    y = sectionHeading(doc, 'Pre-Race Sodium Loading', y, ML, CW)
+    y = sectionHeading(doc, t('pdf.section.sodiumLoading'), y, ML, CW)
 
     const lines = [
-      'For endurance events >4 hours in hot or humid conditions, pre-race sodium loading',
-      'enhances performance and reduces cramping risk.',
+      t('pdf.sodium.line1'),
+      t('pdf.sodium.line2'),
       '',
-      'Protocol: 2–4 hours before race start',
-      '  \u2022  Mix 20.5 g salt (about 2 teaspoons) into 2.5 L of water or electrolyte drink',
-      '  \u2022  Drink steadily over 2–4 hours; do not chug (GI comfort matters)',
-      '  \u2022  Pair with your pre-race meal for best effect',
+      t('pdf.sodium.line3'),
+      t('pdf.sodium.line4'),
+      t('pdf.sodium.line5'),
+      t('pdf.sodium.line6'),
       '',
-      'This boosts plasma sodium and blood volume, extending your aerobic capacity.',
+      t('pdf.sodium.line7'),
     ]
 
     doc.setFont('helvetica', 'normal')
@@ -529,7 +533,7 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
     doc.setFontSize(8)
     doc.setTextColor(C.white)
     doc.text(
-      'Built with Lecka \u2014 real food, real performance \u2014 getlecka.com',
+      t('pdf.footer'),
       W / 2,
       292,
       { align: 'center' },
@@ -541,13 +545,14 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us') {
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 
-async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl, region = 'us') {
+async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl, region = 'us', lang = 'en') {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY environment variable is not set')
   }
+  const t       = getServerT(lang)
   const resend  = new Resend(process.env.RESEND_API_KEY)
-  const label   = raceLabel(inputs)
-  const subject = `Your ${label} nutrition plan is ready`
+  const label   = raceLabel(inputs, t)
+  const subject = t('email.subject', { label })
 
   const productListHtml = selectedProducts
     .map(item => `<li><strong>${item.product.name}</strong> &times;&nbsp;${item.quantity} &mdash; ${item.note ?? ''}</li>`)
@@ -575,32 +580,28 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
   const varietyPackHtml = emailVpResult.usesVarietyPack && emailVpResult.savedAmount > 0 ? `
     <div style="background:#f0fdf9;border:2px solid #48C4B0;border-radius:8px;padding:14px 16px;margin:12px 0;">
       <p style="margin:0;font-size:13px;color:#1B1B1B;">
-        <strong>&#10003; Best value:</strong> Replace the individual gel boxes with <strong>1&times; Energy Gel Variety Pack</strong>
-        and save <strong>${currencySymbol}${region === 'vn' ? Math.round(emailVpResult.savedAmount).toLocaleString('en-US') : emailVpResult.savedAmount.toFixed(2)}</strong>.
-        The variety pack includes all 5 gel flavours &mdash; perfect for both race day and training runs.
+        <strong>&#10003; ${t('email.varietyPack.bestValue')}</strong> ${t('email.varietyPack.body', { currency: currencySymbol, amount: region === 'vn' ? Math.round(emailVpResult.savedAmount).toLocaleString('en-US') : emailVpResult.savedAmount.toFixed(2) })}
       </p>
     </div>` : ''
 
   const emailTInfo = computeTrainingInfo(selectedProducts, region)
   const trainingHtml = emailTInfo.hasOverage ? `
     <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:16px;margin:20px 0;">
-      <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#1B1B1B;">Race day vs. what you buy</p>
+      <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#1B1B1B;">${t('email.training.title')}</p>
       <p style="margin:0 0 12px;font-size:13px;color:#374151;">
-        Your race needs <strong>${emailTInfo.totalRaceUnits} gel${emailTInfo.totalRaceUnits !== 1 ? 's' : ''}</strong> total.
-        Because your region sells in multi-packs, your cart includes <strong>${emailTInfo.totalCartUnits} gels</strong> &mdash;
-        the extra <strong>${emailTInfo.extraUnits}</strong> are perfect for training before race day.
+        ${t('email.training.body', { count: emailTInfo.totalRaceUnits, cart: emailTInfo.totalCartUnits, extra: emailTInfo.extraUnits })}
       </p>
-      <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#888;">How to use the extras</p>
+      <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#888;">${t('email.training.extrasTitle')}</p>
       <ul style="margin:0;padding-left:18px;font-size:13px;color:#374151;line-height:1.8;">
-        <li>Practice with gels on long runs 3&ndash;4 weeks before your race to train your gut</li>
-        <li>Replicate your race-day fuelling schedule during training (same timing, same products)</li>
-        <li>Start with 1 gel per hour and build up to your target race frequency</li>
-        <li>Never try a new product on race day &mdash; always test in training first</li>
+        <li>${t('email.training.tip1')}</li>
+        <li>${t('email.training.tip2')}</li>
+        <li>${t('email.training.tip3')}</li>
+        <li>${t('email.training.tip4')}</li>
       </ul>
     </div>` : ''
 
   const html = /* html */`<!DOCTYPE html>
-<html lang="en">
+<html lang="${lang}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -632,31 +633,28 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 44" height="36" aria-label="lecka">
         <text x="0" y="36" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-weight="800" font-size="38" letter-spacing="-1" fill="#ffffff">lecka</text>
       </svg>
-      <p>Your personalised race nutrition plan</p>
+      <p>${t('email.headerTagline')}</p>
     </div>
     <div class="body">
-      <p>Hi,</p>
-      <p>
-        Your nutrition plan for <strong>${label}</strong> (goal: <strong>${inputs.goal_time}</strong>) is ready.
-        The full breakdown &mdash; including your race day timeline &mdash; is in the attached PDF.
-      </p>
+      <p>${t('email.hi')}</p>
+      <p>${t('email.intro', { label, goalTime: inputs.goal_time })}</p>
 
       <div class="targets">
         <div class="tbox">
           <div class="val">${targets.carb_per_hour}<small style="font-size:14px">g</small></div>
-          <div class="lbl">carbs&nbsp;/&nbsp;hour</div>
+          <div class="lbl">${t('email.carbsLabel')}</div>
         </div>
         <div class="tbox">
           <div class="val">${targets.sodium_per_hour}<small style="font-size:14px">mg</small></div>
-          <div class="lbl">sodium&nbsp;/&nbsp;hour</div>
+          <div class="lbl">${t('email.sodiumLabel')}</div>
         </div>
         <div class="tbox">
           <div class="val">${targets.fluid_ml_per_hour}<small style="font-size:14px">ml</small></div>
-          <div class="lbl">fluid&nbsp;/&nbsp;hour</div>
+          <div class="lbl">${t('email.fluidLabel')}</div>
         </div>
       </div>
 
-      <p style="margin-bottom: 6px;"><strong>Your product plan:</strong></p>
+      <p style="margin-bottom: 6px;"><strong>${t('email.productPlanTitle')}</strong></p>
       <ul>
         ${productListHtml}
       </ul>
@@ -665,20 +663,20 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
 
       ${trainingHtml}
 
-      <a href="${cartUrl}" class="cta">Buy My Plan &ndash; 10% Off &rarr;</a>
+      <a href="${cartUrl}" class="cta">${t('email.cta')}</a>
 
       <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
         <p style="margin:0;font-size:13px;color:#1B1B1B;">
-          <strong>10% discount included:</strong> Code <code style="background:#e0f7f2;padding:2px 6px;border-radius:4px;font-family:monospace;">NUTRIPLAN10</code> is already applied to your cart link above.
+          <strong>${t('email.discountTitle')}</strong> ${t('email.discountBody')}
         </p>
       </div>
 
       <p class="note">
-        Open the attached PDF for your full race timeline, training notes, and timing guide.
+        ${t('email.note')}
       </p>
     </div>
     <div class="footer">
-      Built with Lecka &mdash; real food, real performance &mdash;
+      ${t('email.footer')}
       <a href="https://getlecka.com">getlecka.com</a>
     </div>
   </div>
@@ -845,6 +843,8 @@ const CORS_WHITELIST = [
   'https://getlecka.de',
   'https://www.getlecka.dk',
   'https://getlecka.dk',
+  'https://www.getlecka.ch',
+  'https://getlecka.ch',
 ]
 
 function applyCORS(req, res) {
@@ -878,7 +878,7 @@ export default async function handler(req, res) {
     return res.status(429).json({ success: false, error: 'Too many requests — please wait a minute and try again.' })
   }
 
-  const { email, inputs, targets, selectedProducts, region = 'us' } = req.body ?? {}
+  const { email, inputs, targets, selectedProducts, region = 'us', lang = 'en' } = req.body ?? {}
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -897,7 +897,7 @@ export default async function handler(req, res) {
   // ── Generate PDF ───────────────────────────────────────────────────────────
   let pdfBuffer
   try {
-    pdfBuffer = generatePDF(inputs, targets, selectedProducts, region)
+    pdfBuffer = generatePDF(inputs, targets, selectedProducts, region, lang)
   } catch (pdfErr) {
     console.error('[send-plan] PDF generation failed:', pdfErr)
     return res.status(500).json({ success: false, error: 'Failed to generate PDF.' })
@@ -907,7 +907,7 @@ export default async function handler(req, res) {
 
   // ── Send email (priority — failure aborts the request) ────────────────────
   try {
-    await sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl, region)
+    await sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl, region, lang)
   } catch (emailErr) {
     console.error('[send-plan] Email send failed:', emailErr.message)
     console.error('[send-plan] RESEND_API_KEY set:', !!process.env.RESEND_API_KEY)
