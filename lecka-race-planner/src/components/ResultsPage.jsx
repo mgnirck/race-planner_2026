@@ -137,6 +137,48 @@ function computeTrainingInfo(aggregated) {
   }
 }
 
+function computeProvidedNutrition(selection, manualQty, totalDurationMinutes) {
+  const qtyMap = {}
+  const productById = {}
+
+  for (const item of selection) {
+    const id = item.product.id
+    qtyMap[id] = (qtyMap[id] || 0) + item.quantity
+    productById[id] = item.product
+  }
+
+  if (manualQty) {
+    for (const [id, qty] of Object.entries(manualQty)) {
+      if (qty <= 0) {
+        delete qtyMap[id]
+      } else {
+        qtyMap[id] = qty
+        if (!productById[id]) {
+          const p = allProductsCatalog.find(p => p.id === id)
+          if (p) productById[id] = p
+        }
+      }
+    }
+  }
+
+  let totalCarbs = 0
+  let totalSodium = 0
+  for (const [id, qty] of Object.entries(qtyMap)) {
+    const product = productById[id]
+    if (!product) continue
+    totalCarbs  += (product.carbs_per_unit  || 0) * qty
+    totalSodium += (product.sodium_per_unit || 0) * qty
+  }
+
+  const durationHours = totalDurationMinutes / 60
+  return {
+    total_carbs_provided:       Math.round(totalCarbs),
+    total_sodium_provided:      Math.round(totalSodium),
+    carbs_per_hour_provided:    durationHours > 0 ? Math.round(totalCarbs  / durationHours) : 0,
+    sodium_per_hour_provided:   durationHours > 0 ? Math.round(totalSodium / durationHours) : 0,
+  }
+}
+
 /**
  * Group during-phase events by product and derive a compact schedule string.
  * Returns array of { product, note, count, scheduleText }
@@ -303,38 +345,113 @@ function WarningBox({ warnings }) {
 
 // ── NutritionSummary ──────────────────────────────────────────────────────────
 
-function NutritionSummary({ targets }) {
+function nutritionStatusClass(provided, target) {
+  if (!target) return 'bg-gray-50 text-gray-400'
+  const r = provided / target
+  if (r >= 0.9 && r <= 1.1) return 'bg-green-50 text-green-600'
+  if (r >= 0.75)             return 'bg-amber-50 text-amber-600'
+  if (r < 0.75)              return 'bg-red-50 text-red-500'
+  if (r <= 1.3)              return 'bg-blue-50 text-blue-500'
+  return 'bg-blue-100 text-blue-700'
+}
+
+function nutritionStatusLabel(provided, target, t) {
+  if (!target) return ''
+  const r = provided / target
+  if (r >= 0.9 && r <= 1.1) return t('nutrition.status.onTarget')
+  if (r >= 0.75)             return t('nutrition.status.slightlyUnder')
+  if (r < 0.75)              return t('nutrition.status.under')
+  if (r <= 1.3)              return t('nutrition.status.slightlyOver')
+  return t('nutrition.status.over')
+}
+
+function NutritionSummary({ targets, provided }) {
   const { t } = useTranslation('results')
+  const showProvided = provided.carbs_per_hour_provided > 0 || provided.sodium_per_hour_provided > 0
+
+  const labelParts = key => t(key).split('\n').map((line, i) =>
+    <React.Fragment key={i}>{line}{i === 0 && <br />}</React.Fragment>
+  )
+
   return (
     <section>
       <SectionLabel>{t('section.nutritionTargets')}</SectionLabel>
-      <div className="border-2 border-gray-100 rounded-2xl p-5">
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div>
-            <p className="text-2xl font-bold text-[#48C4B0]">{targets.carb_per_hour}</p>
-            <p className="text-xs text-gray-400 mt-0.5 leading-tight">{t('nutrition.carbsPerHour').split('\n').map((line, i) => <React.Fragment key={i}>{line}{i === 0 && <br />}</React.Fragment>)}</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-[#48C4B0]">{targets.sodium_per_hour}</p>
-            <p className="text-xs text-gray-400 mt-0.5 leading-tight">{t('nutrition.sodiumPerHour').split('\n').map((line, i) => <React.Fragment key={i}>{line}{i === 0 && <br />}</React.Fragment>)}</p>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-[#48C4B0]">{targets.fluid_ml_per_hour}</p>
-            <p className="text-xs text-gray-400 mt-0.5 leading-tight">{t('nutrition.fluidPerHour').split('\n').map((line, i) => <React.Fragment key={i}>{line}{i === 0 && <br />}</React.Fragment>)}</p>
+      <div className="border-2 border-gray-100 rounded-2xl p-5 space-y-4">
+
+        {/* Target row */}
+        <div>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">{t('nutrition.needed')}</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-2xl font-bold text-[#48C4B0]">{targets.carb_per_hour}</p>
+              <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.carbsPerHour')}</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-[#48C4B0]">{targets.sodium_per_hour}</p>
+              <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.sodiumPerHour')}</p>
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-[#48C4B0]">{targets.fluid_ml_per_hour}</p>
+              <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.fluidPerHour')}</p>
+            </div>
           </div>
         </div>
-        <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between text-xs text-gray-400">
+
+        {/* Provided row */}
+        {showProvided && (
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">{t('nutrition.provided')}</p>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {/* Carbs provided */}
+              <div>
+                <p className="text-xl font-bold text-[#1B1B1B]">{provided.carbs_per_hour_provided}</p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.carbsPerHour')}</p>
+                <span
+                  className={`mt-1.5 inline-block text-xs font-medium px-2 py-0.5 rounded-full ${nutritionStatusClass(provided.carbs_per_hour_provided, targets.carb_per_hour)}`}
+                  title={nutritionStatusLabel(provided.carbs_per_hour_provided, targets.carb_per_hour, t)}
+                >
+                  {provided.carbs_per_hour_provided - targets.carb_per_hour >= 0 ? '+' : ''}{provided.carbs_per_hour_provided - targets.carb_per_hour}g
+                </span>
+              </div>
+              {/* Sodium provided */}
+              <div>
+                <p className="text-xl font-bold text-[#1B1B1B]">{provided.sodium_per_hour_provided}</p>
+                <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.sodiumPerHour')}</p>
+                <span
+                  className={`mt-1.5 inline-block text-xs font-medium px-2 py-0.5 rounded-full ${nutritionStatusClass(provided.sodium_per_hour_provided, targets.sodium_per_hour)}`}
+                  title={nutritionStatusLabel(provided.sodium_per_hour_provided, targets.sodium_per_hour, t)}
+                >
+                  {provided.sodium_per_hour_provided - targets.sodium_per_hour >= 0 ? '+' : ''}{provided.sodium_per_hour_provided - targets.sodium_per_hour}mg
+                </span>
+              </div>
+              {/* Fluid — not product-tracked */}
+              <div className="flex items-center justify-center">
+                <p className="text-xs text-gray-400 italic leading-snug">{t('nutrition.fluidNote')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Totals */}
+        <div className="border-t border-gray-100 pt-3 flex justify-between text-xs text-gray-400">
           <span>
             {t('nutrition.totalCarbs')}{' '}
             <span className="font-semibold text-[#1B1B1B]">{targets.total_carbs}g</span>
+            {showProvided && (
+              <span className="ml-1">→ <span className="font-semibold text-[#1B1B1B]">{provided.total_carbs_provided}g</span></span>
+            )}
           </span>
           <span>
             {t('nutrition.totalSodium')}{' '}
             <span className="font-semibold text-[#1B1B1B]">{targets.total_sodium}mg</span>
+            {showProvided && (
+              <span className="ml-1">→ <span className="font-semibold text-[#1B1B1B]">{provided.total_sodium_provided}mg</span></span>
+            )}
           </span>
         </div>
+
         {targets.elevation_tier && targets.elevation_tier !== 'flat' && (
-          <p className="text-xs text-[#48C4B0] italic mt-2">
+          <p className="text-xs text-[#48C4B0] italic">
             {t('nutrition.elevationAdjust', { pct: ELEVATION_MODIFIER_PCT[targets.elevation_tier] })}
           </p>
         )}
@@ -862,7 +979,7 @@ function ResearchModal({ onClose }) {
 
 // ── CartEditorModal ───────────────────────────────────────────────────────────
 
-function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig }) {
+function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig, provided, targets }) {
   const { t } = useTranslation(['results', 'form'])
   const availableProducts = useMemo(() =>
     allProductsCatalog.filter(p => (p.type === 'gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
@@ -969,6 +1086,37 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
           )}
         </div>
 
+        {/* Nutrition match bar */}
+        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex-shrink-0">
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2.5">{t('nutrition.provided')}</p>
+          <div className="space-y-2.5">
+            {[
+              { label: t('nutrition.carbsShort'), prov: provided.carbs_per_hour_provided, target: targets.carb_per_hour, unit: 'g/h' },
+              { label: t('nutrition.sodiumShort'), prov: provided.sodium_per_hour_provided, target: targets.sodium_per_hour, unit: 'mg/h' },
+            ].map(({ label, prov, target, unit }) => {
+              const fillPct = target > 0 ? Math.min(130, Math.round((prov / target) * 100)) : 0
+              const barColor = fillPct >= 90 && fillPct <= 110 ? '#48C4B0'
+                : fillPct < 75  ? '#ef4444'
+                : fillPct < 90  ? '#f59e0b'
+                : '#3b82f6'
+              return (
+                <div key={label}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-gray-500">{label}</span>
+                    <span className="font-semibold text-[#1B1B1B]">{prov} / {target} {unit}</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(fillPct, 100)}%`, backgroundColor: barColor }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0 space-y-2">
           {manualQty !== null && (
             <button
@@ -1012,6 +1160,10 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
     [selection, region, manualQty]
   )
   const trainingInfo = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
+  const provided     = useMemo(
+    () => computeProvidedNutrition(selection, manualQty, targets.total_duration_minutes),
+    [selection, manualQty, targets.total_duration_minutes]
+  )
 
   // Variety pack CTA — always just 1× gel variety pack + 1× bar variety pack, nothing else
   const vpCartURL = useMemo(() => {
@@ -1108,6 +1260,8 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
           setManualQty={setManualQty}
           onClose={() => setShowCartEditor(false)}
           regionConfig={regionConfig}
+          provided={provided}
+          targets={targets}
         />
       )}
 
@@ -1159,7 +1313,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         <WarningBox warnings={targets.warnings} />
 
         {/* ── Nutrition targets ───────────────────────────────────────────── */}
-        <NutritionSummary targets={targets} />
+        <NutritionSummary targets={targets} provided={provided} />
         <button
           type="button"
           onClick={() => setShowResearch(true)}
