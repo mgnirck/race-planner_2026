@@ -22,13 +22,12 @@ import LanguageSwitcher     from './LanguageSwitcher.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function parseGoalTime(str) {
-  // Accepts H:MM, HH:MM, H.MM, HH.MM (colon or dot separator)
-  const match = str.trim().match(/^(\d{1,2})[:.](\d{2})$/)
-  if (!match) return null
-  const hours = parseInt(match[1], 10)
-  const mins  = parseInt(match[2], 10)
-  if (mins > 59) return null
+function goalMinutesFromFields(h, m) {
+  const hours = parseInt(h, 10)
+  const mins  = parseInt(m, 10)
+  if (!Number.isFinite(hours) || !Number.isFinite(mins)) return null
+  if (hours < 0 || hours > 200) return null
+  if (mins < 0 || mins > 59) return null
   const total = hours * 60 + mins
   return total > 0 ? total : null
 }
@@ -157,8 +156,10 @@ function StepOne({ form, setForm }) {
   const { t } = useTranslation(['form', 'common'])
   const [gpxError, setGpxError] = useState(false)
 
-  const goalMinutes   = parseGoalTime(form.goal_time)
-  const timeIsInvalid = form.goal_time.length > 0 && goalMinutes === null
+  const goalMinutes   = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
+  const hTouched      = form.goal_time_h !== ''
+  const mTouched      = form.goal_time_m !== ''
+  const timeIsInvalid = (hTouched || mTouched) && goalMinutes === null
 
   function handleDistChange(rawValue) {
     setForm(f => {
@@ -418,22 +419,51 @@ function StepOne({ form, setForm }) {
       {/* Goal finish time */}
       <div>
         <FieldLabel>{t('form:field.goalTime')}</FieldLabel>
-        <input
-          type="text"
-          inputMode="numeric"
-          placeholder={t('form:field.goalTime.placeholder')}
-          value={form.goal_time}
-          onChange={e => setForm(f => ({ ...f, goal_time: e.target.value }))}
-          className={[
-            'w-28 border-2 rounded-lg px-3 py-2.5 text-sm font-mono tracking-wide',
-            'focus:outline-none',
-            goalMinutes !== null
-              ? 'border-[#48C4B0]'
-              : timeIsInvalid
-              ? 'border-red-300'
-              : 'border-gray-200 focus:border-[#48C4B0]',
-          ].join(' ')}
-        />
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col items-center gap-1">
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              max="200"
+              placeholder="0"
+              value={form.goal_time_h}
+              onChange={e => setForm(f => ({ ...f, goal_time_h: e.target.value }))}
+              className={[
+                'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono',
+                'focus:outline-none',
+                goalMinutes !== null
+                  ? 'border-[#48C4B0]'
+                  : timeIsInvalid
+                  ? 'border-red-300'
+                  : 'border-gray-200 focus:border-[#48C4B0]',
+              ].join(' ')}
+            />
+            <span className="text-xs text-gray-400">{t('form:field.goalTime.hours')}</span>
+          </div>
+          <span className="text-lg font-semibold text-gray-300 pb-4">:</span>
+          <div className="flex flex-col items-center gap-1">
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              max="59"
+              placeholder="00"
+              value={form.goal_time_m}
+              onChange={e => setForm(f => ({ ...f, goal_time_m: e.target.value }))}
+              className={[
+                'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono',
+                'focus:outline-none',
+                goalMinutes !== null
+                  ? 'border-[#48C4B0]'
+                  : timeIsInvalid
+                  ? 'border-red-300'
+                  : 'border-gray-200 focus:border-[#48C4B0]',
+              ].join(' ')}
+            />
+            <span className="text-xs text-gray-400">{t('form:field.goalTime.minutes')}</span>
+          </div>
+        </div>
         {goalMinutes !== null && (
           <p className="text-xs text-[#48C4B0] mt-1.5">
             {t('form:field.goalTime.parsed', { hours: Math.floor(goalMinutes / 60), mins: goalMinutes % 60 })}
@@ -694,7 +724,7 @@ function isStep1Valid(form) {
     form.custom_km !== '' &&
     form.race_type !== '' &&
     form.surface_type !== '' &&
-    parseGoalTime(form.goal_time) !== null
+    goalMinutesFromFields(form.goal_time_h, form.goal_time_m) !== null
   )
 }
 
@@ -726,7 +756,8 @@ export default function StepForm({ onComplete }) {
     dist_unit:         'km',
     surface_type:      '',
     race_type:         '',
-    goal_time:         '',
+    goal_time_h:       '',
+    goal_time_m:       '',
     elevation_gain_m:  0,
     elev_display:      '',
     elev_unit:         'm',
@@ -752,7 +783,10 @@ export default function StepForm({ onComplete }) {
       return
     }
     const weight_kg    = toKg(form.weight_value, form.weight_unit)
-    const goal_minutes = parseGoalTime(form.goal_time)
+    const goal_minutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
+    const h = Math.floor(goal_minutes / 60)
+    const m = goal_minutes % 60
+    const goal_time = `${h}:${String(m).padStart(2, '0')}`
 
     const targets   = calculateTargets({
       race_type:        form.race_type,
@@ -768,7 +802,7 @@ export default function StepForm({ onComplete }) {
     })
     const selection = selectProducts(targets, form.preferred_product_ids, detectRegion)
 
-    onComplete({ targets, selection, form })
+    onComplete({ targets, selection, form: { ...form, goal_time } })
   }
 
   return (

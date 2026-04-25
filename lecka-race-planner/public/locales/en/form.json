@@ -23,10 +23,11 @@
   "field.surface": "Surface",
 
   "field.goalTime": "Goal finish time",
-  "field.goalTime.placeholder": "h:mm",
-  "field.goalTime.hint": "e.g. 2:15 or 2.15 for 2 hours 15 minutes",
+  "field.goalTime.hours": "hours",
+  "field.goalTime.minutes": "min",
+  "field.goalTime.hint": "Enter hours and minutes for your expected finish time",
   "field.goalTime.parsed": "{{hours}}h {{mins}}min",
-  "field.goalTime.error": "Enter time as h:mm or h.mm, e.g. 2:15 or 2.15",
+  "field.goalTime.error": "Invalid time — hours 0–200, minutes 0–59, total > 0",
 
   "field.weight": "Body weight",
   "field.weight.error": "Enter a weight between {{min}}–{{max}} {{unit}}",

@@ -23,10 +23,11 @@
   "field.surface": "Terrain",
 
   "field.goalTime": "Temps objectif",
-  "field.goalTime.placeholder": "h:mm",
-  "field.goalTime.hint": "ex. 2:15 ou 2.15 pour 2 heures 15 minutes",
+  "field.goalTime.hours": "heures",
+  "field.goalTime.minutes": "min",
+  "field.goalTime.hint": "Entrez les heures et les minutes pour votre temps d'arrivée estimé",
   "field.goalTime.parsed": "{{hours}}h {{mins}}min",
-  "field.goalTime.error": "Saisissez le temps au format h:mm ou h.mm, ex. 2:15 ou 2.15",
+  "field.goalTime.error": "Temps invalide — heures 0–200, minutes 0–59, total > 0",
 
   "field.weight": "Poids corporel",
   "field.weight.error": "Saisissez un poids entre {{min}}–{{max}} {{unit}}",

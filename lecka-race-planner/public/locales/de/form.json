@@ -23,10 +23,11 @@
   "field.surface": "Untergrund",
 
   "field.goalTime": "Zielzeit",
-  "field.goalTime.placeholder": "h:mm",
-  "field.goalTime.hint": "z.B. 2:15 oder 2.15 für 2 Stunden 15 Minuten",
+  "field.goalTime.hours": "Std.",
+  "field.goalTime.minutes": "Min.",
+  "field.goalTime.hint": "Stunden und Minuten für deine erwartete Zielzeit eingeben",
   "field.goalTime.parsed": "{{hours}}h {{mins}}min",
-  "field.goalTime.error": "Zeit als h:mm oder h.mm eingeben, z.B. 2:15 oder 2.15",
+  "field.goalTime.error": "Ungültige Zeit — Stunden 0–200, Minuten 0–59, Gesamt > 0",
 
   "field.weight": "Körpergewicht",
   "field.weight.error": "Gewicht zwischen {{min}}–{{max}} {{unit}} eingeben",

@@ -23,10 +23,11 @@
   "field.surface": "Underlag",
 
   "field.goalTime": "Måltid",
-  "field.goalTime.placeholder": "h:mm",
-  "field.goalTime.hint": "f.eks. 2:15 eller 2.15 for 2 timer 15 minutter",
+  "field.goalTime.hours": "timer",
+  "field.goalTime.minutes": "min",
+  "field.goalTime.hint": "Angiv timer og minutter for dit forventede sluttid",
   "field.goalTime.parsed": "{{hours}}t {{mins}}min",
-  "field.goalTime.error": "Indtast tid som h:mm eller h.mm, f.eks. 2:15 eller 2.15",
+  "field.goalTime.error": "Ugyldig tid — timer 0–200, minutter 0–59, totaltid > 0",
 
   "field.weight": "Kropsvægt",
   "field.weight.error": "Indtast en vægt mellem {{min}}–{{max}} {{unit}}",

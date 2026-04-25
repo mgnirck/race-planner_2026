@@ -23,10 +23,11 @@
   "field.surface": "Địa hình",
 
   "field.goalTime": "Thời gian hoàn thành mục tiêu",
-  "field.goalTime.placeholder": "h:mm",
-  "field.goalTime.hint": "VD: 2:15 hoặc 2.15 cho 2 giờ 15 phút",
+  "field.goalTime.hours": "giờ",
+  "field.goalTime.minutes": "phút",
+  "field.goalTime.hint": "Nhập số giờ và phút cho thời gian hoàn thành dự kiến",
   "field.goalTime.parsed": "{{hours}}h {{mins}}phút",
-  "field.goalTime.error": "Nhập thời gian theo dạng h:mm hoặc h.mm, VD: 2:15 hoặc 2.15",
+  "field.goalTime.error": "Thời gian không hợp lệ — giờ 0–200, phút 0–59, tổng > 0",
 
   "field.weight": "Cân nặng",
   "field.weight.error": "Nhập cân nặng từ {{min}}–{{max}} {{unit}}",
