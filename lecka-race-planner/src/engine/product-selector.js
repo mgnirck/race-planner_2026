@@ -20,7 +20,7 @@ import formulaConfig from '../config/formula-config.json'
 import { isAvailableInRegion } from './region-utils.js'
 
 export function selectProducts(targets, preferredProductIds = [], region = 'us') {
-  const { total_duration_minutes, caffeine_ok } = targets
+  const { total_duration_minutes, caffeine_ok, total_carbs } = targets
   const { timing_rules: timingRules, caffeine_rules: caffeineRules } = formulaConfig
 
   // ── Filter the full catalogue to products available in this region ────────
@@ -45,14 +45,11 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
   const cafGels = preferred.filter(p => p.type === 'gel' && p.caffeine)
   const bars    = preferred.filter(p => p.type === 'bar')
 
-  // ── Build gel timing slots ────────────────────────────────────────────────
+  // ── Build gel timing slots (target-driven) ───────────────────────────────
+  // Quantity is derived from total_carbs ÷ avg carbs per selected gel, then
+  // slots are spread evenly across the race with a minimum spacing floor.
 
-  const gelSlots = []
-  let t = timingRules.during.first_intake_min
-  while (t < total_duration_minutes) {
-    gelSlots.push(t)
-    t += timingRules.during.interval_min
-  }
+  const gelSlots = buildGelSlots(total_carbs, selectedGels, total_duration_minutes, timingRules)
 
   // Use flavour variety when the race is long enough to warrant it
   const useVariety = gelSlots.length >= 5
@@ -164,6 +161,39 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Builds an array of gel timing slots whose combined carbs meet total_carbs.
+ *
+ * Quantity = ceil(total_carbs / avg_carbs_per_selected_gel).
+ * Slots are spread evenly from first_intake_min to (total_duration_minutes - 1),
+ * capped so no two consecutive slots are closer than min_interval_min apart.
+ */
+function buildGelSlots(totalCarbs, selectedGels, totalDurationMinutes, timingRules) {
+  const firstIntake = timingRules.during.first_intake_min
+  const minInterval = timingRules.during.min_interval_min
+
+  if (selectedGels.length === 0 || totalCarbs <= 0 || firstIntake >= totalDurationMinutes) {
+    return []
+  }
+
+  // Average carbs per slot — gels are rotated round-robin so this is correct.
+  const avgCarbsPerSlot = selectedGels.reduce((sum, g) => sum + g.carbs_per_unit, 0) / selectedGels.length
+
+  const slotsNeeded = Math.ceil(totalCarbs / avgCarbsPerSlot)
+
+  // How many slots physically fit at min spacing within the race window.
+  const maxSlots = Math.floor((totalDurationMinutes - 1 - firstIntake) / minInterval) + 1
+
+  const n = Math.max(1, Math.min(slotsNeeded, maxSlots))
+
+  if (n === 1) return [firstIntake]
+
+  const lastSlot = totalDurationMinutes - 1
+  return Array.from({ length: n }, (_, i) =>
+    Math.round(firstIntake + (i * (lastSlot - firstIntake)) / (n - 1))
+  )
+}
 
 function formatMin(minutes) {
   const h = Math.floor(minutes / 60)

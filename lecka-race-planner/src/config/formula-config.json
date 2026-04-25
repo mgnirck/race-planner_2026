@@ -71,8 +71,9 @@
       "note": "Consume 15–60 min before the start"
     },
     "during": {
-      "first_intake_min": 20,
-      "interval_min":     30,
+      "first_intake_min":  20,
+      "interval_min":      30,
+      "min_interval_min":  20,
       "note": "First intake at ~20 min, then every 30 min"
     },
     "after": {
