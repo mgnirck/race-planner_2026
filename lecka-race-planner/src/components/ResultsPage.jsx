@@ -1229,8 +1229,27 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
       lines,
       t('results:cta.chat.clipboardTotal', { total: formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2) }),
     ].join('\n')
-    navigator.clipboard.writeText(summary).catch(() => {})
+
+    // navigator.clipboard is blocked in cross-origin iframes without allow="clipboard-write".
+    // execCommand('copy') works in iframes with just a user gesture — no permissions needed.
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(summary).catch(() => execCopy(summary))
+    } else {
+      execCopy(summary)
+    }
+
     window.open(chatUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  function execCopy(text) {
+    const el = document.createElement('textarea')
+    el.value = text
+    el.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none'
+    document.body.appendChild(el)
+    el.focus()
+    el.select()
+    try { document.execCommand('copy') } catch (_) {}
+    document.body.removeChild(el)
   }
 
   // Prefer athlete's race name → actual distance typed → race_type label
