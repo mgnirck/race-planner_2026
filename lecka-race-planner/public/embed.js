@@ -28,6 +28,10 @@
     'https://plan.getlecka.com',
     'https://www.getlecka.com',
     'https://getlecka.com',
+    'https://www.getlecka.dk',
+    'https://getlecka.dk',
+    'https://www.getlecka.de',
+    'https://getlecka.de',
   ];
 
   function isAllowed(origin) {
