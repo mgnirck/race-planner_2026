@@ -54,6 +54,7 @@
   "cta.chat.zalo": "Order via Zalo",
   "cta.chat.facebook": "Order via Facebook",
   "cta.chat.hint": "Your order summary will be copied to clipboard — paste it into the chat.",
+  "cta.chat.summaryLabel": "Your order — tap to select all:",
   "cta.chat.clipboardIntro": "Hi Lecka! I'd like to order from my nutrition plan:",
   "cta.chat.clipboardTotal": "Total: {{total}}",
   "cta.shipping.us": "Ships to US only. Free shipping on orders over $60.",
