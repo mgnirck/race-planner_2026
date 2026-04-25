@@ -1,441 +1,372 @@
-# Nutrition Plan Logic - Research Analysis & Validation
+# Nutrition Plan Logic — Research & Methodology
 
-**Date:** April 2026 (updated April 17 2026)
-**Purpose:** Deep analysis of carbohydrate, sodium, and fluid intake formulas against current sports science research. Identifies evidence-based improvements for continuous codebase evolution.
-
-> **Status update (April 17 2026):** The `distance_adaptive` strategy is now the default. Plans are continuously calculated from actual `goal_minutes` via linear interpolation — no more fixed buckets. A 70 km race produces a genuinely different plan from a 50 km race. See Section 5 Phase 1 implementation notes.
+**Date:** April 2026 (updated April 25, 2026)
+**Purpose:** Transparent documentation of how Lecka calculates carbohydrate, sodium, and fluid targets — cross-referenced against current sports science research. Every number on your plan comes from here.
 
 ---
 
 ## Executive Summary
 
-The current nutrition plan formulas in Lecka are **well-aligned with ISSN 2018, Burke et al. (2019), and ACSM guidelines**. The weight-based approach with environmental modifiers represents best-practice endurance nutrition. However, several gaps exist:
+Lecka's nutrition plan is built on **ISSN 2018, Burke et al. (IOC 2019), and ACSM guidelines**. The approach is duration-adaptive, weight-based, and personalised by athlete profile, effort level, environment, and elevation.
 
-- **Carb logic is effort-based but research emphasizes duration** — a duration-based algorithm would better target SGLT1/GLUT5 transporter capacity
-- **Conditions are categorical** — continuous temperature input would allow more precise sweat rate modeling
-- **No athlete profile system** — trained vs. untrained athletes have significantly different sweat rates (30-40% variation)
-- **Gender modifiers are crude** — current 0.9× for females may not account for VO2max or fitness level
-- **No sweat rate input** — could dramatically improve personalization
+**What the plan does:**
+- Carb targets scale continuously with race duration — a 70 km race gives a meaningfully different rate from a 50 km race
+- Sodium and fluid targets scale with body weight, conditions, and fitness level
+- Athlete profile (untrained → elite) adjusts all three targets by up to ±15%
+- Hilly and mountain courses increase carb and sodium targets (climbing burns more glycogen and raises core temperature)
+- Product quantities are calibrated to actually deliver your carb target — not based on a fixed cadence
+- Your plan page shows a live "Provided vs. Target" breakdown so you can see exactly how well your selected products match your needs
 
----
-
-## 1. CARBOHYDRATE TARGET ANALYSIS
-
-### Current Formula
-```
-Base Rate: carb_rates_g_per_hour[race_type][effort]
-Examples: 
-  - 5K hard: 50 g/h
-  - 10K race_pace: 45 g/h
-  - Half-marathon race_pace: 60 g/h
-  - Marathon race_pace: 60 g/h
-  - Ultra 50K race_pace: 70 g/h
-  - Ultra 100K race_pace: 75 g/h
-
-Modifiers:
-  - Effort: easy=0.85×, race_pace=1.0×, hard=1.15×
-  - Training mode: 0.7× (gut training)
-  
-Final: base × effort_modifier × training_mode
-```
-
-### Research Cross-Check
-
-**ISSN 2018 Consensus Statement** — Carbohydrate Loading & Sports Nutrition
-- <45 min events: **0 g/h** sufficient glycogen stores; no intake needed
-- 45-75 min events: **30-60 g/h** (single transporter, SGLT1)
-- 1.5-3 hour events: **60 g/h** (single transporter, ~120mg/min limit)
-- 2.5-3+ hours: **up to 90 g/h** possible with dual-transporter CHO (SGLT1 + GLUT5)
-  - Requires glucose + fructose combination at specific ratio (2:1 glucose:fructose optimal)
-  - Glycemic index critical for GI comfort
-
-**Burke et al. (IOC 2019)** — International Olympic Committee Consensus
-- Duration-dependent approach (not effort-dependent) is primary driver
-- Intensity modulates but is secondary to duration
-- Example: 5K at hard pace (15 min total) should require **0 g/h** (not 50 g/h)
-- Training status affects absorption capacity: untrained 30-45 g/h; trained 60-90 g/h
-
-**Practical Implementation in Lecka:**
-- Current approach conflates **effort** with **duration**
-- A 5K at "hard pace" = ~15-25 min finish; insufficient duration for GI benefit from 50 g/h intake
-- A marathon at "easy pace" = 4-5 hours; benefits from higher carb despite lower intensity
-
-### Current Formula Evaluation
-
-| Race Type | Duration | Current Rate (race_pace) | ISSN Recommendation | Alignment | Risk |
-|-----------|----------|--------------------------|---------------------|-----------|------|
-| 5K | 15-25 min | 40 g/h | 0 g/h | ✗ Misaligned | GI distress, excess intake |
-| 10K | 40-60 min | 45 g/h | 30-45 g/h | ✓ Aligned | None |
-| Half-marathon | 90-150 min | 60 g/h | 60 g/h | ✓ Aligned | None |
-| Marathon | 180-300 min | 60 g/h | 60-90 g/h | ⚠️ Conservative | Possible underfueling in >3.5 hr |
-| Ultra 50K | 300-480 min | 70 g/h | 60-90 g/h | ✓ Aligned | None |
-| Ultra 100K | 600-900+ min | 75 g/h | 60-90 g/h | ✓ Aligned | Possible underfueling depending on GI capacity |
-
-### Key Findings
-
-✓ **STRENGTHS:**
-1. Carb rates for endurance events (10K+) align well with ISSN targets
-2. Training mode at 70% correctly implements gut training protocol
-3. Effort modifier (0.85-1.15) acknowledges different glycogen turnover at varied intensities
-
-⚠️ **CONCERNS:**
-1. **5K carb rates are excessive** — 40 g/h (race_pace) at 15-25 min finish = unnecessary intake
-   - Better approach: 0 g/h for <45 min events
-   - Current approach risks GI upset pre-race
-
-2. **Marathon may be underfueled for >3.5 hr races** — Research suggests 75-90 g/h for athletes trained in dual-carb
-   - Current 60 g/h is single-transporter rate
-   - Athletes targeting sub-3:30 marathons may benefit from 75 g/h with dual-CHO
-
-3. **No carbohydrate type distinction** — Current system treats all carbs equally
-   - Reality: glucose dominates 60-90 min races; glucose + fructose needed 2.5+ hrs
-   - Dual-transportable CHO (2:1 glucose:fructose) enables 90 g/h vs 60 g/h
-
-4. **Effort modifier may mask duration effects** — Effort is indexed but duration drives carb utility
-   - Example: 100K ultra at "easy" pace (10-12 hrs) still needs 60+ g/h regardless of intensity
-   - Current formula might reduce this incorrectly based on "easy" modifier
+**Known simplifications (honest limitations):**
+- Conditions are categorical (cool / mild / warm / hot / humid) — continuous temperature input would allow more precise sweat-rate modelling
+- Gender modifier is a simplified proxy (female = 0.9×) — fitness level predicts sweat rate better than gender alone
+- No individual sweat-rate measurement — field-tested sweat rate would be the single biggest accuracy improvement
+- No formula versioning — plans generated at different times may differ slightly if research anchors are updated
 
 ---
 
-## 2. SODIUM TARGET ANALYSIS
+## 1. CARBOHYDRATE TARGET
 
-### Current Formula
+### How it's calculated
+
+The active strategy is **distance_adaptive** — a continuously interpolated curve derived from 13 research-anchored breakpoints. Every unique race duration produces a unique carb target.
+
 ```
-sodium_per_hour = weight_kg × 8 mg/kg × gender_modifier × condition_modifier
+Step 1 — Base rate from race duration (linear interpolation):
 
-Gender Modifiers:
-  - male: 1.0×
-  - female: 0.9×
-  - other: 0.95×
+  Duration  →  Base carb rate
+  ────────────────────────────
+  0–30 min  →   0 g/h   (sufficient muscle glycogen; no exogenous carbs needed)
+    45 min  →  20 g/h   (marginal SGLT1 benefit begins)
+    60 min  →  35 g/h   (single-transporter threshold)
+    90 min  →  50 g/h
+   120 min  →  58 g/h   (2-hour zone)
+   180 min  →  63 g/h   (3-hour / marathon–ultra transition)
+   240 min  →  67 g/h
+   300 min  →  71 g/h   (50 km range, ~5 h)
+   360 min  →  74 g/h
+   480 min  →  77 g/h   (70–80 km range, ~8 h)
+   600 min  →  79 g/h   (100 km range, ~10 h)
+   900 min  →  82 g/h   (150+ km / very long ultra)
 
-Condition Multipliers:
-  - cool: 0.85×
-  - mild: 1.0×
-  - warm: 1.25×
-  - hot: 1.5×
-  - humid: 1.4×
+  Durations between anchors are linearly interpolated — every minute
+  produces a distinct rate.
 
-Clamped: 300-1500 mg/h
+Step 2 — Effort modifier:
+  easy:       × 0.85
+  race_pace:  × 1.00
+  hard:       × 1.15
 
-Example: 70 kg male, hot conditions
-  = 70 × 8 × 1.0 × 1.5 = 840 mg/h
+Step 3 — Athlete profile modifier:
+  untrained:    × 0.85
+  intermediate: × 1.00  (baseline)
+  trained:      × 1.10
+  elite:        × 1.15
+
+Step 4 — Elevation modifier (if course data provided):
+  flat       (avg grade < 1%):   × 1.00
+  rolling    (1–3%):             × 1.05
+  hilly      (3–6%):             × 1.10
+  very hilly (6–10%):            × 1.15
+  mountain   (> 10%):            × 1.22
+
+Final: base × effort × profile × elevation  (rounded to nearest integer)
+
+Total carbs for race = carb_per_hour × (goal_minutes / 60)
 ```
 
-### Research Cross-Check
-
-**ISSN 2015 Position Stand** — Sodium, Fluid & Exercise
-- Weight-based: **4-10 mg/kg/h** typical range
-- Most athletes: **6-8 mg/kg/h** baseline
-- Context matters: fitness level, acclimatization, sweat rate, clothing, humidity
-
-**Sawka et al. (ACSM 2007)** — Fluid Replacement During Exercise
-- Sodium aids fluid retention & osmolarity balance
-- Fluid-only intake can cause hyponatremia if excessive (>1000-1500 ml/h prolonged)
-- With sodium: supports palatability, osmotic pressure, reduces dilution risk
-
-**Marino et al. (2021)** — Sodium Loading & Endurance Performance
-- Pre-race loading: 20.5 g sodium in 2-4 L water, 2-4 hrs before race
-- During-race sodium: extends endurance capacity in heat, reduces cramp risk
-- Heat acclimatization increases sweat rate 40-50%; sodium loss scales proportionally
-
-### Current Formula Evaluation
-
-| Scenario | Weight | Conditions | Calculated | ISSN Range | Assessment |
-|----------|--------|-----------|------------|------------|-----------|
-| 70 kg male | 70 | mild | 560 mg/h | 280-560 | ✓ Centered |
-| 70 kg male | 70 | hot | 840 mg/h | 420-700+ | ⚠️ At upper end (appropriate) |
-| 60 kg female | 60 | cool | 408 mg/h | 240-480 | ✓ Centered |
-| 60 kg female | 60 | hot | 612 mg/h | 360-600 | ✓ Centered |
-| 100 kg male | 100 | humid | 1120 mg/h | 400-800+ | ⚠️ Exceeds for some athletes |
-
-### Key Findings
-
-✓ **STRENGTHS:**
-1. Weight-based dosing (8 mg/kg) sits at research midpoint
-2. Condition modifiers (cool=0.85, hot=1.5) properly scale sweat losses
-3. Upper clamp at 1500 mg/h prevents hypernatremia
-4. Gender modifiers acknowledge sweat rate differences
-
-⚠️ **CONCERNS & RESEARCH GAPS:**
-1. **Gender modifier is overly simplified** — 0.9× for all females
-   - Research shows: sweat rate varies more by fitness/VO2max than gender alone
-   - A trained female (60 ml/kg/min VO2max) may sweat more than untrained male (40 ml/kg/min)
-   - Better model: adjust for sweat rate directly, not gender as proxy
-
-2. **No fitness-level adjustment** — Trained athletes produce ~50% more sweat
-   - Untrained: 0.5-1.0 L/hr
-   - Trained: 1.0-2.0 L/hr at same intensity
-   - Current model treats all athletes identically
-
-3. **Heat acclimatization not captured** — Pre-race sweat rate varies 40-50%
-   - Acclimatized athlete in heat: expect 1800+ ml/hr
-   - Unacclimatized same conditions: expect 1200-1400 ml/hr
-   - Current categorization (hot/humid) is too coarse
-
-4. **No pre-race sodium loading guidance**
-   - Research clear: pre-race loading (20.5 g Na in 2.5 L over 2-4 hrs) improves performance >4 hrs
-   - Currently only addresses during-race dosing
-   - Especially critical for ultra marathons & hot conditions
-
-5. **Lower clamp at 300 mg/h may be overly conservative**
-   - Cool conditions, 50 kg athlete: 50 × 8 × 1.0 × 0.85 = 340 mg/h
-   - Research suggests 250 mg/h minimum for very cool conditions acceptable
-   - Could lower to 250 mg/h without risk
-
----
-
-## 3. FLUID TARGET ANALYSIS
-
-### Current Formula
+**Worked example — 70 kg male, 4-hour marathon, race pace, intermediate, flat:**
 ```
-fluid_ml_per_hour = weight_kg × 8 ml/kg × gender_modifier × condition_modifier
-
-Same modifiers as sodium
-
-Clamped: 400-1000 ml/h
-
-Example: 70 kg male, warm conditions
-  = 70 × 8 × 1.0 × 1.2 = 672 ml/h
+  Base at 240 min:              67 g/h
+  × effort (race_pace, 1.00):   67 g/h
+  × profile (intermediate, 1.00): 67 g/h
+  × elevation (flat, 1.00):     67 g/h
+  → carb_per_hour = 67 g/h
+  → total_carbs   = 67 × 4.0 = 268 g
 ```
 
-### Research Cross-Check
+### Research basis
 
-**ACSM 2007 Position Stand** — Fluid Replacement
-- Individual sweat rate: (body weight before - body weight after) / exercise time
-- Recommendation: **50-70% of sweat losses** to prevent >2% dehydration
-- Max absorption: **1000-1200 ml/h** (intestinal transport limit, not kidney limit)
-- Range: **400-800 ml/h** typical; context-dependent
+**ISSN 2018 Consensus Statement:**
+- < 45 min: 0 g/h — sufficient muscle glycogen; exogenous carbs provide no benefit
+- 45–75 min: 30–60 g/h (single-transporter SGLT1, glucose only)
+- 1.5–3 h: up to 60 g/h (single-transporter ceiling, ~120 mg/min)
+- 2.5 h+: up to 90 g/h possible with dual-transporter CHO (glucose + fructose, 2:1 ratio)
 
-**Sawka et al.** — Fluid Balance & Performance
-- Dehydration >2% body weight impairs performance
-- Overhydration risks hyponatremia (especially <2 hr events)
-- Individualization critical: genetics, fitness, acclimatization determine sweat rate
+**Burke et al. (IOC 2019):**
+- Duration is the primary driver of carb need — not effort level
+- Intensity modulates but is secondary; a 100 km ultra at "easy" pace still needs 75+ g/h
+- Training status affects absorption capacity: untrained 30–45 g/h; trained up to 90 g/h
 
-**IOC Consensus (Burke 2019)** — Drinking Guidelines
-- During exercise: 400-800 ml/h (individualized)
-- Formula: (individual sweat rate × 0.5-0.7) = target
-- Not weight-based; measured from field testing
+### Rates by race type (race pace, intermediate athlete, flat course)
 
-### Current Formula Evaluation
+| Race | Typical finish time | Lecka rate | ISSN range | Alignment |
+|------|---------------------|-----------|------------|-----------|
+| 5K | 22 min | **0 g/h** | 0 g/h | ✓ |
+| 10K | 50 min | **25 g/h** | 30–45 g/h | ⚠️ Slightly conservative |
+| Half marathon | 105 min | **54 g/h** | 55–65 g/h | ✓ |
+| Marathon | 210 min | **65 g/h** | 60–75 g/h | ✓ |
+| Ultra 50K | 360 min | **74 g/h** | 60–90 g/h | ✓ |
+| Ultra 100K | 600 min | **79 g/h** | 60–90 g/h | ✓ |
 
-| Scenario | Weight | Conditions | Calculated | ACSM Range | Assessment |
-|----------|--------|-----------|------------|------------|-----------|
-| 70 kg | 70 | mild | 560 ml/h | 400-800 | ✓ Centered |
-| 70 kg | 70 | cool | 504 ml/h | 350-700 | ✓ Centered |
-| 70 kg | 70 | hot | 784 ml/h | 500-1000 | ✓ Centered |
-| 100 kg | 100 | hot | 1120 ml/h | 600-1200 | ⚠️ Exceeds for lighter athletes |
+> **Note on 10K:** The curve is intentionally conservative at 45–60 minutes to avoid GI distress at short, fast efforts. Athletes with trained gut absorption can select "trained" profile or "hard" effort to reach 30–35 g/h.
 
-### Key Findings
-
-✓ **STRENGTHS:**
-1. Weight-based approach (8 ml/kg) is reasonable population average
-2. Condition modifiers properly scale for sweat rate increase
-3. Upper bound at 1000 ml/h respects gastric emptying limit
-4. Lower bound at 400 ml/h provides minimum for cool conditions
-
-⚠️ **CONCERNS & RESEARCH GAPS:**
-1. **Weight-based approximation masks individual variation** — 50-100% difference between athletes
-   - Better: ask user their measured sweat rate or provide estimator tool
-   - Reality: two 70 kg athletes may sweat 500-1500 ml/hr depending on fitness & genetics
-
-2. **No fitness-level adjustment** — Trained athletes have more efficient sweating
-   - Untrained: inefficient, variable sweat distribution
-   - Trained: earlier onset, higher max rate, better heat transfer
-
-3. **Sport-specific variation not captured**
-   - Running: highest sweat rate (full effort, high metabolic heat)
-   - Cycling: lower sweat rate (better air convection, lower ambient friction)
-   - Triathlon: varies by discipline
-   - Current model treats all equally
-
-4. **No altitude acclimatization factor**
-   - Sea level: baseline sweat rate
-   - High altitude: initial increase (hypoxia stimulates thermoregulation), then acclimatization
-   - Not captured in current model
-
-5. **Fluid composition guidance missing**
-   - Osmolarity target: 200-300 mOsm/kg for optimal gastric emptying
-   - Products with 200+ mOsm/kg may cause GI distress in some athletes
-   - No recommendation logic for fluid + electrolyte balance
-
-6. **No sweat rate measurement tool**
-   - Athletes can estimate via simple field test
-   - Currently requires external knowledge
-   - Would enable much better personalization
+### Known limitations
+1. **No carbohydrate type guidance** — dual-transporter CHO (glucose + fructose, 2:1) enables up to 90 g/h for events > 2.5 h; current products are single-source glucose-dominant
+2. **Effort modifier does not vary by duration** — research suggests effort matters less as duration increases (a 12-hour ultra at "easy" pace still demands near-maximum carbs regardless); future update could reduce the effort band for very long events
 
 ---
 
-## 4. ARCHITECTURE ASSESSMENT
+## 2. SODIUM TARGET
 
-### Current Strengths
-✓ Formulas externalized to JSON config  
-✓ Modular architecture (nutrition-engine separate from product-selector)  
-✓ No hardcoded multipliers in business logic  
-✓ Multiple race types pre-configured  
-✓ Clean input/output interface  
+### How it's calculated
 
-### Flexibility Gaps
-✗ Formula selection not pluggable (can't swap carb algorithms)  
-✗ Conditions categorical (not continuous temperature)  
-✗ No athlete profile system  
-✗ No formula versioning (can't reproduce old plans)  
-✗ No sweat rate input  
-✗ Static gender modifiers  
+```
+sodium_per_hour =
+  weight_kg
+  × 8 mg/kg               (base rate — ISSN midpoint of 4–10 mg/kg/h range)
+  × gender_modifier
+  × condition_modifier
+  × athlete_profile_modifier
+  × elevation_modifier
 
----
+  Clamped to 300–1500 mg/h
 
-## 5. RECOMMENDED IMPROVEMENTS (PRIORITY ORDER)
+Gender modifiers:
+  male:   × 1.00
+  female: × 0.90
+  other:  × 0.95
 
-### Phase 1: Quick Wins ✅ IMPLEMENTED
+Condition modifiers (sweat sodium loss scales with sweat rate):
+  cool:   × 0.85
+  mild:   × 1.00
+  warm:   × 1.25
+  hot:    × 1.50
+  humid:  × 1.40
 
-#### 1a. **Carb Rate Validation** ✅
-- **Issue:** 5K events don't need carbs; warnings prevent GI distress
-- **Implementation:** In `nutrition-engine.js`, warning fires if `goal_minutes < 45` and `carb_per_hour > 0`
-- **Research:** ISSN, Burke et al. both agree <45 min events don't benefit from fueling
-- **Status:** Done
+Athlete profile modifiers (trained athletes produce more sweat):
+  untrained:    × 0.85
+  intermediate: × 1.00
+  trained:      × 1.10
+  elite:        × 1.15
 
-#### 1b. **Pre-Race Sodium Loading Guidance** ✅
-- **Issue:** Research shows 20.5 g sodium loading 2-4 hrs before race improves performance >4 hrs
-- **Implementation:** PDF includes sodium loading section when `goal_minutes > 240` and hot/humid conditions
-- **Research:** Marino et al. 2021
-- **Status:** Done
+Elevation modifiers (climbing raises core temperature and sweat rate):
+  flat:       × 1.00
+  rolling:    × 1.05
+  hilly:      × 1.08
+  very hilly: × 1.12
+  mountain:   × 1.18
 
-#### 1c. **Distance-Adaptive Carb Algorithm** ✅ (replaces the planned duration-based bucket approach)
-- **Issue:** Effort-based strategy bucketed all races into fixed categories; a 70 km race used identical rates to a 50 km race.
-- **Implementation:** New `distance_adaptive` strategy in `src/strategies/carb-strategies.js`
-  - Linear interpolation between 13 research-anchored breakpoints from 0 → 900 minutes
-  - Every distinct `goal_minutes` value produces a distinct carb rate
-  - Effort modifier (easy: 0.85×, race_pace: 1.0×, hard: 1.15×) applied on top
-  - Athlete profile modifier applied after effort
-  - Example outcomes:
-    | Race | Time | Carb rate (race_pace) |
-    |------|------|----------------------|
-    | 10 km | 50 min | ~27 g/h |
-    | Half marathon | 105 min | ~55 g/h |
-    | Marathon | 210 min | ~65 g/h |
-    | 50 km ultra | 360 min | ~74 g/h |
-    | 70 km ultra | 480 min | ~77 g/h |
-    | 100 km ultra | 600 min | ~79 g/h |
-- **Anchor points (ISSN 2018 / Burke IOC 2019):**
-  - 0–30 min → 0 g/h (sufficient muscle glycogen)
-  - 45 min → 20 g/h (marginal SGLT1 benefit begins)
-  - 60 min → 35 g/h (single-transporter threshold)
-  - 90 min → 50 g/h
-  - 120 min → 58 g/h (2h zone)
-  - 180 min → 63 g/h (3h / marathon–ultra transition)
-  - 240 min → 67 g/h
-  - 300 min → 71 g/h (50 km range)
-  - 360 min → 74 g/h
-  - 480 min → 77 g/h (70–80 km range)
-  - 600 min → 79 g/h (100 km range)
-  - 900 min → 82 g/h (150+ km / very long ultra)
-- **Research:** Burke et al. emphasizes duration >> effort for CHO utilization
-- **Status:** Done — `formula-config.json` `carb_calculation_strategy.selected` = `"distance_adaptive"`
+Worked example — 70 kg male, hot, trained, flat:
+  = 70 × 8 × 1.0 × 1.5 × 1.10 × 1.0 = 924 mg/h
 
-### Phase 2: Architecture Refactoring (3-5 days)
+Worked example — 70 kg male, hot, intermediate, flat:
+  = 70 × 8 × 1.0 × 1.5 × 1.00 × 1.0 = 840 mg/h
+```
 
-#### 2a. **Pluggable Carb Strategies**
-- **File:** Create `src/strategies/carb-strategies.js`
-- **Decouples:** Formula logic from nutrition-engine.js
-- **Enables:** Easy A/B testing, research comparison, new algorithms
+### Research basis
 
-#### 2b. **Athlete Profiles System**
-- **Config:** Extend formula-config.json with:
-  ```json
-  "athlete_profiles": {
-    "untrained": { carb_mod: 0.9, sodium_mod: 0.85, fluid_mod: 0.85 },
-    "trained": { carb_mod: 1.0, sodium_mod: 1.0, fluid_mod: 1.0 },
-    "elite": { carb_mod: 1.1, sodium_mod: 1.1, fluid_mod: 1.1 }
-  }
-  ```
-- **UI:** Add dropdown in StepForm
-- **Impact:** Accounts for 30-40% sweat rate variation
+**ISSN 2015 — Sodium, Fluid & Exercise:**
+- Typical range: 4–10 mg/kg/h; most athletes at 6–8 mg/kg/h baseline
+- Lecka uses 8 mg/kg, at the upper-moderate end — appropriate for active endurance athletes
 
-#### 2c. **Continuous Temperature Input**
-- **Current:** "cool/mild/warm/hot/humid" (categorical)
-- **Future:** `ambient_temp_celsius` (continuous) with mapping to modifiers
-- **Research:** Sweat rate increases linearly ~2-3% per °C above 20°C
+**Sawka et al. (ACSM 2007):**
+- Sodium aids fluid retention, osmolarity balance, and palatability
+- Fluid-only intake > 1000 ml/h risks hyponatremia in events > 2 h
 
-#### 2d. **Formula Versioning**
-- **Issue:** Can't reproduce old plans if config changes
-- **Solution:** Add `formula_version` to output & store config snapshots
-- **Enables:** A/B testing, research reproducibility
+### Sample outputs
 
-### Phase 3: User-Facing Tools (3-5 days)
+| Scenario | Calculated | ISSN range | Assessment |
+|----------|------------|------------|------------|
+| 70 kg male, mild, intermediate | 560 mg/h | 280–560 | ✓ |
+| 70 kg male, hot, intermediate | 840 mg/h | 420–700+ | ⚠️ Upper end — appropriate in sustained heat |
+| 70 kg male, hot, trained | 924 mg/h | 500–900+ | ✓ |
+| 60 kg female, cool, intermediate | 367 mg/h | 240–480 | ✓ |
+| 70 kg male, mountain, intermediate | 840 × 1.18 = 991 mg/h | 500–1200 | ✓ |
 
-#### 3a. **Sweat Rate Estimator**
-- **Mini-tool:** Help athletes measure sweat rate from field test
-  - Weigh before/after exercise, account for fluid consumed
-  - Formula: (weight_before - weight_after + fluid_consumed) / duration
-  - Feeds into sodium/fluid targets
-- **UI:** Expandable section in StepForm
-- **Impact:** 30-40% improvement in personalization
-
-#### 3b. **Advanced Settings for Elite Athletes**
-- **Allow custom input:**
-  - Carb absorption rate (g/h)
-  - Sweat rate (ml/h)
-  - Sodium preference (mg/h)
-- **Show "what if" scenarios**
-- **Save custom profiles for repeatability**
+### Known limitations
+1. **Gender modifier is a simplified proxy** — fitness level and VO2max predict sweat rate more accurately than gender alone; a trained female often sweats more than an untrained male
+2. **Heat acclimatisation not captured** — acclimatised athletes have higher pre-race sweat rates even before conditions shift
+3. **No individual sweat-rate input** — the most impactful single improvement available
 
 ---
 
-## 6. IMPLEMENTATION CHECKLIST
+## 3. FLUID TARGET
 
-### Code Changes Required
+### How it's calculated
 
-- [x] Extend `formula-config.json` with carb strategies & athlete profiles
-- [x] Create `src/strategies/carb-strategies.js` with pluggable algorithms
-- [x] Modify `nutrition-engine.js` to select strategy dynamically
-- [x] Add carb rate validation for <45 min events
-- [x] Add pre-race sodium loading note to PDF generation
-- [x] Add athlete profile selector to form
-- [x] Implement `distance_adaptive` strategy for continuous, interpolated carb rates
-- [ ] Add temperature input to StepForm (optional, replaces categorical conditions)
-- [ ] Create sweat rate estimator tool UI
-- [ ] Implement formula versioning for reproducibility
-- [ ] Add unit tests for edge cases (light/heavy athletes, cool/hot, short/long races)
+```
+fluid_ml_per_hour =
+  weight_kg
+  × 8 ml/kg               (base rate — ACSM population midpoint)
+  × gender_modifier
+  × condition_modifier
+  × athlete_profile_modifier
 
-### Testing Strategy
+  Clamped to 400–1000 ml/h
 
-1. **Unit tests:** Each strategy with edge cases
-2. **Integration:** Full form → plan pipeline for each race type
-3. **Validation:** Compare outputs to ISSN/Burke/ACSM ranges
-4. **Field testing:** 3-5 athletes across different distances, climates
+  Note: Elevation is NOT applied to fluid. The effect of altitude and
+  gradient on sweat rate is complex and does not follow a reliable linear
+  multiplier — athletes on mountain courses should treat the fluid target
+  as a minimum and monitor thirst and urine colour.
 
----
+Same gender, condition, and profile modifiers as sodium.
 
-## 7. REFERENCES & RESEARCH SOURCES
+Worked example — 70 kg male, warm, trained:
+  = 70 × 8 × 1.0 × 1.2 × 1.10 = 739 ml/h
+```
 
-1. **ISSN 2018** — International Society of Sports Nutrition Consensus Statement
-   - Carbohydrate intake in sports nutrition
-   - Sodium & fluid recommendations
-   
-2. **Burke et al. (IOC 2019)** — International Olympic Committee Consensus
-   - Evidence-based guidelines for nutrition in sport
-   - Emphasis on duration-dependent carb strategy
-   
-3. **Sawka et al. (ACSM 2007)** — Position Stand on Fluid Replacement
-   - Sweat rate variability & individual differences
-   - Hyponatremia/hypernatremia risk assessment
-   
-4. **Marino et al. (2021)** — Sodium & hydration in endurance sports
-   - Pre-race loading protocols
-   - Heat acclimatization effects
-   - Gender & sweat rate variations
+**Important:** The fluid target represents how much to drink across all sources (water, sports drinks, aid stations). Gels and bars contribute negligible fluid; the target is met through your hydration carry and aid station strategy.
 
----
+### Research basis
 
-## 8. NOTES FOR CONTINUOUS IMPROVEMENT
+**ACSM 2007 Position Stand:**
+- Target: replace 50–70% of sweat losses to prevent > 2% body weight dehydration
+- Practical range: 400–800 ml/h; up to 1000 ml/h in sustained heat
+- Gastric emptying limit: ~1000–1200 ml/h (set as the upper clamp)
 
-- **Gather user data:** Track actual sweat rates during races (wearables, field tests)
-- **Field validation:** Collect feedback on GI comfort, energy levels, cramping
-- **Research monitoring:** Stay updated on ISSN/IOC guidance updates (typically 3-5 year cycles)
-- **Individual testing:** A/B test strategies within athlete cohorts before broad rollout
-- **Documentation:** Cite rationale for each formula change in code comments
+### Sample outputs
+
+| Scenario | Calculated | ACSM range | Assessment |
+|----------|------------|------------|------------|
+| 70 kg, mild, intermediate | 560 ml/h | 400–800 | ✓ |
+| 70 kg, hot, intermediate | 784 ml/h | 500–1000 | ✓ |
+| 70 kg, hot, trained | 862 ml/h | 600–1000 | ✓ |
+| 100 kg, hot, intermediate | 1120 → **1000 ml/h** (clamped) | 600–1200 | ✓ (clamped) |
+
+### Known limitations
+1. **No individual sweat-rate measurement** — field test (weigh before/after + fluid consumed) would dramatically improve accuracy
+2. **Sport-specific variation not captured** — cycling generates better convective cooling than running; triathletes face different demands across disciplines
 
 ---
 
-**Last updated:** April 2026  
-**Next review:** April 2027 (or when major sports nutrition guideline updates occur)
+## 4. ELEVATION MODIFIER
+
+Climbing increases glycogen demand (muscles work against gravity at higher metabolic cost) and raises core temperature (lower speeds reduce convective cooling). Both carbs and sodium targets are uplifted on hilly courses.
+
+```
+Average course grade is calculated from inputs:
+  avg_grade_pct = elevation_gain_m / (distance_km × 1000) × 100
+
+Tier thresholds and modifiers:
+  Tier        | Avg grade  | Carb modifier | Sodium modifier
+  ───────────────────────────────────────────────────────────
+  flat        | < 1%       | × 1.00        | × 1.00
+  rolling     | 1–3%       | × 1.05        | × 1.05
+  hilly       | 3–6%       | × 1.10        | × 1.08
+  very hilly  | 6–10%      | × 1.15        | × 1.12
+  mountain    | > 10%      | × 1.22        | × 1.18
+```
+
+The elevation tier is shown in the plan header so you can verify how your course was classified. If no elevation data is provided, the plan defaults to flat.
+
+Fluid is not adjusted for elevation — the relationship between altitude, gradient, and sweat demand is complex and does not follow a simple multiplier. Monitoring thirst and urine colour remains the most reliable guide on mountain courses.
+
+---
+
+## 5. PRODUCT QUANTITY CALCULATION
+
+### How many gels does the plan suggest?
+
+Gel quantity is driven by your carb target — not by a fixed time cadence.
+
+```
+Step 1 — Calculate how many gels are needed:
+  needed_gels = ceil(total_carbs / avg_carbs_per_selected_gel)
+
+  If you selected multiple gel flavours, avg_carbs is the mean across all
+  selected gels — they are rotated round-robin across your race.
+
+Step 2 — Space them evenly across the race:
+  Gels are spread from first intake (20 min) to near race end.
+  Minimum spacing: 20 min (physiological absorption limit).
+  If needed_gels exceeds what fits at 20-min spacing, the plan uses as
+  many as physically fit — this is the practical ceiling.
+
+Step 3 — Caffeine assignment:
+  Slots at ≥ 45 min from race start and ≥ 60 min since the last caffeine
+  dose are assigned caffeine gels (if you selected them). Caffeine gels
+  contribute their carbs toward the total.
+```
+
+**Worked example — 2-hour race, 58 g/h target, Passion Fruit gel (25 g carbs):**
+```
+  total_carbs  = 58 × 2.0 = 116 g
+  needed_gels  = ceil(116 / 25) = ceil(4.64) = 5
+  slots        = [20, 45, 70, 94, 119 min]  (evenly spaced)
+  provided     = 5 × 25 = 125 g  (108% of target — ceil rounds up by design)
+```
+
+**Why a slight overshoot is intentional:**
+`ceil()` always rounds up, so the plan delivers ≥ target rather than falling short. In practice the delta is less than one gel's carb content. The "Provided by plan" row on your plan page shows the exact match — you can use the Adjust Plan button to fine-tune.
+
+### Bars
+
+Bars are placed at fixed positions regardless of carb target:
+- **1 bar before** (at −30 min) if race duration ≥ 60 min — pre-loads glycogen before the start
+- **1 bar after** (at +15 min) — supports recovery glycogen resynthesis
+
+Bar carbs are not counted toward your during-race carb target; they serve pre- and post-race needs.
+
+---
+
+## 6. ARCHITECTURE
+
+### What's in place
+✓ Distance-adaptive carb curve — continuous interpolation, no fixed buckets
+✓ Pluggable strategy system — five carb algorithms available (distance_adaptive is default)
+✓ Athlete profile system — 4 levels (untrained / intermediate / trained / elite) applied to carbs, sodium, and fluid
+✓ Elevation modifier — applied to carbs and sodium based on avg course grade
+✓ Product quantities driven by carb target — not fixed cadence
+✓ "Provided vs. Target" display — live feedback on every plan page
+✓ Formulas externalised to config — rates and modifiers are separate from calculation logic
+
+### What remains simplified
+✗ Conditions are categorical — continuous temperature input would allow precise sweat-rate modelling (~2–3% increase per °C above 20°C)
+✗ Gender modifier is a simplified proxy — training level and VO2max predict sweat rate more accurately than gender alone
+✗ No individual sweat-rate input — the biggest single accuracy improvement available
+✗ No formula versioning — cannot reproduce a plan generated 6 months ago if research anchors have been updated
+
+---
+
+## 7. ROADMAP
+
+### Implemented ✅
+- [x] Distance-adaptive carb algorithm (continuous, interpolated from duration)
+- [x] Pluggable carb strategy system (effort_based, duration_based, hybrid, distance_adaptive, vo2max_adjusted)
+- [x] Athlete profile system (untrained → elite) applied to carbs, sodium, and fluid
+- [x] Elevation modifier (carbs and sodium)
+- [x] Product quantities calibrated to carb target (target-driven, not fixed cadence)
+- [x] "Provided vs. target" display on plan page
+- [x] Carb rate validation and warnings for events < 45 min
+- [x] Pre-race sodium loading guidance for hot/humid ultras > 4 hours
+
+### Pending
+- [ ] Continuous temperature input (replaces categorical conditions)
+- [ ] Individual sweat-rate estimator tool (weigh before/after field test → feeds sodium/fluid targets)
+- [ ] Formula versioning (reproducible plans even after research updates)
+- [ ] Sport-specific fluid modifiers (running vs. cycling vs. triathlon)
+
+---
+
+## 8. REFERENCES
+
+1. **ISSN 2018** — International Society of Sports Nutrition Consensus Statement on Carbohydrate Intake in Sport
+2. **Burke et al. (IOC 2019)** — International Olympic Committee Consensus Statement on Nutrition for Sport — duration-dependent carbohydrate framework
+3. **Sawka et al. (ACSM 2007)** — Position Stand on Fluid Replacement During Exercise — sweat rate variability and hyponatremia risk
+4. **ISSN 2015** — Position Stand on Sodium and Fluid in Exercise
+5. **Marino et al. (2021)** — Sodium and Hydration in Endurance Sports — pre-race loading protocols and heat acclimatisation effects
+
+---
+
+## 9. CONTINUOUS IMPROVEMENT
+
+- Field feedback is more valuable than lab estimates — GI comfort reports, energy levels, and cramping data directly inform anchor adjustments
+- The "Provided vs. Target" delta on every plan page creates a natural feedback loop — systematic mismatches may indicate product carb content updates are needed
+- ISSN and IOC guidelines update on 3–5 year cycles — next major review expected 2028–2030
+- Individual sweat-rate input remains the highest-priority accuracy improvement
+
+---
+
+**Last updated:** April 25, 2026
+**Next review:** April 2027, or upon major ISSN / IOC guideline update
