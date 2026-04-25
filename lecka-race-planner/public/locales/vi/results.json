@@ -58,6 +58,11 @@
 
   "cta.buyPlan": "Mua theo kế hoạch – Giảm 10% →",
   "cta.discount": "Giảm 10% — mã NUTRIPLAN10 đã được áp dụng tự động",
+  "cta.chat.zalo": "Đặt hàng qua Zalo",
+  "cta.chat.facebook": "Đặt hàng qua Facebook",
+  "cta.chat.hint": "Tóm tắt đơn hàng sẽ được sao chép. Dán vào chat để đặt hàng nhanh!",
+  "cta.chat.clipboardIntro": "Xin chào Lecka! Tôi muốn đặt hàng theo kế hoạch dinh dưỡng:",
+  "cta.chat.clipboardTotal": "Tổng cộng: {{total}}",
   "cta.shipping.us": "Giao hàng nội địa Mỹ. Miễn phí vận chuyển cho đơn trên $60.",
   "cta.shipping.vn": "Giao hàng toàn quốc. Miễn phí vận chuyển cho đơn từ 500.000₫.",
   "cta.shipping.other": "Giao hàng đến {{label}}. Xem thông tin tại {{url}}.",

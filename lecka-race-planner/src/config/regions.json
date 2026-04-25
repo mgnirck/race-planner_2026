@@ -43,6 +43,8 @@
     "decimals": 0,
     "referrer_hosts": ["getlecka.vn", "www.getlecka.vn"],
     "defaultLanguage": "vi",
-    "languages": ["vi"]
+    "languages": ["vi"],
+    "zalo_url": "https://zalo.me/0988440434",
+    "facebook_url": "https://m.me/lecka.eco"
   }
 }

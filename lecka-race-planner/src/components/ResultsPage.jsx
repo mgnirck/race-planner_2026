@@ -15,7 +15,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engine/region-utils.js'
-import { isEmbedded, notifyEmailCapture, embedCartURL, notifyHaravanCart, detectRegion, getRegionConfig } from '../embed.js'
+import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
 import regionsConfig from '../config/regions.json'
 import allProductsCatalog from '../config/products.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
@@ -1219,20 +1219,18 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
     [aggregated, region]
   )
 
-  // For Haravan (VN): intercept cart link clicks, POST items via postMessage
-  // instead of following the /cart/... URL (which Haravan ignores as a GET permalink).
-  function handleShopClick(e, url) {
-    if (region !== 'vn') return
-    e.preventDefault()
-    try {
-      const cartPath = new URL(url).pathname.split('/cart/')[1]
-      if (!cartPath) return
-      const items = cartPath.split(',').map(p => {
-        const [id, qty] = p.split(':')
-        return { id, quantity: parseInt(qty, 10) }
-      }).filter(item => item.id && item.quantity > 0)
-      notifyHaravanCart(items, '')
-    } catch { /* malformed URL — ignore */ }
+  // VN region: open Zalo or Facebook chat and copy order summary to clipboard
+  function handleChatClick(chatUrl) {
+    const lines = aggregated.map(row =>
+      `• ${row.totalUnits}x ${row.product.name} — ${formatPrice(row.linePrice, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}`
+    ).join('\n')
+    const summary = [
+      t('results:cta.chat.clipboardIntro'),
+      lines,
+      t('results:cta.chat.clipboardTotal', { total: formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2) }),
+    ].join('\n')
+    navigator.clipboard.writeText(summary).catch(() => {})
+    window.open(chatUrl, '_blank', 'noopener,noreferrer')
   }
 
   // Prefer athlete's race name → actual distance typed → race_type label
@@ -1432,32 +1430,54 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
               {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
             </span>
           </div>
-          <a
-            href={cartURL}
-            onClick={(e) => handleShopClick(e, cartURL)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center w-full min-h-[52px]
-                       bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
-                       text-base font-bold transition-colors"
-          >
-            {t('results:cta.buyPlan')}
-          </a>
-          <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
-            {t('results:cta.discount')}
-          </p>
-          <p className="text-xs text-gray-400 text-center mt-1">
-            {region === 'us'
-              ? t('results:cta.shipping.us')
-              : region === 'vn'
-              ? t('results:cta.shipping.vn')
-              : t('results:cta.shipping.other', { label: regionConfig.label, url: regionConfig.store_url })}
-          </p>
-          {vpCartURL && (
+          {region === 'vn' ? (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleChatClick(regionConfig.zalo_url)}
+                className="flex items-center justify-center w-full min-h-[52px]
+                           bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl
+                           text-base font-bold transition-colors"
+              >
+                {t('results:cta.chat.zalo')}
+              </button>
+              <button
+                onClick={() => handleChatClick(regionConfig.facebook_url)}
+                className="flex items-center justify-center w-full min-h-[52px]
+                           bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl
+                           text-base font-bold transition-colors"
+              >
+                {t('results:cta.chat.facebook')}
+              </button>
+              <p className="text-xs text-gray-400 text-center mt-1">
+                {t('results:cta.chat.hint')}
+              </p>
+            </div>
+          ) : (
+            <>
+              <a
+                href={cartURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-full min-h-[52px]
+                           bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
+                           text-base font-bold transition-colors"
+              >
+                {t('results:cta.buyPlan')}
+              </a>
+              <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
+                {t('results:cta.discount')}
+              </p>
+              <p className="text-xs text-gray-400 text-center mt-1">
+                {region === 'us'
+                  ? t('results:cta.shipping.us')
+                  : t('results:cta.shipping.other', { label: regionConfig.label, url: regionConfig.store_url })}
+              </p>
+            </>
+          )}
+          {vpCartURL && region !== 'vn' && (
             <div className="mt-4 pt-4 border-t border-gray-100">
               <a
                 href={vpCartURL}
-                onClick={(e) => handleShopClick(e, vpCartURL)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center w-full min-h-[48px]
