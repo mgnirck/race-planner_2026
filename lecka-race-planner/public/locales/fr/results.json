@@ -54,6 +54,7 @@
   "cta.chat.zalo": "Commander via Zalo",
   "cta.chat.facebook": "Commander via Facebook",
   "cta.chat.hint": "Le résumé de votre commande sera copié dans le presse-papiers.",
+  "cta.chat.summaryLabel": "Votre commande — appuyez pour tout sélectionner :",
   "cta.chat.clipboardIntro": "Bonjour Lecka ! Je souhaite commander selon mon plan nutritionnel :",
   "cta.chat.clipboardTotal": "Total : {{total}}",
   "cta.shipping.us": "Livraison aux États-Unis uniquement. Livraison gratuite à partir de $60.",

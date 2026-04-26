@@ -54,6 +54,7 @@
   "cta.chat.zalo": "Über Zalo bestellen",
   "cta.chat.facebook": "Über Facebook bestellen",
   "cta.chat.hint": "Deine Bestellübersicht wird in die Zwischenablage kopiert.",
+  "cta.chat.summaryLabel": "Deine Bestellung — tippen zum Alles-Auswählen:",
   "cta.chat.clipboardIntro": "Hallo Lecka! Ich möchte nach meinem Ernährungsplan bestellen:",
   "cta.chat.clipboardTotal": "Gesamt: {{total}}",
   "cta.shipping.us": "Nur Lieferung in die USA. Kostenloser Versand ab $60.",

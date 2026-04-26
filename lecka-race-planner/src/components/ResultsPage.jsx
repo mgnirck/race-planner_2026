@@ -1150,6 +1150,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
   const [showCartEditor, setShowCartEditor] = useState(false)
   const [region,         setRegion]         = useState(detectRegion)
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
+  const [chatSummary,    setChatSummary]    = useState(null)
   const regionConfig = getRegionConfig(region)
 
   // Reset manual overrides when plan inputs change
@@ -1230,8 +1231,8 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
       t('results:cta.chat.clipboardTotal', { total: formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2) }),
     ].join('\n')
 
-    // navigator.clipboard is blocked in cross-origin iframes without allow="clipboard-write".
-    // execCommand('copy') works in iframes with just a user gesture — no permissions needed.
+    setChatSummary(summary)
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(summary).catch(() => execCopy(summary))
     } else {
@@ -1470,6 +1471,16 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
               <p className="text-xs text-gray-400 text-center mt-1">
                 {t('results:cta.chat.hint')}
               </p>
+              {chatSummary && (
+                <div className="mt-3 bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                    {t('results:cta.chat.summaryLabel')}
+                  </p>
+                  <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans select-all cursor-text leading-relaxed">
+                    {chatSummary}
+                  </pre>
+                </div>
+              )}
             </div>
           ) : (
             <>

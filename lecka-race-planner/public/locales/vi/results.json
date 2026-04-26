@@ -61,6 +61,7 @@
   "cta.chat.zalo": "Đặt hàng qua Zalo",
   "cta.chat.facebook": "Đặt hàng qua Facebook",
   "cta.chat.hint": "Tóm tắt đơn hàng sẽ được sao chép. Dán vào chat để đặt hàng nhanh!",
+  "cta.chat.summaryLabel": "Đơn hàng của bạn — nhấn để chọn tất cả:",
   "cta.chat.clipboardIntro": "Xin chào Lecka! Tôi muốn đặt hàng theo kế hoạch dinh dưỡng:",
   "cta.chat.clipboardTotal": "Tổng cộng: {{total}}",
   "cta.shipping.us": "Giao hàng nội địa Mỹ. Miễn phí vận chuyển cho đơn trên $60.",

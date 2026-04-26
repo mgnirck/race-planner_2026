@@ -54,6 +54,7 @@
   "cta.chat.zalo": "Bestil via Zalo",
   "cta.chat.facebook": "Bestil via Facebook",
   "cta.chat.hint": "Dit ordreresumé kopieres til udklipsholderen.",
+  "cta.chat.summaryLabel": "Din ordre — tryk for at vælge alt:",
   "cta.chat.clipboardIntro": "Hej Lecka! Jeg vil gerne bestille fra min ernæringsplan:",
   "cta.chat.clipboardTotal": "I alt: {{total}}",
   "cta.shipping.us": "Sender kun til USA. Gratis fragt på ordrer over $60.",
