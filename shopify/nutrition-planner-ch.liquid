@@ -1,0 +1,75 @@
+{% comment %}
+  Lecka Ernährungsplaner / Planificateur nutritionnel — nutrition-planner-ch.liquid
+  ==================================================================================
+  Speichern unter: Sections > nutrition-planner-ch.liquid
+  im Shopify Theme Editor (Online Store → Themes → Edit code).
+
+  Abschnitt über Customize → Abschnitt hinzufügen → Ernährungsplaner hinzufügen.
+  Der eingebettete Planer startet auf Deutsch und bietet einen DE/FR-Umschalter.
+{% endcomment %}
+
+{%- assign planner_url = section.settings.planner_url | strip_newlines | strip -%}
+
+<div
+  class="lecka-planner-section"
+  id="lecka-planner-{{ section.id }}"
+  style="width:100%; overflow:hidden; {{ section.settings.padding_top | prepend: 'padding-top:' | append: 'px;' }} {{ section.settings.padding_bottom | prepend: 'padding-bottom:' | append: 'px;' }}"
+>
+  <script src="{{ planner_url }}/embed.js" defer></script>
+
+  <iframe
+    data-lecka
+    id="lecka-iframe-{{ section.id }}"
+    src="{{ planner_url }}/?region=ch&lang=de&utm_source=shopify_embed"
+    width="100%"
+    height="700"
+    frameborder="0"
+    scrolling="no"
+    title="Lecka Ernährungsplaner"
+    loading="lazy"
+    style="display:block; border:none; width:100%; min-height:600px;"
+    allow="clipboard-write"
+  ></iframe>
+</div>
+
+{% schema %}
+{
+  "name": "Ernährungsplaner",
+  "tag": "section",
+  "class": "section-nutrition-planner",
+  "settings": [
+    {
+      "type": "text",
+      "id": "planner_url",
+      "label": "Planner URL",
+      "default": "https://plan.getlecka.com",
+      "info": "URL der eingesetzten Planer-App. Kein abschließender Schrägstrich."
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand oben",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand unten",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "Ernährungsplaner"
+    }
+  ]
+}
+{% endschema %}

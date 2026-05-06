@@ -32,6 +32,8 @@
     'https://getlecka.dk',
     'https://www.getlecka.de',
     'https://getlecka.de',
+    'https://www.getlecka.ch',
+    'https://getlecka.ch',
   ];
 
   function isAllowed(origin) {

@@ -30,6 +30,12 @@
           { "shopify_variant_id": "49881661636874", "units_per_pack": 1,  "price": 21.00  }
         ]
       },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "57678501183752", "units_per_pack": 12, "price": 36.99 },
+          { "shopify_variant_id": "57678501216520", "units_per_pack": 1,  "price": 3.80  }
+        ]
+      },
       "vn": {
         "variants": [
           { "shopify_variant_id": "1125250882", "units_per_pack": 12, "price": 600000 },
@@ -67,6 +73,12 @@
           { "shopify_variant_id": "50948779671818", "units_per_pack": 12, "price": 209.00 },
           { "shopify_variant_id": "51601533927690", "units_per_pack": 6,  "price": 115.00 },
           { "shopify_variant_id": "50948779639050", "units_per_pack": 1,  "price": 21.00  }
+        ]
+      },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "57678500725000", "units_per_pack": 12, "price": 36.99 },
+          { "shopify_variant_id": "57678500757768", "units_per_pack": 1,  "price": 3.80  }
         ]
       },
       "vn": {
@@ -108,6 +120,12 @@
           { "shopify_variant_id": "49881667993866", "units_per_pack": 1,  "price": 21.00  }
         ]
       },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "57678501675272", "units_per_pack": 12, "price": 36.99 },
+          { "shopify_variant_id": "57678501708040", "units_per_pack": 1,  "price": 3.80  }
+        ]
+      },
       "vn": {
         "variants": [
           { "shopify_variant_id": "1125250887", "units_per_pack": 12, "price": 600000 },
@@ -147,6 +165,12 @@
           { "shopify_variant_id": "51596039782666", "units_per_pack": 1,  "price": 21.00  }
         ]
       },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "57678500430088", "units_per_pack": 12, "price": 36.99 },
+          { "shopify_variant_id": "57678500462856", "units_per_pack": 1,  "price": 3.80  }
+        ]
+      },
       "vn": {
         "variants": [
           { "shopify_variant_id": "1157493058", "units_per_pack": 12, "price": 600000 },
@@ -184,6 +208,12 @@
           { "shopify_variant_id": "51596043976970", "units_per_pack": 12, "price": 209.00 },
           { "shopify_variant_id": "51601529372938", "units_per_pack": 6,  "price": 115.00 },
           { "shopify_variant_id": "51596043944202", "units_per_pack": 1,  "price": 21.00  }
+        ]
+      },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "57678498267400", "units_per_pack": 12, "price": 36.99 },
+          { "shopify_variant_id": "57678498300168", "units_per_pack": 1,  "price": 3.80  }
         ]
       },
       "vn": {
@@ -227,6 +257,13 @@
         "gel-lime-ginger":   2,
         "gel-kumquat-honey": 2
       },
+      "ch": {
+        "gel-passion-fruit": 3,
+        "gel-coffee-cacao":  3,
+        "gel-banana":        3,
+        "gel-lime-ginger":   3,
+        "gel-kumquat-honey": 3
+      },
       "vn": {
         "gel-passion-fruit": 3,
         "gel-coffee-cacao":  3,
@@ -251,6 +288,11 @@
           { "shopify_variant_id": "50971167916298", "units_per_pack": 12, "price": 209.00 }
         ]
       },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "51780152262920", "units_per_pack": 15, "price": 36.99 }
+        ]
+      },
       "vn": {
         "variants": [
           { "shopify_variant_id": "1158896125", "units_per_pack": 12, "price": 600000 }
@@ -272,13 +314,13 @@
     "ideal_time": ["before", "during", "after"],
     "contains": {
       "dk": {
-        "gel-banana":        1,
-        "gel-passion-fruit": 1,
-        "gel-coffee-cacao":  1,
-        "gel-kumquat-honey": 1,
-        "gel-lime-ginger":   1,
-        "bar-mango-coconut": 2,
-        "bar-cacao-banana":  2,
+        "gel-banana":           1,
+        "gel-passion-fruit":    1,
+        "gel-coffee-cacao":     1,
+        "gel-kumquat-honey":    1,
+        "gel-lime-ginger":      1,
+        "bar-mango-coconut":    2,
+        "bar-cacao-banana":     2,
         "bar-pineapple-banana": 2
       }
     },
@@ -288,6 +330,31 @@
       "dk": {
         "variants": [
           { "shopify_variant_id": "50971111981322", "units_per_pack": 11, "price": 189.00 }
+        ]
+      },
+      "ch": { "variants": [] },
+      "vn": { "variants": [] }
+    }
+  },
+  {
+    "id": "ultra-gel-passion-fruit-mango",
+    "name": "Ultra Gel Passion Fruit Mango",
+    "type": "ultra_gel",
+    "carbs_per_unit": 65,
+    "sodium_per_unit": 410,
+    "price_usd": 0,
+    "units_per_box": 1,
+    "shopify_variant_id": "PLACEHOLDER_US",
+    "caffeine": false,
+    "caffeine_mg": 0,
+    "ideal_time": ["during"],
+    "regions": {
+      "us": { "variants": [] },
+      "de": { "variants": [] },
+      "dk": { "variants": [] },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "57767835828488", "units_per_pack": 1, "price": 8.00 }
         ]
       },
       "vn": { "variants": [] }
@@ -325,6 +392,7 @@
         ]
       },
       "dk": { "variants": [] },
+      "ch": { "variants": [] },
       "vn": {
         "variants": [
           { "shopify_variant_id": "1158896932", "units_per_pack": 12, "price": 480000 }
@@ -363,6 +431,11 @@
           { "shopify_variant_id": "44608860455178", "units_per_pack": 1,  "price": 21.00  }
         ]
       },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "51778157150472", "units_per_pack": 12, "price": 36.99 }
+        ]
+      },
       "vn": {
         "variants": [
           { "shopify_variant_id": "1162368754", "units_per_pack": 1,  "price": 40000  },
@@ -398,6 +471,7 @@
           { "shopify_variant_id": "44608860422410", "units_per_pack": 1,  "price": 21.00  }
         ]
       },
+      "ch": { "variants": [] },
       "vn": {
         "variants": [
           { "shopify_variant_id": "1162369093", "units_per_pack": 1,  "price": 40000  },
@@ -427,6 +501,7 @@
         ]
       },
       "dk": { "variants": [] },
+      "ch": { "variants": [] },
       "vn": {
         "variants": [
           { "shopify_variant_id": "1162369016", "units_per_pack": 1,  "price": 40000  },
@@ -464,6 +539,11 @@
           { "shopify_variant_id": "44608862191882", "units_per_pack": 12, "price": 209.00 },
           { "shopify_variant_id": "51601535729930", "units_per_pack": 6,  "price": 115.00 },
           { "shopify_variant_id": "44608862224650", "units_per_pack": 1,  "price": 21.00  }
+        ]
+      },
+      "ch": {
+        "variants": [
+          { "shopify_variant_id": "51764600766728", "units_per_pack": 12, "price": 36.99 }
         ]
       },
       "vn": {
