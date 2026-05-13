@@ -1,10 +1,21 @@
 {%- assign iframe_src = block.settings.iframe_src | strip_newlines | strip -%}
 {%- assign script_url = block.settings.script_url | strip_newlines | strip -%}
 
+<style>
+  #lecka-planner-{{ block.id }} {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    overflow: hidden;
+  }
+</style>
+
 <div
   class="lecka-planner-block"
   id="lecka-planner-{{ block.id }}"
-  style="width:100%; overflow:hidden;"
   {{ block.shopify_attributes }}
 >
   <script src="{{ script_url }}" defer></script>
