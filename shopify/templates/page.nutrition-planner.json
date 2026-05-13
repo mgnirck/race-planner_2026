@@ -1,0 +1,36 @@
+{
+  "sections": {
+    "main": {
+      "type": "main-page",
+      "disabled": true,
+      "settings": {
+        "max_width": "medium",
+        "display_on_card": false,
+        "color_scheme": "scheme1",
+        "use_gradient_background": false
+      }
+    },
+    "nutrition_planner_section": {
+      "type": "_blocks",
+      "blocks": {
+        "nutrition_planner_block": {
+          "type": "nutrition-planner",
+          "settings": {
+            "script_url": "https://plan.getlecka.com/embed.js",
+            "iframe_src": "https://plan.getlecka.com/?utm_source=shopify_embed",
+            "iframe_title": "Lecka Race Nutrition Planner",
+            "iframe_height": 800
+          }
+        }
+      },
+      "block_order": [
+        "nutrition_planner_block"
+      ],
+      "settings": {}
+    }
+  },
+  "order": [
+    "main",
+    "nutrition_planner_section"
+  ]
+}

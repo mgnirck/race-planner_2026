@@ -1,0 +1,61 @@
+{%- assign iframe_src = block.settings.iframe_src | strip_newlines | strip -%}
+{%- assign script_url = block.settings.script_url | strip_newlines | strip -%}
+
+<div
+  class="lecka-planner-block"
+  id="lecka-planner-{{ block.id }}"
+  style="width:100%; overflow:hidden;"
+  {{ block.shopify_attributes }}
+>
+  <script src="{{ script_url }}" defer></script>
+
+  <iframe
+    data-lecka
+    id="lecka-iframe-{{ block.id }}"
+    src="{{ iframe_src }}"
+    width="100%"
+    height="{{ block.settings.iframe_height }}"
+    frameborder="0"
+    scrolling="no"
+    title="{{ block.settings.iframe_title | escape }}"
+    loading="lazy"
+    style="display:block; border:none; width:100%; min-height:{{ block.settings.iframe_height }}px;"
+    allow="clipboard-write"
+  ></iframe>
+</div>
+
+{% schema %}
+{
+  "name": "Nutrition Planner",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "script_url",
+      "label": "Embed script URL",
+      "default": "https://plan.getlecka.com/embed.js"
+    },
+    {
+      "type": "text",
+      "id": "iframe_src",
+      "label": "Planner URL",
+      "default": "https://plan.getlecka.com/?utm_source=shopify_embed"
+    },
+    {
+      "type": "text",
+      "id": "iframe_title",
+      "label": "iFrame title (accessibility)",
+      "default": "Lecka Race Nutrition Planner"
+    },
+    {
+      "type": "range",
+      "id": "iframe_height",
+      "label": "Height (px)",
+      "min": 400,
+      "max": 1400,
+      "step": 50,
+      "default": 800
+    }
+  ]
+}
+{% endschema %}
