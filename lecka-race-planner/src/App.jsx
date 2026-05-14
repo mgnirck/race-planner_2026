@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import StepForm    from './components/StepForm'
 import ResultsPage from './components/ResultsPage'
 import AdminPage   from './components/AdminPage'
+import VerifyPage  from './components/VerifyPage'
 import { detectRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
@@ -39,6 +40,11 @@ export default function App() {
   // Admin route — password-gated aggregate stats
   if (PATH === '/admin') {
     return <AdminPage />
+  }
+
+  // Auth verify route — validates magic-link token, saves pending plan
+  if (PATH === '/auth/verify') {
+    return <VerifyPage />
   }
 
   function handleComplete(result) {

@@ -819,6 +819,104 @@ function EmailCapture({ targets, selection, form, region = 'us' }) {
   )
 }
 
+// ── SavePlanCard ──────────────────────────────────────────────────────────────
+
+function SavePlanCard({ targets, selection, form, region }) {
+  const [email,   setEmail]   = useState('')
+  const [state,   setState]   = useState('idle') // idle | sending | sent | error
+  const [touched, setTouched] = useState(false)
+
+  const isLoggedIn = Boolean(localStorage.getItem('lecka_user_id'))
+  if (isLoggedIn) return null
+
+  const isValid   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  const showError = touched && email !== '' && !isValid
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setTouched(true)
+    if (!isValid) return
+    setState('sending')
+
+    try {
+      localStorage.setItem('lecka_pending_plan', JSON.stringify({
+        inputs: form,
+        targets,
+        selection,
+        region,
+        lang: i18n.language,
+      }))
+
+      const res = await fetch('/api/auth/send-magic-link', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setState('sent')
+    } catch {
+      setState('error')
+    }
+  }
+
+  if (state === 'sent') {
+    return (
+      <section className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5">
+        <p className="text-sm font-bold text-[#48C4B0]">Check your inbox</p>
+        <p className="text-sm text-gray-500 mt-1">
+          Tap the link we sent to <strong>{email}</strong> to save your plan and create your account.
+        </p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="border-2 border-gray-100 rounded-2xl p-5">
+      <p className="text-sm font-bold text-[#1B1B1B] mb-1">Save this plan to your race history</p>
+      <p className="text-sm text-gray-500 mb-4">
+        Enter your email and we'll send you a one-click login link. Your plan saves automatically.
+      </p>
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            value={email}
+            onChange={e => { setEmail(e.target.value); setTouched(false) }}
+            onBlur={() => setTouched(true)}
+            placeholder="you@example.com"
+            disabled={state === 'sending'}
+            className={[
+              'flex-1 min-w-0 border-2 rounded-xl px-4 py-3 text-sm',
+              'focus:outline-none focus:border-[#48C4B0]',
+              'disabled:opacity-50',
+              showError ? 'border-red-300' : 'border-gray-200',
+            ].join(' ')}
+          />
+          <button
+            type="submit"
+            disabled={state === 'sending'}
+            className="min-h-[48px] px-4 bg-[#48C4B0] text-white rounded-xl text-sm
+                       font-semibold hover:bg-[#3db09d] transition-colors
+                       disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+          >
+            {state === 'sending' ? 'Saving…' : 'Save my plan →'}
+          </button>
+        </div>
+        {showError && (
+          <p className="text-xs text-red-500 mt-2">Please enter a valid email address.</p>
+        )}
+        {state === 'error' && (
+          <p className="text-xs text-red-500 mt-2">Something went wrong — please try again.</p>
+        )}
+        <p className="text-xs text-gray-400 mt-3">
+          Already have an account?{' '}
+          <a href="/auth/login" className="text-[#48C4B0] hover:underline">Log in →</a>
+        </p>
+      </form>
+    </section>
+  )
+}
+
 // ── Research markdown renderer ────────────────────────────────────────────────
 
 function escapeHtml(str) {
@@ -1528,6 +1626,9 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
 
         {/* ── Email capture ────────────────────────────────────────────────── */}
         <EmailCapture targets={targets} selection={selection} form={form} region={region} />
+
+        {/* ── Save plan / account creation ─────────────────────────────────── */}
+        <SavePlanCard targets={targets} selection={selection} form={form} region={region} />
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-10 text-center">
