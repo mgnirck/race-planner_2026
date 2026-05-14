@@ -10,11 +10,11 @@ async function getUser(req) {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'PATCH, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
   if (req.method === 'OPTIONS') return res.status(204).end()
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+  if (req.method !== 'PATCH') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
     await ensureMigrated()
@@ -22,19 +22,21 @@ export default async function handler(req, res) {
     const user = await getUser(req)
     if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
+    const { planId, race_date } = req.body ?? {}
+    if (!planId) return res.status(400).json({ error: 'planId is required' })
+
     const { rows } = await sql`
-      SELECT
-        p.id, p.race_name, p.race_type, p.goal_minutes,
-        p.race_date, p.created_at, p.conditions,
-        EXISTS(SELECT 1 FROM feedback f WHERE f.plan_id = p.id) AS has_feedback
-      FROM plans p
-      WHERE p.user_id = ${user.id}
-      ORDER BY p.created_at DESC
+      UPDATE plans
+      SET race_date = ${race_date ?? null}
+      WHERE id = ${planId} AND user_id = ${user.id}
+      RETURNING id, race_date
     `
 
-    return res.status(200).json(rows)
+    if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
+
+    return res.status(200).json(rows[0])
   } catch (err) {
-    console.error('[plans/list] error:', err)
-    return res.status(500).json({ error: 'Failed to list plans' })
+    console.error('[plans/update] error:', err)
+    return res.status(500).json({ error: 'Failed to update plan' })
   }
 }

@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import StepForm    from './components/StepForm'
-import ResultsPage from './components/ResultsPage'
-import AdminPage   from './components/AdminPage'
-import VerifyPage  from './components/VerifyPage'
+import StepForm       from './components/StepForm'
+import ResultsPage    from './components/ResultsPage'
+import AdminPage      from './components/AdminPage'
+import VerifyPage     from './components/VerifyPage'
+import DashboardPage  from './components/DashboardPage'
 import { detectRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
@@ -45,6 +46,11 @@ export default function App() {
   // Auth verify route — validates magic-link token, saves pending plan
   if (PATH === '/auth/verify') {
     return <VerifyPage />
+  }
+
+  // Athlete dashboard
+  if (PATH === '/dashboard') {
+    return <DashboardPage />
   }
 
   function handleComplete(result) {
