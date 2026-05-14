@@ -4,6 +4,7 @@ import ResultsPage    from './components/ResultsPage'
 import AdminPage      from './components/AdminPage'
 import VerifyPage     from './components/VerifyPage'
 import DashboardPage  from './components/DashboardPage'
+import FeedbackPage   from './components/FeedbackPage'
 import { detectRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
@@ -51,6 +52,12 @@ export default function App() {
   // Athlete dashboard
   if (PATH === '/dashboard') {
     return <DashboardPage />
+  }
+
+  // Post-race feedback form
+  if (PATH.startsWith('/feedback/')) {
+    const planId = PATH.split('/')[2]
+    return <FeedbackPage planId={planId} />
   }
 
   function handleComplete(result) {
