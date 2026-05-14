@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto'
 import { Resend } from 'resend'
-import { sql } from '../db.js'
+import { sql, ensureMigrated } from '../db.js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
   const normalised = email.toLowerCase().trim()
 
   try {
+    await ensureMigrated()
     // Upsert user so the row exists before the magic link is verified
     await sql`
       INSERT INTO users (email) VALUES (${normalised})

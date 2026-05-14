@@ -1,4 +1,4 @@
-import { sql } from '../db.js'
+import { sql, ensureMigrated } from '../db.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -14,6 +14,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    await ensureMigrated()
+
     const { rows } = await sql`
       SELECT id, email, expires_at, used
       FROM magic_links
