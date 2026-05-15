@@ -624,14 +624,17 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p)
     doc.setFillColor(C.green)
-    doc.rect(0, 285, W, 12, 'F')
+    doc.rect(0, 281, W, 16, 'F')
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
+    doc.setFontSize(7.5)
     doc.setTextColor(C.white)
+    doc.text(t('pdf.footer'), W / 2, 287, { align: 'center' })
+    doc.setFontSize(6.5)
+    doc.setTextColor(200, 240, 235)
     doc.text(
-      t('pdf.footer'),
+      'info@getlecka.com  ·  instagram.com/leckanutrition  ·  www.getlecka.com',
       W / 2,
-      292,
+      293,
       { align: 'center' },
     )
   }
@@ -826,7 +829,21 @@ ${plainTextProductList}
     </div>
     <div class="footer">
       ${t('email.footer')}
-      <a href="https://getlecka.com">getlecka.com</a>
+      <a href="https://www.getlecka.com">getlecka.com</a>
+      <br />
+      <span style="margin-top:6px;display:inline-block;">
+        <a href="mailto:info@getlecka.com"
+           style="color:#48C4B0;text-decoration:none;">
+          info@getlecka.com
+        </a>
+        &nbsp;·&nbsp;
+        <a href="https://www.instagram.com/leckanutrition"
+           target="_blank"
+           rel="noopener noreferrer"
+           style="color:#48C4B0;text-decoration:none;">
+          @leckanutrition
+        </a>
+      </span>
     </div>
   </div>
 </body>

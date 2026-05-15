@@ -1896,23 +1896,83 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} resolvedAddonItems={resolvedAddonItems} />
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
-        <div className="pb-10 text-center">
-          {isPublicView ? (
-            <a
-              href="/planner"
-              className="text-sm font-semibold text-[#48C4B0] hover:underline transition-colors"
-            >
-              Build your own plan →
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={onBack}
-              className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
-            >
-              {t('common:nav.startOver')}
-            </button>
-          )}
+        <div className="pb-12 space-y-6 border-t border-gray-100 pt-8">
+
+          <div className="text-center">
+            {isPublicView ? (
+              <a
+                href="/planner"
+                className="text-sm font-semibold text-[#48C4B0] hover:underline transition-colors"
+              >
+                Build your own plan →
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={onBack}
+                className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
+              >
+                {t('common:nav.startOver')}
+              </button>
+            )}
+          </div>
+
+          <div className="text-center space-y-1">
+            <p className="text-xs text-gray-400">
+              Provided by{' '}
+              <a
+                href="https://www.getlecka.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#48C4B0] hover:underline"
+              >
+                www.getlecka.com
+              </a>
+            </p>
+            <p className="text-xs text-gray-400">
+              <a
+                href="mailto:info@getlecka.com"
+                className="text-[#48C4B0] hover:underline"
+              >
+                info@getlecka.com
+              </a>
+              {' '}·{' '}
+              <a
+                href="https://www.instagram.com/leckanutrition"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#48C4B0] hover:underline"
+              >
+                @leckanutrition
+              </a>
+            </p>
+          </div>
+
+          <div className="text-center">
+            <p className="text-xs text-gray-400 mb-2">Find Lecka near you</p>
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+              {[
+                { label: 'US',          href: 'https://www.getlecka.com' },
+                { label: 'Vietnam',     href: 'https://www.getlecka.vn' },
+                { label: 'Germany',     href: 'https://www.getlecka.de' },
+                { label: 'Denmark',     href: 'https://www.getlecka.dk' },
+                { label: 'Switzerland', href: 'https://www.getlecka.ch' },
+                { label: 'Singapore',   href: 'https://www.rdrc.sg/collections/lecka' },
+                { label: 'Hong Kong',   href: 'https://foodisdom.is/collections/lecka' },
+              ].map(({ label, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-400 hover:text-[#48C4B0] transition-colors"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+
         </div>
 
       </div>
