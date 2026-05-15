@@ -1262,6 +1262,7 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
   const [region,         setRegion]         = useState(regionProp ?? detectRegion)
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
+  const [copyPlanState,  setCopyPlanState]  = useState('idle') // idle | copied
   const regionConfig = getRegionConfig(region)
 
   // Reset manual overrides when plan inputs change
@@ -1337,25 +1338,12 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
   )
 
   // VN region: open Zalo or Facebook chat and copy order summary to clipboard
-  function handleChatClick(chatUrl) {
-    const lines = aggregated.map(row =>
-      `• ${row.totalUnits}x ${row.product.name} — ${formatPrice(row.linePrice, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}`
-    ).join('\n')
-    const summary = [
-      t('results:cta.chat.clipboardIntro'),
-      lines,
-      t('results:cta.chat.clipboardTotal', { total: formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2) }),
-    ].join('\n')
-
-    setChatSummary(summary)
-
+  function copyToClipboard(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(summary).catch(() => execCopy(summary))
+      navigator.clipboard.writeText(text).catch(() => execCopy(text))
     } else {
-      execCopy(summary)
+      execCopy(text)
     }
-
-    window.open(chatUrl, '_blank', 'noopener,noreferrer')
   }
 
   function execCopy(text) {
@@ -1367,6 +1355,51 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
     el.select()
     try { document.execCommand('copy') } catch (_) {}
     document.body.removeChild(el)
+  }
+
+  function handleChatClick(chatUrl) {
+    const lines = aggregated.map(row =>
+      `• ${row.totalUnits}x ${row.product.name} — ${formatPrice(row.linePrice, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}`
+    ).join('\n')
+    const summary = [
+      t('results:cta.chat.clipboardIntro'),
+      lines,
+      t('results:cta.chat.clipboardTotal', { total: formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2) }),
+    ].join('\n')
+
+    setChatSummary(summary)
+    copyToClipboard(summary)
+    window.open(chatUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  function handleCopyPlan() {
+    const raceName = form.race_name || heroTitle
+    const fmtMin = m => { const h = Math.floor(m / 60); const mn = m % 60; return h > 0 ? `${h}h${mn > 0 ? String(mn).padStart(2, '0') : ''}` : `${mn}min` }
+    const productLines = effectiveSelection.map(item => {
+      const timingSummary = item.timing_minutes?.length > 0
+        ? `at ${item.timing_minutes.map(fmtMin).join(', ')}`
+        : ''
+      return `• ${item.quantity}x ${item.product.name}${timingSummary ? ` (${timingSummary})` : ''}`
+    }).join('\n')
+    const summary = [
+      `--- ${raceName} Nutrition Plan ---`,
+      form.goal_time ? `Goal time: ${form.goal_time}` : null,
+      conditionLabel ? `Conditions: ${conditionLabel}` : null,
+      '',
+      'Targets:',
+      `• ${targets.carb_per_hour}g carbs/hour`,
+      `• ${targets.sodium_per_hour}mg sodium/hour`,
+      `• ${targets.fluid_ml_per_hour}ml fluid/hour`,
+      '',
+      productLines ? 'Products:' : null,
+      productLines || null,
+      '',
+      'Built with Lecka — getlecka.com',
+    ].filter(l => l !== null).join('\n')
+
+    copyToClipboard(summary)
+    setCopyPlanState('copied')
+    setTimeout(() => setCopyPlanState('idle'), 2000)
   }
 
   // Prefer athlete's race name → triathlon type label (if triathlon) → distance typed → race_type label
@@ -1658,6 +1691,16 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
 
         {/* ── Race timeline ────────────────────────────────────────────────── */}
         <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
+
+        {/* ── Copy plan to clipboard ───────────────────────────────────────── */}
+        <button
+          type="button"
+          onClick={handleCopyPlan}
+          className="text-sm text-gray-500 border border-gray-200 rounded-xl px-4 py-2
+                     hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors w-full"
+        >
+          {copyPlanState === 'copied' ? '✓ Copied!' : `📋 ${t('cta.copyPlan')}`}
+        </button>
 
         {/* ── Email + save plan ────────────────────────────────────────────── */}
         <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} />
