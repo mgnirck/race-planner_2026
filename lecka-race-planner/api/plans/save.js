@@ -37,9 +37,9 @@ export default async function handler(req, res) {
         ${targets.total_duration_minutes ?? null},
         ${inputs.conditions ?? targets.conditions ?? null},
         ${inputs.effort ?? targets.effort ?? null},
-        ${inputs},
-        ${targets},
-        ${selection ?? []},
+        ${JSON.stringify(inputs)}::jsonb,
+        ${JSON.stringify(targets)}::jsonb,
+        ${JSON.stringify(selection ?? [])}::jsonb,
         ${region},
         ${lang}
       )
