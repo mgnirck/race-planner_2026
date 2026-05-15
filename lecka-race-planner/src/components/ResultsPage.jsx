@@ -23,6 +23,7 @@ import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
 import LanguageSwitcher from './LanguageSwitcher.jsx'
 import i18n from '../i18n.js'
 import { getRaceLabel, getEffortLabel, getConditionLabel } from '../i18n-utils.js'
+import { formatAddonSummary } from '../engine/kit-calculator.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -73,17 +74,36 @@ function timingPhase(minutes, totalDuration) {
 function buildTimeline(selection, totalDuration) {
   const events = []
   for (const item of selection) {
+    if (!item.timing_minutes) continue
     for (const t of item.timing_minutes) {
       events.push({
         time:    t,
         product: item.product,
         note:    item.note,
         phase:   timingPhase(t, totalDuration),
+        isAddon: item.isAddon ?? false,
       })
     }
   }
   events.sort((a, b) => a.time - b.time)
   return events
+}
+
+// Distribute addon quantities evenly across the race window (first at 20 min).
+function buildAddonTimelineItems(resolvedAddonItems, totalDurationMinutes) {
+  return resolvedAddonItems.map(({ product, quantity }) => {
+    const firstIntake = 20
+    let slots
+    if (quantity <= 1) {
+      slots = [firstIntake]
+    } else {
+      const lastSlot = totalDurationMinutes - 1
+      slots = Array.from({ length: quantity }, (_, i) =>
+        Math.round(firstIntake + (i * (lastSlot - firstIntake)) / (quantity - 1))
+      )
+    }
+    return { product, quantity, timing_minutes: slots, note: 'Add-on — buy separately', isAddon: true }
+  })
 }
 
 function aggregateByProduct(selection, region = 'us', manualQty = null) {
@@ -188,11 +208,11 @@ function buildDuringGroups(duringEvents, t) {
   const byProduct = {}
   for (const ev of duringEvents) {
     const id = ev.product.id
-    if (!byProduct[id]) byProduct[id] = { product: ev.product, note: ev.note, times: [] }
+    if (!byProduct[id]) byProduct[id] = { product: ev.product, note: ev.note, times: [], isAddon: ev.isAddon ?? false }
     byProduct[id].times.push(ev.time)
   }
 
-  return Object.values(byProduct).map(({ product, note, times }) => {
+  return Object.values(byProduct).map(({ product, note, times, isAddon }) => {
     let scheduleText
     if (times.length === 1) {
       scheduleText = t('results:timeline.atTime', { time: formatTimingLabel(times[0], Infinity, t) })
@@ -208,7 +228,7 @@ function buildDuringGroups(duringEvents, t) {
           : t('results:timeline.atTime', { time: labels.join(', ') })
       }
     }
-    return { product, note, count: times.length, scheduleText }
+    return { product, note, count: times.length, scheduleText, isAddon }
   })
 }
 
@@ -366,7 +386,7 @@ function nutritionStatusLabel(provided, target, t) {
   return t('nutrition.status.over')
 }
 
-function NutritionSummary({ targets, provided }) {
+function NutritionSummary({ targets, provided, foundationTargets, addonCoverage }) {
   const { t } = useTranslation('results')
   const showProvided = provided.carbs_per_hour_provided > 0 || provided.sodium_per_hour_provided > 0
 
@@ -409,6 +429,26 @@ function NutritionSummary({ targets, provided }) {
             </div>
           </div>
         </div>
+
+        {/* Foundation / addon split row */}
+        {addonCoverage && addonCoverage.items?.length > 0 && foundationTargets && (() => {
+          const total = targets.carb_per_hour
+          const foundationPct = total > 0 ? Math.round((foundationTargets.carb_per_hour / total) * 100) : 100
+          const addonPct = 100 - foundationPct
+          return (
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">How it's covered</p>
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-[#48C4B0] font-medium">🌱 Lecka foundation: {foundationTargets.carb_per_hour}g carbs/hour</span>
+                <span className="text-gray-400">+ Add-ons: {Math.round(addonCoverage.carbs_per_hour)}g/hour</span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden flex">
+                <div className="h-full bg-[#48C4B0] transition-all" style={{ width: `${foundationPct}%` }} />
+                <div className="h-full bg-[#48C4B0]/40 transition-all" style={{ width: `${addonPct}%` }} />
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Provided row */}
         {showProvided && (
@@ -629,16 +669,21 @@ const PHASE_BADGE = {
 
 function TimelineRow({ event, totalDuration, isLast }) {
   const { t } = useTranslation('results')
+  const badgeClass = event.isAddon ? 'bg-gray-100 text-gray-500' : PHASE_BADGE[event.phase]
   return (
     <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="w-24 flex-shrink-0 pt-0.5">
         <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
-                          whitespace-nowrap ${PHASE_BADGE[event.phase]}`}>
+                          whitespace-nowrap ${badgeClass}`}>
           {formatTimingLabel(event.time, totalDuration, t)}
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{event.product.name}</p>
+        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">
+          {event.isAddon
+            ? (event.product.display_name ?? event.product.name)
+            : event.product.name}
+        </p>
         <p className="text-xs text-gray-400 mt-0.5 leading-snug">{event.note}</p>
       </div>
     </div>
@@ -647,19 +692,27 @@ function TimelineRow({ event, totalDuration, isLast }) {
 
 function DuringGroupRow({ group, isLast }) {
   const { t } = useTranslation('results')
+  const badgeClass = group.isAddon ? 'bg-gray-100 text-gray-500' : PHASE_BADGE.during
   return (
     <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="w-24 flex-shrink-0 pt-0.5">
         <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
-                          whitespace-nowrap ${PHASE_BADGE.during}`}>
+                          whitespace-nowrap ${badgeClass}`}>
           ×{group.count}
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{group.product.name}</p>
+        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">
+          {group.isAddon
+            ? (group.product.display_name ?? group.product.name)
+            : group.product.name}
+        </p>
         <p className="text-xs text-gray-400 mt-0.5">{group.scheduleText}</p>
-        {group.product.caffeine && (
+        {!group.isAddon && group.product.caffeine && (
           <span className="text-xs font-medium text-[#48C4B0]">+ {t('hero.caffeineTag').toLowerCase()}</span>
+        )}
+        {group.isAddon && (
+          <span className="text-xs text-gray-400 italic">Add-on — buy separately</span>
         )}
       </div>
     </div>
@@ -763,7 +816,7 @@ function RaceTimeline({ events, totalDuration }) {
 
 // ── PlanDeliveryCard ──────────────────────────────────────────────────────────
 
-function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false }) {
+function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false, resolvedAddonItems = [] }) {
   const { t } = useTranslation('results')
   const [email,      setEmail]      = useState('')
   const [emailState, setEmailState] = useState('idle') // idle | sending | success | error
@@ -786,7 +839,10 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
         fetch('/api/send-plan', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language }),
+          body:    JSON.stringify({
+            email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language,
+            addon_items_summary: formatAddonSummary(resolvedAddonItems),
+          }),
         }),
       ]
       if (!isLoggedIn && !hideSave) {
@@ -818,7 +874,10 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
       const res = await fetch('/api/plans/save', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
-        body:    JSON.stringify({ inputs: form, targets, selection, region, lang: i18n.language }),
+        body:    JSON.stringify({
+          inputs: { ...form, addon_items: form.addon_items ?? [] },
+          targets, selection, region, lang: i18n.language,
+        }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setSaveState('saved')
@@ -1255,7 +1314,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ResultsPage({ targets, selection, form, onBack, region: regionProp, hideSave = false, isPublicView = false }) {
+export default function ResultsPage({ targets, foundationTargets, selection, addonCoverage, resolvedAddonItems = [], form, onBack, region: regionProp, hideSave = false, isPublicView = false }) {
   const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
   const [showCartEditor, setShowCartEditor] = useState(false)
@@ -1268,14 +1327,26 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
   // Reset manual overrides when plan inputs change
   useEffect(() => { setManualQty(null) }, [selection, region])
 
+  // Strip non-Lecka placeholder items before any cart/aggregation logic
+  const leckaSelection = useMemo(
+    () => selection.filter(item => item.product?.type !== 'powder_placeholder'),
+    [selection]
+  )
+  const powderPlaceholder = useMemo(
+    () => selection.find(item => item.product?.type === 'powder_placeholder') ?? null,
+    [selection]
+  )
+
+  const hasAddons = resolvedAddonItems.length > 0
+
   const aggregated   = useMemo(
-    () => aggregateByProduct(selection, region, manualQty),
-    [selection, region, manualQty]
+    () => aggregateByProduct(leckaSelection, region, manualQty),
+    [leckaSelection, region, manualQty]
   )
   const trainingInfo = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
   const provided     = useMemo(
-    () => computeProvidedNutrition(selection, manualQty, targets.total_duration_minutes),
-    [selection, manualQty, targets.total_duration_minutes]
+    () => computeProvidedNutrition(leckaSelection, manualQty, targets.total_duration_minutes),
+    [leckaSelection, manualQty, targets.total_duration_minutes]
   )
 
   // Variety pack CTA — always just 1× gel variety pack + 1× bar variety pack, nothing else
@@ -1317,13 +1388,18 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
   // manualQty overrides must be reflected in anything sent off-device (email, saved
   // plan) — the raw selection prop still has the engine's original quantities.
   const effectiveSelection = useMemo(
-    () => adjustTimelineSelection(selection, manualQty, targets.total_duration_minutes, allProductsCatalog),
-    [selection, manualQty, targets]
+    () => adjustTimelineSelection(leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog),
+    [leckaSelection, manualQty, targets]
+  )
+
+  const addonTimelineItems = useMemo(
+    () => buildAddonTimelineItems(resolvedAddonItems, targets.total_duration_minutes),
+    [resolvedAddonItems, targets.total_duration_minutes]
   )
 
   const timeline = useMemo(
-    () => buildTimeline(effectiveSelection, targets.total_duration_minutes),
-    [effectiveSelection, targets.total_duration_minutes]
+    () => buildTimeline([...effectiveSelection, ...addonTimelineItems], targets.total_duration_minutes),
+    [effectiveSelection, addonTimelineItems, targets.total_duration_minutes]
   )
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
@@ -1479,13 +1555,18 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
                 .join(' ')}
             </span>
           )}
+          <p className="text-xs text-[#48C4B0] font-medium mt-2 italic">
+            {hasAddons
+              ? 'Real food foundation + add-ons — your complete race plan.'
+              : 'Lecka is your real food foundation. Everything else is optional.'}
+          </p>
         </div>
 
         {/* ── Warnings ────────────────────────────────────────────────────── */}
         <WarningBox warnings={targets.warnings} />
 
         {/* ── Nutrition targets ───────────────────────────────────────────── */}
-        <NutritionSummary targets={targets} provided={provided} />
+        <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} />
         <button
           type="button"
           onClick={() => setShowResearch(true)}
@@ -1495,10 +1576,12 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
           {t('results:research.learnMore')}
         </button>
 
-        {/* ── Product cards ───────────────────────────────────────────────── */}
+        {/* ── Product cards — Lecka foundation ────────────────────────────── */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('results:section.whatToTake')}</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+              {hasAddons ? 'Your real food foundation' : t('results:section.whatToTake')}
+            </p>
             {aggregated.length > 0 && (
               <button
                 type="button"
@@ -1509,6 +1592,11 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
               </button>
             )}
           </div>
+          {hasAddons && (
+            <p className="text-xs text-gray-400 mb-3">
+              Lecka covers {foundationTargets.carb_per_hour}g carbs/hour — your real food base for this race
+            </p>
+          )}
           {aggregated.length === 0 ? (
             <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
               We couldn&apos;t find products available in your region for this plan.
@@ -1530,9 +1618,71 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
                   region={region}
                 />
               ))}
+              {/* Drink mix placeholder */}
+              {powderPlaceholder && (
+                <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 bg-gray-50 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-500">
+                      🔜 Lecka Carb + Hydration Powder — coming soon
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      <a
+                        href="mailto:info@getlecka.com?subject=Powder waitlist"
+                        className="text-[#48C4B0] underline"
+                      >
+                        Join the waitlist →
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
+
+        {/* ── Add-ons section ──────────────────────────────────────────────── */}
+        {hasAddons && (
+          <section>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                Add-ons
+              </span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+            <p className="text-xs text-gray-400 italic text-center mb-3">
+              These aren't Lecka products — source them from your usual supplier.
+            </p>
+            <div className="space-y-2">
+              {resolvedAddonItems.map(({ product, quantity }) => (
+                <div
+                  key={product.id}
+                  className="border border-gray-200 rounded-xl p-3 flex items-center gap-3"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-gray-400">
+                      {product.brand.slice(0, 3).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#1B1B1B]">{product.display_name}</p>
+                    <p className="text-xs text-gray-400">
+                      {quantity}× · {product.carbs_per_unit * quantity}g carbs total
+                    </p>
+                  </div>
+                  <div className="text-xs text-gray-400 italic flex-shrink-0">
+                    Buy separately
+                  </div>
+                </div>
+              ))}
+            </div>
+            {addonCoverage && (
+              <p className="text-xs text-gray-400 text-center mt-2">
+                Add-ons contribute {addonCoverage.total_carbs}g carbs ({Math.round(addonCoverage.carbs_per_hour)}g/hour) to your plan.
+              </p>
+            )}
+          </section>
+        )}
 
         {/* ── Training preparation (shown when buying more than needed for race) */}
         {trainingInfo.hasOverage && (
@@ -1608,6 +1758,11 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
 
         {/* ── Shop CTA — hidden when no products are available in the region ── */}
         {aggregated.length > 0 && <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
+          {hasAddons && (
+            <p className="text-xs text-gray-400 text-center mb-3">
+              Cart includes Lecka products only — add-on products are sourced separately.
+            </p>
+          )}
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-gray-500">
               {t('results:cta.packs', { count: totalPacks })}
@@ -1703,7 +1858,7 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
         </button>
 
         {/* ── Email + save plan ────────────────────────────────────────────── */}
-        <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} />
+        <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} resolvedAddonItems={resolvedAddonItems} />
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-10 text-center">

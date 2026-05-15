@@ -66,7 +66,10 @@ export default function App() {
     return (
       <ResultsPage
         targets={plan.targets}
+        foundationTargets={plan.foundationTargets ?? plan.targets}
         selection={plan.selection}
+        addonCoverage={plan.addonCoverage ?? null}
+        resolvedAddonItems={plan.resolvedAddonItems ?? []}
         form={plan.form}
         onBack={() => {
           try { sessionStorage.removeItem('lecka_form_draft') } catch {}
