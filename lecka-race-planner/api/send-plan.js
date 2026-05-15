@@ -137,8 +137,13 @@ const REGION_STORE_URLS = {
   ch: 'https://www.getlecka.ch',
 }
 
-/** Builds an optimised Shopify cart URL, using variety packs when cheaper */
+// Vietnam runs on Haravan with Zalo/Facebook ordering — no Shopify cart URL.
+const ZALO_ORDER_URL = 'https://zalo.me/0988440434'
+
+/** Builds an optimised Shopify cart URL, using variety packs when cheaper.
+ *  For VN, returns the Zalo order URL directly (Haravan store, no /cart/ path). */
 function buildCartURL(selectedProducts, region = 'us', discountCode = 'NUTRIPLAN10') {
+  if (region === 'vn') return ZALO_ORDER_URL
   const storeUrl = REGION_STORE_URLS[region] ?? REGION_STORE_URLS.us
   if (!selectedProducts?.length) return storeUrl
 
@@ -556,9 +561,14 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
   const label   = raceLabel(inputs, t)
   const subject = t('email.subject', { label })
 
+  const isVN            = region === 'vn'
   const hasProducts     = selectedProducts.length > 0
   const productListHtml = selectedProducts
     .map(item => `<li><strong>${item.product.name}</strong> &times;&nbsp;${item.quantity} &mdash; ${item.note ?? ''}</li>`)
+    .join('\n')
+  // Plain-text copy block used in the VN email so the customer can paste into Zalo/Facebook.
+  const plainTextProductList = selectedProducts
+    .map(item => `${item.product.name} × ${item.quantity}${item.note ? ` — ${item.note}` : ''}`)
     .join('\n')
 
   // Check variety pack optimisation for email
@@ -657,7 +667,16 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
         </div>
       </div>
 
-      ${hasProducts ? `
+      ${hasProducts ? (isVN ? `
+      <p style="margin-bottom:6px;font-size:14px;color:#374151;">
+        Message us on Zalo or Facebook with your order &mdash; copy the product list below into your message.
+      </p>
+      <div style="background:#f5f5f5;border-radius:8px;padding:14px 16px;margin:12px 0;
+                  font-family:monospace;font-size:13px;white-space:pre-wrap;color:#1B1B1B;">
+${plainTextProductList}
+      </div>
+      <a href="${cartUrl}" class="cta">${t('email.cta')}</a>
+      ` : `
       <p style="margin-bottom: 6px;"><strong>${t('email.productPlanTitle')}</strong></p>
       <ul>
         ${productListHtml}
@@ -673,7 +692,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
         <p style="margin:0;font-size:13px;color:#1B1B1B;">
           <strong>${t('email.discountTitle')}</strong> ${t('email.discountBody')}
         </p>
-      </div>` : ''}
+      </div>`) : ''}
 
       <p class="note">
         ${t('email.note')}
@@ -918,12 +937,17 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Failed to send email. Please try again.' })
   }
 
-  // ── Shopify upsert (non-fatal) ────────────────────────────────────────────
-  try {
-    await upsertShopifyCustomer(email, inputs, region)
-  } catch (shopifyErr) {
-    // Log but do not fail — email was already sent successfully
-    console.error('[send-plan] Shopify upsert failed (non-fatal):', shopifyErr.message)
+  // ── Shopify upsert (non-fatal, Shopify regions only) ─────────────────────
+  // TODO: implement Haravan customer upsert for VN (Haravan Admin API or webhook).
+  if (region === 'vn') {
+    console.log('[send-plan] Skipping customer upsert — VN uses Haravan, not Shopify.')
+  } else {
+    try {
+      await upsertShopifyCustomer(email, inputs, region)
+    } catch (shopifyErr) {
+      // Log but do not fail — email was already sent successfully
+      console.error('[send-plan] Shopify upsert failed (non-fatal):', shopifyErr.message)
+    }
   }
 
   return res.status(200).json({ success: true, message: 'Plan sent!' })
