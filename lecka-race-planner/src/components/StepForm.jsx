@@ -41,6 +41,13 @@ function distanceToRaceType(km) {
   return 'ultra_100k'
 }
 
+const TRIATHLON_OPTIONS = [
+  { key: 'triathlon_sprint',  label: 'Sprint',  sublabel: '750m swim · 20km bike · 5km run',    km: 51    },
+  { key: 'triathlon_olympic', label: 'Olympic', sublabel: '1.5km swim · 40km bike · 10km run',  km: 51.5  },
+  { key: 'triathlon_70_3',    label: '70.3',    sublabel: '1.9km swim · 90km bike · 21km run',  km: 113   },
+  { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226   },
+]
+
 function toKg(value, unit) {
   const n = parseFloat(value)
   if (!isFinite(n) || n <= 0) return null
@@ -271,150 +278,207 @@ function StepOne({ form, setForm }) {
         <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceName.hint')}</p>
       </div>
 
-      {/* GPX upload */}
+      {/* Sport selector */}
       <div>
-        <FieldLabel>{t('form:field.gpx')}</FieldLabel>
-        <label
-          className="flex flex-col items-center justify-center gap-1.5 w-full
-                     border-2 border-dashed border-gray-200 rounded-xl bg-gray-50
-                     py-6 px-4 cursor-pointer hover:border-[#48C4B0] transition-colors"
-        >
-          <input
-            type="file"
-            accept=".gpx"
-            className="sr-only"
-            onChange={handleGpxFile}
-          />
-          <svg
-            className="w-6 h-6 text-gray-300"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 16V4m0 0L8 8m4-4 4 4"/>
-            <path d="M4 20h16"/>
-          </svg>
-          <p className="text-sm text-gray-500 text-center">
-            {t('form:field.gpx.drop')}
-          </p>
-          <p className="text-xs text-gray-400 text-center">
-            {t('form:field.gpx.hint')}
-          </p>
-        </label>
-        {form.gpx_parsed && !gpxError && (
-          <p className="text-xs text-[#48C4B0] mt-1.5">
-            {t('form:field.gpx.loaded', { km: form.custom_km, elevation: form.elevation_gain_m, label: gpxSummaryLabel })}
-          </p>
-        )}
-        {gpxError && (
-          <p className="text-xs text-red-400 mt-1.5">
-            {t('form:field.gpx.error')}
-          </p>
-        )}
-      </div>
-
-      {/* Distance */}
-      <div>
-        <FieldLabel>{t('form:field.distance')}</FieldLabel>
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            min="1"
-            max="500"
-            placeholder="e.g. 42"
-            value={form.custom_km_display}
-            onChange={e => handleDistChange(e.target.value)}
-            className="w-32 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
-                       focus:outline-none focus:border-[#48C4B0]"
-          />
-          {/* km / mi toggle */}
-          <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
-            {['km', 'mi'].map(unit => (
-              <button
-                key={unit}
-                type="button"
-                onClick={() => switchDistUnit(unit)}
-                className={[
-                  'px-3 py-2 min-h-[38px] transition-colors',
-                  form.dist_unit === unit
-                    ? 'bg-[#48C4B0] text-white'
-                    : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
-                ].join(' ')}
-              >
-                {unit}
-              </button>
-            ))}
-          </div>
-        </div>
-        {form.custom_km_display && (
-          <p className="text-xs text-[#48C4B0] mt-1.5">
-            {t('form:field.distance.hint', { value: form.custom_km_display, unit: form.dist_unit })}
-          </p>
-        )}
-      </div>
-
-      {/* Elevation gain */}
-      <div>
-        <FieldLabel>{t('form:field.elevation')}</FieldLabel>
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            min="0"
-            max="10000"
-            placeholder="0"
-            value={form.elev_display}
-            onChange={e => handleElevChange(e.target.value)}
-            className="w-32 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
-                       focus:outline-none focus:border-[#48C4B0]"
-          />
-          {/* m / ft toggle */}
-          <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
-            {['m', 'ft'].map(unit => (
-              <button
-                key={unit}
-                type="button"
-                onClick={() => switchElevUnit(unit)}
-                className={[
-                  'px-3 py-2 min-h-[38px] transition-colors',
-                  form.elev_unit === unit
-                    ? 'bg-[#48C4B0] text-white'
-                    : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
-                ].join(' ')}
-              >
-                {unit}
-              </button>
-            ))}
-          </div>
-        </div>
-        {form.gpx_parsed && form.elevation_gain_m > 0 ? (
-          <p className="text-xs text-[#48C4B0] mt-1.5">{t('form:field.elevation.hintGpx', { label: gpxSummaryLabel })}</p>
-        ) : (
-          <p className="text-xs text-gray-400 mt-1.5">
-            {t('form:field.elevation.hintDefault')}
-          </p>
-        )}
-      </div>
-
-      {/* Surface */}
-      <div>
-        <FieldLabel>{t('form:field.surface')}</FieldLabel>
+        <FieldLabel>{t('form:field.sport')}</FieldLabel>
         <div className="flex gap-2">
-          {[
-            { label: t('common:surface.road'),  key: 'road'  },
-            { label: t('common:surface.trail'), key: 'trail' },
-          ].map(s => (
-            <Pill
-              key={s.key}
-              label={s.label}
-              selected={form.surface_type === s.key}
-              onClick={() => setForm(f => ({ ...f, surface_type: s.key }))}
-            />
-          ))}
+          <Pill
+            label={t('form:field.sport.running')}
+            selected={form.sport === 'running'}
+            onClick={() => setForm(f => ({
+              ...f,
+              sport:          'running',
+              triathlon_type: '',
+              race_type:      f.custom_km ? distanceToRaceType(parseFloat(f.custom_km)) : '',
+            }))}
+          />
+          <Pill
+            label={t('form:field.sport.triathlon')}
+            selected={form.sport === 'triathlon'}
+            onClick={() => setForm(f => ({
+              ...f,
+              sport:          'triathlon',
+              triathlon_type: '',
+              race_type:      '',
+              surface_type:   'road',
+            }))}
+          />
         </div>
       </div>
+
+      {/* Running-specific: GPX upload, distance, elevation, surface */}
+      {form.sport === 'running' && (
+        <>
+          {/* GPX upload */}
+          <div>
+            <FieldLabel>{t('form:field.gpx')}</FieldLabel>
+            <label
+              className="flex flex-col items-center justify-center gap-1.5 w-full
+                         border-2 border-dashed border-gray-200 rounded-xl bg-gray-50
+                         py-6 px-4 cursor-pointer hover:border-[#48C4B0] transition-colors"
+            >
+              <input
+                type="file"
+                accept=".gpx"
+                className="sr-only"
+                onChange={handleGpxFile}
+              />
+              <svg
+                className="w-6 h-6 text-gray-300"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 16V4m0 0L8 8m4-4 4 4"/>
+                <path d="M4 20h16"/>
+              </svg>
+              <p className="text-sm text-gray-500 text-center">
+                {t('form:field.gpx.drop')}
+              </p>
+              <p className="text-xs text-gray-400 text-center">
+                {t('form:field.gpx.hint')}
+              </p>
+            </label>
+            {form.gpx_parsed && !gpxError && (
+              <p className="text-xs text-[#48C4B0] mt-1.5">
+                {t('form:field.gpx.loaded', { km: form.custom_km, elevation: form.elevation_gain_m, label: gpxSummaryLabel })}
+              </p>
+            )}
+            {gpxError && (
+              <p className="text-xs text-red-400 mt-1.5">
+                {t('form:field.gpx.error')}
+              </p>
+            )}
+          </div>
+
+          {/* Distance */}
+          <div>
+            <FieldLabel>{t('form:field.distance')}</FieldLabel>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="1"
+                max="500"
+                placeholder="e.g. 42"
+                value={form.custom_km_display}
+                onChange={e => handleDistChange(e.target.value)}
+                className="w-32 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                           focus:outline-none focus:border-[#48C4B0]"
+              />
+              {/* km / mi toggle */}
+              <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
+                {['km', 'mi'].map(unit => (
+                  <button
+                    key={unit}
+                    type="button"
+                    onClick={() => switchDistUnit(unit)}
+                    className={[
+                      'px-3 py-2 min-h-[38px] transition-colors',
+                      form.dist_unit === unit
+                        ? 'bg-[#48C4B0] text-white'
+                        : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
+                    ].join(' ')}
+                  >
+                    {unit}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {form.custom_km_display && (
+              <p className="text-xs text-[#48C4B0] mt-1.5">
+                {t('form:field.distance.hint', { value: form.custom_km_display, unit: form.dist_unit })}
+              </p>
+            )}
+          </div>
+
+          {/* Elevation gain */}
+          <div>
+            <FieldLabel>{t('form:field.elevation')}</FieldLabel>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="0"
+                max="10000"
+                placeholder="0"
+                value={form.elev_display}
+                onChange={e => handleElevChange(e.target.value)}
+                className="w-32 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                           focus:outline-none focus:border-[#48C4B0]"
+              />
+              {/* m / ft toggle */}
+              <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
+                {['m', 'ft'].map(unit => (
+                  <button
+                    key={unit}
+                    type="button"
+                    onClick={() => switchElevUnit(unit)}
+                    className={[
+                      'px-3 py-2 min-h-[38px] transition-colors',
+                      form.elev_unit === unit
+                        ? 'bg-[#48C4B0] text-white'
+                        : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
+                    ].join(' ')}
+                  >
+                    {unit}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {form.gpx_parsed && form.elevation_gain_m > 0 ? (
+              <p className="text-xs text-[#48C4B0] mt-1.5">{t('form:field.elevation.hintGpx', { label: gpxSummaryLabel })}</p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1.5">
+                {t('form:field.elevation.hintDefault')}
+              </p>
+            )}
+          </div>
+
+          {/* Surface */}
+          <div>
+            <FieldLabel>{t('form:field.surface')}</FieldLabel>
+            <div className="flex gap-2">
+              {[
+                { label: t('common:surface.road'),  key: 'road'  },
+                { label: t('common:surface.trail'), key: 'trail' },
+              ].map(s => (
+                <Pill
+                  key={s.key}
+                  label={s.label}
+                  selected={form.surface_type === s.key}
+                  onClick={() => setForm(f => ({ ...f, surface_type: s.key }))}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Triathlon discipline selector */}
+      {form.sport === 'triathlon' && (
+        <div>
+          <FieldLabel>{t('form:field.triathlonType')}</FieldLabel>
+          <div className="flex flex-wrap gap-2">
+            {TRIATHLON_OPTIONS.map(opt => (
+              <Pill
+                key={opt.key}
+                label={opt.label}
+                sublabel={opt.sublabel}
+                selected={form.triathlon_type === opt.key}
+                onClick={() => setForm(f => ({
+                  ...f,
+                  triathlon_type: opt.key,
+                  race_type:      opt.key,
+                  custom_km:      String(opt.km),
+                  surface_type:   'road',
+                }))}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Goal finish time */}
       <div>
@@ -720,11 +784,15 @@ function StepThree({ form, setForm }) {
 // ── Step validation ───────────────────────────────────────────────────────────
 
 function isStep1Valid(form) {
+  const goalMinutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
+  if (form.sport === 'triathlon') {
+    return form.triathlon_type !== '' && goalMinutes !== null
+  }
   return (
     form.custom_km !== '' &&
     form.race_type !== '' &&
     form.surface_type !== '' &&
-    goalMinutesFromFields(form.goal_time_h, form.goal_time_m) !== null
+    goalMinutes !== null
   )
 }
 
@@ -762,6 +830,8 @@ export default function StepForm({ onComplete }) {
     elev_display:      '',
     elev_unit:         'm',
     gpx_parsed:        false,
+    sport:             'running',
+    triathlon_type:    '',
     // Step 2
     weight_value:    '70',
     weight_unit:     'kg',

@@ -7,6 +7,12 @@
   "field.raceName.placeholder": "VD: VPBank Hanoi Marathon 2026",
   "field.raceName.hint": "Tuỳ chọn — hiển thị trên kế hoạch của bạn",
 
+  "field.sport": "Môn thể thao",
+  "field.sport.running": "Chạy bộ",
+  "field.sport.triathlon": "Triathlon",
+
+  "field.triathlonType": "Cự ly Triathlon",
+
   "field.gpx": "Tải file GPX (tuỳ chọn)",
   "field.gpx.drop": "Kéo thả file GPX của cuộc đua vào đây, hoặc nhấn để chọn",
   "field.gpx.hint": "Tự động điền cự ly, độ tăng độ cao & địa hình",

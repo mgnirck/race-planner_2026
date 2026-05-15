@@ -7,6 +7,12 @@
   "field.raceName.placeholder": "ex. Marathon de Paris 2026",
   "field.raceName.hint": "Facultatif — apparaît sur votre plan",
 
+  "field.sport": "Sport",
+  "field.sport.running": "Course à pied",
+  "field.sport.triathlon": "Triathlon",
+
+  "field.triathlonType": "Discipline triathlon",
+
   "field.gpx": "Importer un fichier GPX (facultatif)",
   "field.gpx.drop": "Déposez votre fichier GPX ici, ou cliquez pour parcourir",
   "field.gpx.hint": "Remplit automatiquement la distance, le dénivelé et le terrain",

@@ -1413,8 +1413,9 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
     document.body.removeChild(el)
   }
 
-  // Prefer athlete's race name → actual distance typed → race_type label
+  // Prefer athlete's race name → triathlon type label (if triathlon) → distance typed → race_type label
   const heroTitle      = form.race_name ||
+    (form.sport === 'triathlon' ? getRaceLabel(t, targets.race_type) : null) ||
     (form.custom_km_display ? `${form.custom_km_display} ${form.dist_unit || 'km'}` : null) ||
     getRaceLabel(t, targets.race_type)
   const effortLabel    = getEffortLabel(t, targets.effort)

@@ -7,6 +7,12 @@
   "field.raceName.placeholder": "z.B. Berlin Marathon 2026",
   "field.raceName.hint": "Optional — wird auf deinem Plan angezeigt",
 
+  "field.sport": "Sportart",
+  "field.sport.running": "Laufen",
+  "field.sport.triathlon": "Triathlon",
+
+  "field.triathlonType": "Triathlon-Disziplin",
+
   "field.gpx": "GPX-Datei hochladen (optional)",
   "field.gpx.drop": "GPX-Datei hier ablegen oder klicken zum Durchsuchen",
   "field.gpx.hint": "Füllt Distanz, Höhenmeter & Untergrund automatisch aus",

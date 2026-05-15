@@ -7,6 +7,12 @@
   "field.raceName.placeholder": "f.eks. Copenhagen Marathon 2026",
   "field.raceName.hint": "Valgfrit — vises på din plan",
 
+  "field.sport": "Sport",
+  "field.sport.running": "Løb",
+  "field.sport.triathlon": "Triatlon",
+
+  "field.triathlonType": "Triatlon-disciplin",
+
   "field.gpx": "Upload GPX-fil (valgfrit)",
   "field.gpx.drop": "Slip din GPX-fil her, eller klik for at gennemse",
   "field.gpx.hint": "Udfylder automatisk distance, højdemeter & underlag",

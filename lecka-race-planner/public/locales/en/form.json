@@ -7,6 +7,12 @@
   "field.raceName.placeholder": "e.g. Boston Marathon 2026",
   "field.raceName.hint": "Optional — shown on your plan",
 
+  "field.sport": "Sport",
+  "field.sport.running": "Running",
+  "field.sport.triathlon": "Triathlon",
+
+  "field.triathlonType": "Triathlon discipline",
+
   "field.gpx": "Upload GPX file (optional)",
   "field.gpx.drop": "Drop your race GPX file here, or click to browse",
   "field.gpx.hint": "Auto-fills distance, elevation & surface",
