@@ -824,12 +824,73 @@ function EmailCapture({ targets, selection, form, region = 'us' }) {
 
 function SavePlanCard({ targets, selection, form, region }) {
   const [email,   setEmail]   = useState('')
-  const [state,   setState]   = useState('idle') // idle | sending | sent | error
+  const [state,   setState]   = useState('idle') // idle | sending | sent | saving | saved | error
   const [touched, setTouched] = useState(false)
 
-  const isLoggedIn = Boolean(localStorage.getItem('lecka_user_id'))
-  if (isLoggedIn) return null
+  const userId     = localStorage.getItem('lecka_user_id')
+  const isLoggedIn = Boolean(userId)
 
+  // ── Logged-in path: save directly ──────────────────────────────────────────
+  if (isLoggedIn) {
+    async function handleSave() {
+      setState('saving')
+      try {
+        const res = await fetch('/api/plans/save', {
+          method:  'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${userId}`,
+          },
+          body: JSON.stringify({
+            inputs:    form,
+            targets,
+            selection,
+            region,
+            lang:      i18n.language,
+          }),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        setState('saved')
+      } catch {
+        setState('error')
+      }
+    }
+
+    if (state === 'saved') {
+      return (
+        <section className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5 flex items-center justify-between gap-4">
+          <p className="text-sm font-semibold text-[#48C4B0]">✓ Plan saved to your account</p>
+          <a href="/dashboard" className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap">
+            View in My Plans →
+          </a>
+        </section>
+      )
+    }
+
+    return (
+      <section className="border-2 border-gray-100 rounded-2xl p-5 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold text-[#1B1B1B]">Save this plan</p>
+          <p className="text-xs text-gray-400 mt-0.5">Add it to your race history.</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={state === 'saving'}
+          className="min-h-[44px] px-5 bg-[#48C4B0] text-white rounded-xl text-sm
+                     font-semibold hover:bg-[#3db09d] transition-colors
+                     disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+        >
+          {state === 'saving' ? 'Saving…' : 'Save to My Plans →'}
+        </button>
+        {state === 'error' && (
+          <p className="text-xs text-red-500 mt-2 w-full">Something went wrong — please try again.</p>
+        )}
+      </section>
+    )
+  }
+
+  // ── Logged-out path: email → magic link ────────────────────────────────────
   const isValid   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const showError = touched && email !== '' && !isValid
 

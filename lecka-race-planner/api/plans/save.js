@@ -31,15 +31,15 @@ export default async function handler(req, res) {
         inputs, targets, selection, region, lang
       ) VALUES (
         ${user.id},
-        ${inputs.race_name ?? null},
-        ${inputs.race_date ?? null},
+        ${inputs.race_name || null},
+        ${inputs.race_date || null},
         ${targets.race_type ?? inputs.race_type ?? null},
         ${targets.total_duration_minutes ?? null},
         ${inputs.conditions ?? targets.conditions ?? null},
         ${inputs.effort ?? targets.effort ?? null},
-        ${JSON.stringify(inputs)},
-        ${JSON.stringify(targets)},
-        ${JSON.stringify(selection ?? [])},
+        ${inputs},
+        ${targets},
+        ${selection ?? []},
         ${region},
         ${lang}
       )

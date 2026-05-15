@@ -37,7 +37,7 @@ export default function VerifyPage() {
           setStatus('saving')
           try {
             const { inputs, targets, selection, region, lang } = JSON.parse(pending)
-            await fetch('/api/plans/save', {
+            const saveRes = await fetch('/api/plans/save', {
               method:  'POST',
               headers: {
                 'Content-Type':  'application/json',
@@ -45,8 +45,11 @@ export default function VerifyPage() {
               },
               body: JSON.stringify({ inputs, targets, selection, region, lang }),
             })
-          } catch {
-            // Plan save failure is non-fatal — user is still logged in
+            if (!saveRes.ok) {
+              console.error('[verify] plan save failed:', saveRes.status, await saveRes.text())
+            }
+          } catch (err) {
+            console.error('[verify] plan save error:', err)
           }
           localStorage.removeItem('lecka_pending_plan')
           localStorage.removeItem('lecka_auth_next')
