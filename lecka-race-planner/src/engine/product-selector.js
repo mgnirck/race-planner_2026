@@ -4,7 +4,7 @@
  * Selects products for a given set of nutrition targets, respecting user
  * product-flavour preferences and rotating variety on longer races.
  *
- * Export: selectProducts(targets, preferredProductIds?, region?) → Array<{product, quantity, timing_minutes, note}>
+ * Export: selectProducts(targets, preferredProductIds?, region?, options?) → Array<{product, quantity, timing_minutes, note}>
  *
  * preferredProductIds (optional) — array of product IDs the athlete prefers.
  *   If omitted / empty, sensible defaults are used.
@@ -13,13 +13,18 @@
  *
  * region (optional) — filters products to those available in that region.
  *   Falls back to 'us' if not specified.
+ *
+ * options.fuelling_style — affects bar placement:
+ *   'gels_only' | 'flexible' | undefined  → bars before + after only
+ *   'gels_and_bars'                        → bars before + during (≥3h) + after
+ *   'drink_mix_base'                       → bars before + after + powder placeholder
  */
 
 import products      from '../config/products.json'
 import formulaConfig from '../config/formula-config.json'
 import { isAvailableInRegion } from './region-utils.js'
 
-export function selectProducts(targets, preferredProductIds = [], region = 'us') {
+export function selectProducts(targets, preferredProductIds = [], region = 'us', options = {}) {
   const { total_duration_minutes, caffeine_ok, total_carbs } = targets
   const { timing_rules: timingRules, caffeine_rules: caffeineRules } = formulaConfig
 
@@ -163,26 +168,84 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
     }
   }
 
-  // ── Bars: use different flavour before vs after if two options available ──
+  // ── Bars: placement depends on fuelling_style ────────────────────────────
+
+  const fuelling_style = options.fuelling_style
 
   if (bars.length > 0) {
-    const barBefore = bars[0]
-    const barAfter  = bars.length > 1 ? bars[1] : bars[0]
-
-    if (total_duration_minutes >= 60) {
-      selected.push({
-        product:        barBefore,
-        quantity:       1,
-        timing_minutes: [-30],
-        note:           timingRules.before.note,
-      })
+    // Rotate through bar flavours across all positions
+    let barIndex = 0
+    const nextBar = () => {
+      const b = bars[barIndex % bars.length]
+      barIndex++
+      return b
     }
 
+    if (fuelling_style === 'gels_and_bars') {
+      // Before
+      if (total_duration_minutes >= 60) {
+        selected.push({
+          product:        nextBar(),
+          quantity:       1,
+          timing_minutes: [-30],
+          note:           timingRules.before.note,
+        })
+      }
+      // During — one bar at ~40% for races ≥ 3h, a second at ~65% for races ≥ 6h
+      if (total_duration_minutes >= 180) {
+        selected.push({
+          product:        nextBar(),
+          quantity:       1,
+          timing_minutes: [Math.round(total_duration_minutes * 0.4)],
+          note:           timingRules.during.note,
+        })
+      }
+      if (total_duration_minutes >= 360) {
+        selected.push({
+          product:        nextBar(),
+          quantity:       1,
+          timing_minutes: [Math.round(total_duration_minutes * 0.65)],
+          note:           timingRules.during.note,
+        })
+      }
+      // After
+      selected.push({
+        product:        nextBar(),
+        quantity:       1,
+        timing_minutes: [total_duration_minutes + 15],
+        note:           timingRules.after.note,
+      })
+    } else {
+      // Default: gels_only, flexible, drink_mix_base, or undefined — bars before + after only
+      if (total_duration_minutes >= 60) {
+        selected.push({
+          product:        nextBar(),
+          quantity:       1,
+          timing_minutes: [-30],
+          note:           timingRules.before.note,
+        })
+      }
+      selected.push({
+        product:        nextBar(),
+        quantity:       1,
+        timing_minutes: [total_duration_minutes + 15],
+        note:           timingRules.after.note,
+      })
+    }
+  }
+
+  // ── Drink mix placeholder (drink_mix_base only) ───────────────────────────
+
+  if (fuelling_style === 'drink_mix_base') {
     selected.push({
-      product:        barAfter,
-      quantity:       1,
-      timing_minutes: [total_duration_minutes + 15],
-      note:           timingRules.after.note,
+      product: {
+        id:   'lecka-powder-coming-soon',
+        name: 'Lecka Carb + Hydration Powder (coming soon)',
+        type: 'powder_placeholder',
+      },
+      quantity:       0,
+      timing_minutes: [],
+      note:           'Join the waitlist — launching soon',
     })
   }
 

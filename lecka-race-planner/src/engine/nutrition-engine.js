@@ -37,6 +37,7 @@
 
 import formulaConfig from '../config/formula-config.json' with { type: 'json' }
 import * as carbStrategies from '../strategies/carb-strategies.js'
+import { SINGLE_TRANSPORTER_CEILING } from './kit-calculator.js'
 
 export function calculateTargets(inputs) {
   const {
@@ -200,6 +201,8 @@ export function calculateTargets(inputs) {
     avg_grade_pct: Math.round(avg_grade_pct * 10) / 10,
     elevation_tier,
     warnings,
+    single_transporter_ceiling: SINGLE_TRANSPORTER_CEILING,
+    exceeds_single_transporter: carb_per_hour > SINGLE_TRANSPORTER_CEILING,
   }
 }
 

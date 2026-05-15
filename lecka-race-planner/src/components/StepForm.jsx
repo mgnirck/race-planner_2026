@@ -1307,7 +1307,7 @@ export default function StepForm({ onComplete }) {
 
     const addonCoverage      = computeAddonCoverage(resolvedAddonItems, goal_minutes)
     const foundationTargets  = computeFoundationTargets(targets, addonCoverage)
-    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, detectRegion)
+    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, detectRegion, { fuelling_style: form.fuelling_style })
 
     try { sessionStorage.removeItem(DRAFT_KEY) } catch {}
     onComplete({
