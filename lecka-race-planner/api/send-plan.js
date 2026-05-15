@@ -310,20 +310,24 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
   const totalFluid = Math.round(targets.fluid_ml_per_hour * durH)
 
   // Addon carb split for nutrition table sub-rows
+  // Prefer client-provided values (already correctly clamped) over recomputed ones
   const addonTotalCarbs = resolvedAddonItems.reduce(
     (sum, item) => sum + (item.quantity ?? 0) * (item.carbs_per_unit ?? 0),
     0
   )
-  const addonCarbsPerHour = durH > 0 ? Math.round(addonTotalCarbs / durH) : 0
-  const showAddonSplit = addonCarbsPerHour > 0
-  const foundationCarbsPerHour = targets.carb_per_hour - addonCarbsPerHour
-  const foundationTotalCarbs = Math.max(0, targets.total_carbs - Math.round(addonTotalCarbs))
+  const addonCarbsPerHour    = inputs.addon_carbs_per_hour
+    ?? (durH > 0 ? Math.round(addonTotalCarbs / durH) : 0)
+  const foundationCarbsPerHour = inputs.foundation_carbs_per_hour
+    ?? (targets.carb_per_hour - addonCarbsPerHour)
+  const showAddonSplit         = addonCarbsPerHour > 0
+  const foundationTotalCarbs   = Math.round(foundationCarbsPerHour * durH)
+  const addonTotalCarbsRace    = Math.round(addonCarbsPerHour * durH)
 
   const nutritionBody = [
     [t('pdf.nutrition.carbohydrates'), `${targets.carb_per_hour} g`, `${targets.total_carbs} g`],
     ...(showAddonSplit ? [
       ['  → Lecka foundation', `${foundationCarbsPerHour} g`, `${foundationTotalCarbs} g`],
-      ['  → Add-ons',          `${addonCarbsPerHour} g`,      `${Math.round(addonTotalCarbs)} g`],
+      ['  → Add-ons',          `${addonCarbsPerHour} g`,      `${addonTotalCarbsRace} g`],
     ] : []),
     [t('pdf.nutrition.sodium'), `${targets.sodium_per_hour} mg`, `${targets.total_sodium} mg`],
     [t('pdf.nutrition.fluid'),  `${targets.fluid_ml_per_hour} ml`, `${totalFluid} ml`],
@@ -645,14 +649,16 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
   const resend  = new Resend(process.env.RESEND_API_KEY)
   const label   = raceLabel(inputs, t)
 
-  // Addon carb split for email display
+  // Addon carb split — prefer client-provided values, fall back to computing from resolvedAddonItems
   const hasAddons         = resolvedAddonItems.length > 0
   const emailDurH         = targets.total_duration_minutes / 60
   const emailAddonCarbs   = resolvedAddonItems.reduce(
     (sum, item) => sum + (item.quantity ?? 0) * (item.carbs_per_unit ?? 0), 0
   )
-  const emailAddonCph     = emailDurH > 0 ? Math.round(emailAddonCarbs / emailDurH) : 0
-  const emailFoundCph     = targets.carb_per_hour - emailAddonCph
+  const emailAddonCph     = inputs.addon_carbs_per_hour
+    ?? (emailDurH > 0 ? Math.round(emailAddonCarbs / emailDurH) : 0)
+  const emailFoundCph     = inputs.foundation_carbs_per_hour
+    ?? (targets.carb_per_hour - emailAddonCph)
 
   const subject = hasAddons
     ? `Your ${label} plan — Lecka foundation + add-ons`
@@ -743,7 +749,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 44" height="36" aria-label="lecka">
         <text x="0" y="36" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-weight="800" font-size="38" letter-spacing="-1" fill="#ffffff">lecka</text>
       </svg>
-      <p>${hasAddons ? 'Real food foundation + race day add-ons.' : t('email.headerTagline')}</p>
+      <p>${hasAddons ? 'Your personalised race nutrition plan — real food foundation + add-ons' : t('email.headerTagline')}</p>
     </div>
     <div class="body">
       <p>${t('email.hi')}</p>
@@ -755,8 +761,8 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
           <div class="lbl">${t('email.carbsLabel')}</div>
           ${hasAddons && emailAddonCph > 0 ? `
           <div style="font-size:10px;color:#888;margin-top:4px;line-height:1.6;">
-            <div>${emailFoundCph}g Lecka</div>
-            <div>${emailAddonCph}g add-ons</div>
+            <div>&#127807; Lecka: ${emailFoundCph}g/hour</div>
+            <div>+ Add-ons: ${emailAddonCph}g/hour</div>
           </div>` : ''}
         </div>
         <div class="tbox">
@@ -785,15 +791,19 @@ ${plainTextProductList}
       </ul>
 
       ${hasAddons ? `
-      <div style="margin:16px 0 20px;">
-        <p style="margin:0 0 6px;font-size:14px;"><strong>Race day add-ons (buy separately):</strong></p>
-        <ul style="color:#666;">
+      <div style="margin:16px 0 20px;padding:12px 16px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;">
+        <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;">
+          Add-ons (source separately)
+        </p>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#6b7280;">
           ${resolvedAddonItems.map(item => {
             const carbs = (item.carbs_per_unit ?? 0) * (item.quantity ?? 0)
-            return `<li><strong>${item.display_name ?? item.name}</strong> &times;&nbsp;${item.quantity}${carbs > 0 ? ` &mdash; ${carbs}g carbs` : ''}</li>`
+            return `<li>${item.quantity}&times; ${item.display_name ?? item.name}${carbs > 0 ? ` &mdash; ${carbs}g carbs` : ''}</li>`
           }).join('\n          ')}
         </ul>
-        <p style="font-size:12px;color:#888;font-style:italic;margin:4px 0 0;">Purchase these directly from the respective brands.</p>
+        <p style="margin:8px 0 0;font-size:11px;color:#9ca3af;font-style:italic;">
+          These are not Lecka products &mdash; available from major sports nutrition retailers.
+        </p>
       </div>` : ''}
 
       ${varietyPackHtml}
@@ -802,13 +812,13 @@ ${plainTextProductList}
 
       <a href="${cartUrl}" class="cta">${t('email.cta')}</a>
 
-      ${hasAddons ? `<p style="font-size:12px;color:#888;text-align:center;margin:-16px 0 12px;">Cart includes Lecka products only. Purchase add-ons separately.</p>` : ''}
-
       <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
         <p style="margin:0;font-size:13px;color:#1B1B1B;">
           <strong>${t('email.discountTitle')}</strong> ${t('email.discountBody')}
         </p>
-      </div>`) : ''}
+      </div>
+
+      ${hasAddons ? `<p style="font-size:12px;color:#9ca3af;text-align:center;margin:8px 0;">Cart includes Lecka products only. Purchase add-ons separately.</p>` : ''}`) : ''}
 
       <p class="note">
         ${t('email.note')}
