@@ -374,6 +374,15 @@ function NutritionSummary({ targets, provided }) {
     <React.Fragment key={i}>{line}{i === 0 && <br />}</React.Fragment>
   )
 
+  const carbHint = (() => {
+    const c = targets.carb_per_hour
+    if (c === 0)  return 'No fuelling needed for this distance'
+    if (c <= 30)  return 'About 1 gel per hour'
+    if (c <= 50)  return 'About 1–2 gels per hour'
+    if (c <= 70)  return 'About 2 gels per hour'
+    return 'About 2–3 gels per hour'
+  })()
+
   return (
     <section>
       <SectionLabel>{t('section.nutritionTargets')}</SectionLabel>
@@ -386,14 +395,17 @@ function NutritionSummary({ targets, provided }) {
             <div>
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.carb_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.carbsPerHour')}</p>
+              <p className="text-xs text-gray-400 italic mt-1 leading-tight">{carbHint}</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.sodium_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.sodiumPerHour')}</p>
+              <p className="text-xs text-gray-400 italic mt-1 leading-tight">From gels + electrolytes</p>
             </div>
             <div>
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.fluid_ml_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.fluidPerHour')}</p>
+              <p className="text-xs text-gray-400 italic mt-1 leading-tight">{t('nutrition.fluidNote')}</p>
             </div>
           </div>
         </div>
@@ -427,7 +439,7 @@ function NutritionSummary({ targets, provided }) {
               </div>
               {/* Fluid — not product-tracked */}
               <div className="flex items-center justify-center">
-                <p className="text-xs text-gray-400 italic leading-snug">{t('nutrition.fluidNote')}</p>
+                <p className="text-xs text-gray-400 italic leading-snug">—</p>
               </div>
             </div>
           </div>
@@ -457,6 +469,9 @@ function NutritionSummary({ targets, provided }) {
           </p>
         )}
       </div>
+      <p className="text-xs text-gray-400 text-center mt-2">
+        Numbers are personalised to your weight, conditions, and training level.
+      </p>
     </section>
   )
 }
