@@ -219,7 +219,7 @@ function computeTrainingInfo(selectedProducts, region) {
 
 // ── PDF generation ────────────────────────────────────────────────────────────
 
-function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'en') {
+function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [], region = 'us', lang = 'en') {
   const t  = getServerT(lang)
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const W  = 210   // page width (A4)
@@ -241,7 +241,10 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(200, 240, 235)
-  doc.text(t('pdf.header.tagline'), ML, 28)
+  doc.text(
+    inputs.addon_items_summary ? 'Real food foundation + race day add-ons.' : t('pdf.header.tagline'),
+    ML, 28
+  )
 
   // Right side — plan title + date
   doc.setFont('helvetica', 'bold')
@@ -261,7 +264,8 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
   // ── Runner summary ────────────────────────────────────────────────────────
   doc.setFillColor(C.light)
   doc.setDrawColor(C.light)
-  doc.roundedRect(ML, y, CW, 30, 2, 2, 'F')
+  const hasAddonSummary = Boolean(inputs.addon_items_summary)
+  doc.roundedRect(ML, y, CW, hasAddonSummary ? 44 : 30, 2, 2, 'F')
 
   const summaryItems = [
     [t('pdf.summary.race'),       raceLabel(inputs, t)],
@@ -271,6 +275,12 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
     [t('pdf.summary.weight'),     `${inputs.weight_value}\u202f${inputs.weight_unit}`],
     [t('pdf.summary.caffeine'),   inputs.caffeine_ok ? t('pdf.summary.yes') : t('pdf.summary.no')],
   ]
+  if (hasAddonSummary) {
+    const addonDisplay = inputs.addon_items_summary.length > 50
+      ? inputs.addon_items_summary.slice(0, 47) + '…'
+      : inputs.addon_items_summary
+    summaryItems.push(['ADD-ONS', addonDisplay])
+  }
 
   const colW = CW / 3
   summaryItems.forEach((item, i) => {
@@ -290,7 +300,7 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
     doc.text(item[1], x, itemY + 5)
   })
 
-  y += 38
+  y += hasAddonSummary ? 52 : 38
 
   // ── Section 1: Nutrition targets ──────────────────────────────────────────
   y = ensureSpace(doc, y, 60)
@@ -299,15 +309,31 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
   const durH = targets.total_duration_minutes / 60
   const totalFluid = Math.round(targets.fluid_ml_per_hour * durH)
 
+  // Addon carb split for nutrition table sub-rows
+  const addonTotalCarbs = resolvedAddonItems.reduce(
+    (sum, item) => sum + (item.quantity ?? 0) * (item.carbs_per_unit ?? 0),
+    0
+  )
+  const addonCarbsPerHour = durH > 0 ? Math.round(addonTotalCarbs / durH) : 0
+  const showAddonSplit = addonCarbsPerHour > 0
+  const foundationCarbsPerHour = targets.carb_per_hour - addonCarbsPerHour
+  const foundationTotalCarbs = Math.max(0, targets.total_carbs - Math.round(addonTotalCarbs))
+
+  const nutritionBody = [
+    [t('pdf.nutrition.carbohydrates'), `${targets.carb_per_hour} g`, `${targets.total_carbs} g`],
+    ...(showAddonSplit ? [
+      ['  → Lecka foundation', `${foundationCarbsPerHour} g`, `${foundationTotalCarbs} g`],
+      ['  → Add-ons',          `${addonCarbsPerHour} g`,      `${Math.round(addonTotalCarbs)} g`],
+    ] : []),
+    [t('pdf.nutrition.sodium'), `${targets.sodium_per_hour} mg`, `${targets.total_sodium} mg`],
+    [t('pdf.nutrition.fluid'),  `${targets.fluid_ml_per_hour} ml`, `${totalFluid} ml`],
+  ]
+
   doc.autoTable({
     startY: y,
     margin: { left: ML, right: MR },
     head: [[t('pdf.nutrition.metric'), t('pdf.nutrition.perHour'), t('pdf.nutrition.totalRace')]],
-    body: [
-      [t('pdf.nutrition.carbohydrates'), `${targets.carb_per_hour} g`,       `${targets.total_carbs} g`],
-      [t('pdf.nutrition.sodium'),        `${targets.sodium_per_hour} mg`,    `${targets.total_sodium} mg`],
-      [t('pdf.nutrition.fluid'),         `${targets.fluid_ml_per_hour} ml`,  `${totalFluid} ml`],
-    ],
+    body: nutritionBody,
     styles: {
       fontSize: 10,
       cellPadding: 4,
@@ -327,6 +353,15 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
       1: { halign: 'center' },
       2: { halign: 'center' },
     },
+    didParseCell(data) {
+      if (!showAddonSplit || data.section !== 'body') return
+      if (data.row.index === 1 || data.row.index === 2) {
+        data.cell.styles.fontSize   = 8
+        data.cell.styles.textColor  = C.grayRgb
+        data.cell.styles.fontStyle  = 'italic'
+        data.cell.styles.fillColor  = C.lightRgb
+      }
+    },
   })
 
   y = doc.lastAutoTable.finalY + 10
@@ -334,7 +369,10 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
   // ── Section 2: Product plan (omitted when no products available in region) ─
   if (selectedProducts.length > 0) {
   y = ensureSpace(doc, y, 50)
-  y = sectionHeading(doc, t('pdf.section.productPlan'), y, ML, CW)
+  y = sectionHeading(doc,
+    hasAddonSummary ? 'Your Real Food Foundation (Lecka)' : t('pdf.section.productPlan'),
+    y, ML, CW
+  )
 
   const productRows = selectedProducts.map(item => [
     item.product.name,
@@ -371,6 +409,29 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
   })
 
   y = doc.lastAutoTable.finalY + 10
+
+  // ── Section 2a: Competitor add-ons (when present) ────────────────────────
+  if (resolvedAddonItems.length > 0) {
+    y = ensureSpace(doc, y, 30)
+    y = sectionHeading(doc, 'Race Day Add-Ons (buy separately)', y, ML, CW)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(C.black)
+    for (const item of resolvedAddonItems) {
+      const name  = item.display_name ?? item.name ?? ''
+      const carbs = (item.carbs_per_unit ?? 0) * (item.quantity ?? 0)
+      const line  = `• ${item.quantity}× ${name}${carbs > 0 ? ` (${carbs}g carbs)` : ''}`
+      doc.text(line, ML, y)
+      y += 6
+    }
+
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(8)
+    doc.setTextColor(C.gray)
+    doc.text('These products are not from Lecka. Purchase them directly from the respective brands.', ML, y)
+    y += 10
+  }
 
   // ── Section 2b: Shopping recommendation (variety pack when cheaper) ───────
   {
@@ -442,6 +503,23 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
   y = sectionHeading(doc, t('pdf.section.raceTimeline'), y, ML, CW)
 
   // Build a flat sorted list of events, inserting race start + finish markers
+  // Distribute addon items evenly through the race (first at 20 min)
+  const addonTimelineEvents = []
+  for (const item of resolvedAddonItems) {
+    const qty = item.quantity ?? 0
+    if (qty <= 0) continue
+    const spacing = qty > 1 ? (targets.total_duration_minutes - 20) / (qty - 1) : 0
+    for (let i = 0; i < qty; i++) {
+      addonTimelineEvents.push({
+        time:    Math.round(20 + i * spacing),
+        action:  'Add-on',
+        product: item.display_name ?? item.name ?? '',
+        marker:  false,
+        isAddon: true,
+      })
+    }
+  }
+
   const events = [
     { time: 0,                              action: t('pdf.timeline.raceStart'),  product: '—', marker: true },
     { time: targets.total_duration_minutes, action: t('pdf.timeline.finishLine'), product: '—', marker: true },
@@ -453,15 +531,19 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
           min >= targets.total_duration_minutes      ? t('pdf.timeline.postRace') :
           item.product.caffeine                      ? t('pdf.timeline.fuelCaffeine') : t('pdf.timeline.fuel'),
         product: item.product.name,
-        marker: false,
+        marker:  false,
+        isAddon: false,
       }))
     ),
+    ...addonTimelineEvents,
   ]
   events.sort((a, b) => a.time - b.time)
 
   const markerIndices = new Set()
+  const addonIndices  = new Set()
   const timelineBody = events.map((e, i) => {
-    if (e.marker) markerIndices.add(i)
+    if (e.marker)  markerIndices.add(i)
+    if (e.isAddon) addonIndices.add(i)
     return [fmtMin(e.time, targets.total_duration_minutes, t), e.action, e.product]
   })
 
@@ -489,13 +571,16 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
       1: { cellWidth: 52 },
       2: { cellWidth: 'auto' },
     },
-    // Highlight the race start and finish rows in accent green
+    // Highlight race start/finish in green; addon rows in light gray
     didParseCell(data) {
       if (data.section !== 'body') return
       if (markerIndices.has(data.row.index)) {
         data.cell.styles.fillColor = C.accentRgb
         data.cell.styles.textColor = C.whiteRgb
         data.cell.styles.fontStyle = 'bold'
+      } else if (addonIndices.has(data.row.index)) {
+        data.cell.styles.fillColor = [240, 240, 240]
+        data.cell.styles.textColor = C.grayRgb
       }
     },
   })
@@ -552,14 +637,26 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 
-async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl, region = 'us', lang = 'en') {
+async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedAddonItems = [], pdfBuffer, cartUrl, region = 'us', lang = 'en') {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY environment variable is not set')
   }
   const t       = getServerT(lang)
   const resend  = new Resend(process.env.RESEND_API_KEY)
   const label   = raceLabel(inputs, t)
-  const subject = t('email.subject', { label })
+
+  // Addon carb split for email display
+  const hasAddons         = resolvedAddonItems.length > 0
+  const emailDurH         = targets.total_duration_minutes / 60
+  const emailAddonCarbs   = resolvedAddonItems.reduce(
+    (sum, item) => sum + (item.quantity ?? 0) * (item.carbs_per_unit ?? 0), 0
+  )
+  const emailAddonCph     = emailDurH > 0 ? Math.round(emailAddonCarbs / emailDurH) : 0
+  const emailFoundCph     = targets.carb_per_hour - emailAddonCph
+
+  const subject = hasAddons
+    ? `Your ${label} plan — Lecka foundation + add-ons`
+    : t('email.subject', { label })
 
   const isVN            = region === 'vn'
   const hasProducts     = selectedProducts.length > 0
@@ -646,7 +743,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 44" height="36" aria-label="lecka">
         <text x="0" y="36" font-family="Helvetica Neue,Helvetica,Arial,sans-serif" font-weight="800" font-size="38" letter-spacing="-1" fill="#ffffff">lecka</text>
       </svg>
-      <p>${t('email.headerTagline')}</p>
+      <p>${hasAddons ? 'Real food foundation + race day add-ons.' : t('email.headerTagline')}</p>
     </div>
     <div class="body">
       <p>${t('email.hi')}</p>
@@ -656,6 +753,11 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
         <div class="tbox">
           <div class="val">${targets.carb_per_hour}<small style="font-size:14px">g</small></div>
           <div class="lbl">${t('email.carbsLabel')}</div>
+          ${hasAddons && emailAddonCph > 0 ? `
+          <div style="font-size:10px;color:#888;margin-top:4px;line-height:1.6;">
+            <div>${emailFoundCph}g Lecka</div>
+            <div>${emailAddonCph}g add-ons</div>
+          </div>` : ''}
         </div>
         <div class="tbox">
           <div class="val">${targets.sodium_per_hour}<small style="font-size:14px">mg</small></div>
@@ -677,16 +779,30 @@ ${plainTextProductList}
       </div>
       <a href="${cartUrl}" class="cta">${t('email.cta')}</a>
       ` : `
-      <p style="margin-bottom: 6px;"><strong>${t('email.productPlanTitle')}</strong></p>
+      <p style="margin-bottom: 6px;"><strong>${hasAddons ? 'Your real food foundation:' : t('email.productPlanTitle')}</strong></p>
       <ul>
         ${productListHtml}
       </ul>
+
+      ${hasAddons ? `
+      <div style="margin:16px 0 20px;">
+        <p style="margin:0 0 6px;font-size:14px;"><strong>Race day add-ons (buy separately):</strong></p>
+        <ul style="color:#666;">
+          ${resolvedAddonItems.map(item => {
+            const carbs = (item.carbs_per_unit ?? 0) * (item.quantity ?? 0)
+            return `<li><strong>${item.display_name ?? item.name}</strong> &times;&nbsp;${item.quantity}${carbs > 0 ? ` &mdash; ${carbs}g carbs` : ''}</li>`
+          }).join('\n          ')}
+        </ul>
+        <p style="font-size:12px;color:#888;font-style:italic;margin:4px 0 0;">Purchase these directly from the respective brands.</p>
+      </div>` : ''}
 
       ${varietyPackHtml}
 
       ${trainingHtml}
 
       <a href="${cartUrl}" class="cta">${t('email.cta')}</a>
+
+      ${hasAddons ? `<p style="font-size:12px;color:#888;text-align:center;margin:-16px 0 12px;">Cart includes Lecka products only. Purchase add-ons separately.</p>` : ''}
 
       <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
         <p style="margin:0;font-size:13px;color:#1B1B1B;">
@@ -901,7 +1017,7 @@ export default async function handler(req, res) {
     return res.status(429).json({ success: false, error: 'Too many requests — please wait a minute and try again.' })
   }
 
-  const { email, inputs, targets, selectedProducts, region = 'us', lang = 'en' } = req.body ?? {}
+  const { email, inputs, targets, selectedProducts, resolvedAddonItems = [], region = 'us', lang = 'en' } = req.body ?? {}
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -916,11 +1032,16 @@ export default async function handler(req, res) {
   if (!Array.isArray(selectedProducts)) {
     return res.status(400).json({ success: false, error: 'Missing field: selectedProducts (must be an array)' })
   }
+  if (!Array.isArray(resolvedAddonItems) || resolvedAddonItems.length === 0) {
+    if (selectedProducts.length === 0) {
+      return res.status(400).json({ success: false, error: 'No products selected' })
+    }
+  }
 
   // ── Generate PDF ───────────────────────────────────────────────────────────
   let pdfBuffer
   try {
-    pdfBuffer = generatePDF(inputs, targets, selectedProducts, region, lang)
+    pdfBuffer = generatePDF(inputs, targets, selectedProducts, resolvedAddonItems, region, lang)
   } catch (pdfErr) {
     console.error('[send-plan] PDF generation failed:', pdfErr)
     return res.status(500).json({ success: false, error: 'Failed to generate PDF.' })
@@ -930,7 +1051,7 @@ export default async function handler(req, res) {
 
   // ── Send email (priority — failure aborts the request) ────────────────────
   try {
-    await sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer, cartUrl, region, lang)
+    await sendPlanEmail(email, inputs, targets, selectedProducts, resolvedAddonItems, pdfBuffer, cartUrl, region, lang)
   } catch (emailErr) {
     console.error('[send-plan] Email send failed:', emailErr.message)
     console.error('[send-plan] RESEND_API_KEY set:', !!process.env.RESEND_API_KEY)
