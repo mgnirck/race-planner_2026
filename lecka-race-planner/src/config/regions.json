@@ -46,5 +46,23 @@
     "languages": ["vi"],
     "zalo_url": "https://zalo.me/0988440434",
     "facebook_url": "https://m.me/lecka.eco"
+  },
+  "sg": {
+    "store_url": "https://www.rdrc.sg/collections/lecka",
+    "currency": "SGD",
+    "currency_symbol": "S$",
+    "label": "Singapore",
+    "referrer_hosts": ["rdrc.sg", "www.rdrc.sg"],
+    "defaultLanguage": "en",
+    "languages": ["en"]
+  },
+  "hk": {
+    "store_url": "https://foodisdom.is/collections/lecka",
+    "currency": "HKD",
+    "currency_symbol": "HK$",
+    "label": "Hong Kong",
+    "referrer_hosts": ["foodisdom.is", "www.foodisdom.is"],
+    "defaultLanguage": "en",
+    "languages": ["en"]
   }
 }

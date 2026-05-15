@@ -27,6 +27,8 @@
   "region.dk": "Dänemark",
   "region.ch": "Schweiz",
   "region.vn": "Vietnam",
+  "region.sg": "Singapur",
+  "region.hk": "Hongkong",
   "region.unknown": "Unbekannt",
   "footer": "Es werden keine persönlichen Daten gespeichert — nur Renntyp, Region und Zeitstempel pro Plan."
 }

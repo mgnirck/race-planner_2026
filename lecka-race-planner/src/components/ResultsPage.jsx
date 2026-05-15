@@ -27,6 +27,14 @@ import { formatAddonSummary } from '../engine/kit-calculator.js'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+const STORE_LINKS = {
+  de: { label: 'Germany',      url: 'https://www.getlecka.de' },
+  dk: { label: 'Denmark',      url: 'https://www.getlecka.dk' },
+  ch: { label: 'Switzerland',  url: 'https://www.getlecka.ch' },
+  sg: { label: 'Singapore',    url: 'https://www.rdrc.sg/collections/lecka' },
+  hk: { label: 'Hong Kong',    url: 'https://foodisdom.is/collections/lecka' },
+}
+
 const ELEVATION_MODIFIER_PCT = {
   rolling:    5,
   hilly:      10,
@@ -1791,94 +1799,6 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           </section>
         )}
 
-        {/* ── Shop CTA — hidden when no products are available in the region ── */}
-        {aggregated.length > 0 && <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
-          {hasAddons && (
-            <p className="text-xs text-gray-400 text-center mb-3">
-              Cart includes Lecka products only — add-on products are sourced separately.
-            </p>
-          )}
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-gray-500">
-              {t('results:cta.packs', { count: totalPacks })}
-            </span>
-            <span className="text-xl font-bold text-[#1B1B1B]">
-              {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
-            </span>
-          </div>
-          {region === 'vn' ? (
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => handleChatClick(regionConfig.zalo_url)}
-                className="flex items-center justify-center w-full min-h-[52px]
-                           bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl
-                           text-base font-bold transition-colors"
-              >
-                {t('results:cta.chat.zalo')}
-              </button>
-              <button
-                onClick={() => handleChatClick(regionConfig.facebook_url)}
-                className="flex items-center justify-center w-full min-h-[52px]
-                           bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl
-                           text-base font-bold transition-colors"
-              >
-                {t('results:cta.chat.facebook')}
-              </button>
-              <p className="text-xs text-gray-400 text-center mt-1">
-                {t('results:cta.chat.hint')}
-              </p>
-              {chatSummary && (
-                <div className="mt-3 bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-gray-500 mb-1.5">
-                    {t('results:cta.chat.summaryLabel')}
-                  </p>
-                  <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans select-all cursor-text leading-relaxed">
-                    {chatSummary}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              <a
-                href={cartURL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-full min-h-[52px]
-                           bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
-                           text-base font-bold transition-colors"
-              >
-                {t('results:cta.buyPlan')}
-              </a>
-              <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
-                {t('results:cta.discount')}
-              </p>
-              <p className="text-xs text-gray-400 text-center mt-1">
-                {region === 'us'
-                  ? t('results:cta.shipping.us')
-                  : t('results:cta.shipping.other', { label: regionConfig.label, url: regionConfig.store_url })}
-              </p>
-            </>
-          )}
-          {vpCartURL && region !== 'vn' && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <a
-                href={vpCartURL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-full min-h-[48px]
-                           border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl
-                           text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors"
-              >
-                {t('results:cta.varietyPack')}
-              </a>
-              <p className="text-xs text-gray-400 text-center mt-1.5">
-                {t('results:cta.varietyPack.hint')}
-              </p>
-            </div>
-          )}
-        </section>}
-
         {/* ── Race timeline ────────────────────────────────────────────────── */}
         <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
 
@@ -1894,6 +1814,151 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
         {/* ── Email + save plan ────────────────────────────────────────────── */}
         <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} resolvedAddonItems={resolvedAddonItems} />
+
+        {/* ── Shop CTA ─────────────────────────────────────────────────────── */}
+        <section>
+          <SectionLabel>Get your products</SectionLabel>
+          {region === 'vn' && aggregated.length > 0 && (
+            <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
+              {hasAddons && (
+                <p className="text-xs text-gray-400 text-center mb-3">
+                  Cart includes Lecka products only — add-on products are sourced separately.
+                </p>
+              )}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm text-gray-500">
+                  {t('results:cta.packs', { count: totalPacks })}
+                </span>
+                <span className="text-xl font-bold text-[#1B1B1B]">
+                  {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => handleChatClick(regionConfig.zalo_url)}
+                  className="flex items-center justify-center w-full min-h-[52px]
+                             bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl
+                             text-base font-bold transition-colors"
+                >
+                  {t('results:cta.chat.zalo')}
+                </button>
+                <button
+                  onClick={() => handleChatClick(regionConfig.facebook_url)}
+                  className="flex items-center justify-center w-full min-h-[52px]
+                             bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl
+                             text-base font-bold transition-colors"
+                >
+                  {t('results:cta.chat.facebook')}
+                </button>
+                <p className="text-xs text-gray-400 text-center mt-1">
+                  {t('results:cta.chat.hint')}
+                </p>
+                {chatSummary && (
+                  <div className="mt-3 bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                      {t('results:cta.chat.summaryLabel')}
+                    </p>
+                    <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans select-all cursor-text leading-relaxed">
+                      {chatSummary}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {region === 'us' && aggregated.length > 0 && (
+            <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
+              {hasAddons && (
+                <p className="text-xs text-gray-400 text-center mb-3">
+                  Cart includes Lecka products only — add-on products are sourced separately.
+                </p>
+              )}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm text-gray-500">
+                  {t('results:cta.packs', { count: totalPacks })}
+                </span>
+                <span className="text-xl font-bold text-[#1B1B1B]">
+                  {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
+                </span>
+              </div>
+              <a
+                href={cartURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-full min-h-[52px]
+                           bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
+                           text-base font-bold transition-colors"
+              >
+                {t('results:cta.buyPlan')}
+              </a>
+              <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
+                {t('results:cta.discount')}
+              </p>
+              <p className="text-xs text-gray-400 text-center mt-1">
+                {t('results:cta.shipping.us')}
+              </p>
+              {hasAddons && (
+                <p className="text-xs text-gray-400 text-center mt-1">
+                  Cart includes Lecka products only. Purchase add-ons separately.
+                </p>
+              )}
+              {vpCartURL && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <a
+                    href={vpCartURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-full min-h-[48px]
+                               border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl
+                               text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors"
+                  >
+                    {t('results:cta.varietyPack')}
+                  </a>
+                  <p className="text-xs text-gray-400 text-center mt-1.5">
+                    {t('results:cta.varietyPack.hint')}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {STORE_LINKS[region] && (
+            <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
+              <a
+                href={STORE_LINKS[region].url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-full min-h-[52px]
+                           bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
+                           text-base font-bold transition-colors"
+              >
+                Shop Lecka — {STORE_LINKS[region].label}
+              </a>
+              <p className="text-xs text-gray-400 text-center mt-2">
+                Use the product list from your plan when ordering.
+              </p>
+            </div>
+          )}
+
+          {!STORE_LINKS[region] && region !== 'vn' && region !== 'us' && (
+            <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
+              <a
+                href="https://www.getlecka.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-full min-h-[52px]
+                           bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
+                           text-base font-bold transition-colors"
+              >
+                Shop Lecka
+              </a>
+              <p className="text-xs text-gray-400 text-center mt-2">
+                Visit getlecka.com to find your nearest store.
+              </p>
+            </div>
+          )}
+        </section>
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-12 space-y-6 border-t border-gray-100 pt-8">
