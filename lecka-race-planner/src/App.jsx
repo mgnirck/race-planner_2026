@@ -7,6 +7,7 @@ import DashboardPage from './components/DashboardPage'
 import FeedbackPage  from './components/FeedbackPage'
 import HomePage      from './components/HomePage'
 import LoginPage     from './components/LoginPage'
+import PlanViewPage  from './components/PlanViewPage'
 import { isEmbedded, detectRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
@@ -44,6 +45,9 @@ export default function App() {
   if (PATH === '/dashboard')    return <DashboardPage />
   if (PATH.startsWith('/feedback/')) {
     return <FeedbackPage planId={PATH.split('/')[2]} />
+  }
+  if (PATH.startsWith('/plan/')) {
+    return <PlanViewPage />
   }
 
   // Standalone homepage — only when not in Shopify embed

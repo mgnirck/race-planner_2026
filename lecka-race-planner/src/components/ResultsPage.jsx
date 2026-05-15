@@ -1304,11 +1304,11 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ResultsPage({ targets, selection, form, onBack }) {
+export default function ResultsPage({ targets, selection, form, onBack, region: regionProp, hideSave = false }) {
   const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
   const [showCartEditor, setShowCartEditor] = useState(false)
-  const [region,         setRegion]         = useState(detectRegion)
+  const [region,         setRegion]         = useState(regionProp ?? detectRegion)
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
   const regionConfig = getRegionConfig(region)
@@ -1694,7 +1694,7 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
         <EmailCapture targets={targets} selection={selection} form={form} region={region} />
 
         {/* ── Save plan / account creation ─────────────────────────────────── */}
-        <SavePlanCard targets={targets} selection={selection} form={form} region={region} />
+        {!hideSave && <SavePlanCard targets={targets} selection={selection} form={form} region={region} />}
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-10 text-center">
