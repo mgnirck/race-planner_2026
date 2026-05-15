@@ -31,19 +31,32 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
   )
 
   // ── Resolve product pools ─────────────────────────────────────────────────
-  // Only products the user explicitly selected in step 3 are used.
-  // No defaults — if user selected no bars, no bars are added.
+  // Start from explicit user picks; fall back to curated defaults per type when
+  // the user made no selection (or their picks are all unavailable in this region).
+  // Gel defaults: passion-fruit + coffee-cacao (caffeine OK) else passion-fruit +
+  // banana. Bar default: mango-coconut. Each default is checked through
+  // isAvailableInRegion(); if it is absent the first available product of that
+  // type in the catalogue is used as last resort. Gels and bars fall back
+  // independently — explicit picks for one type are never discarded.
 
-  const preferred    = availableProducts.filter(p => preferredProductIds.includes(p.id))
-  const selectedGels = preferred.filter(p => p.type === 'gel')
+  const preferred     = availableProducts.filter(p => preferredProductIds.includes(p.id))
+  const preferredGels = preferred.filter(p => p.type === 'gel')
+  const preferredBars = preferred.filter(p => p.type === 'bar')
+
+  const selectedGels = preferredGels.length > 0
+    ? preferredGels
+    : resolveDefaultGels(availableProducts, caffeine_ok)
+
+  const bars = preferredBars.length > 0
+    ? preferredBars
+    : resolveDefaultBars(availableProducts)
 
   // For plain slots: prefer non-caffeine gels; fall back to any selected gel
   // (handles the case where user picked only caffeine gels).
-  const plainGelPool = preferred.filter(p => p.type === 'gel' && !p.caffeine)
+  const plainGelPool = selectedGels.filter(p => !p.caffeine)
   const plainGels    = plainGelPool.length > 0 ? plainGelPool : selectedGels
 
-  const cafGels = preferred.filter(p => p.type === 'gel' && p.caffeine)
-  const bars    = preferred.filter(p => p.type === 'bar')
+  const cafGels = selectedGels.filter(p => p.caffeine)
 
   // ── Build gel timing slots (target-driven) ───────────────────────────────
   // Quantity is derived from total_carbs ÷ avg carbs per selected gel, then
@@ -158,6 +171,27 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
   }
 
   return selected
+}
+
+// ── Default-selection helpers ─────────────────────────────────────────────────
+
+const GEL_DEFAULTS_CAFFEINE    = ['gel-passion-fruit', 'gel-coffee-cacao']
+const GEL_DEFAULTS_NO_CAFFEINE = ['gel-passion-fruit', 'gel-banana']
+const BAR_DEFAULT_ID           = 'bar-mango-coconut'
+
+function resolveDefaultGels(availableProducts, caffeine_ok) {
+  const ids = caffeine_ok ? GEL_DEFAULTS_CAFFEINE : GEL_DEFAULTS_NO_CAFFEINE
+  const defaults = ids.map(id => availableProducts.find(p => p.id === id)).filter(Boolean)
+  if (defaults.length > 0) return defaults
+  const fallback = availableProducts.find(p => p.type === 'gel')
+  return fallback ? [fallback] : []
+}
+
+function resolveDefaultBars(availableProducts) {
+  const bar = availableProducts.find(p => p.id === BAR_DEFAULT_ID)
+  if (bar) return [bar]
+  const fallback = availableProducts.find(p => p.type === 'bar')
+  return fallback ? [fallback] : []
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
