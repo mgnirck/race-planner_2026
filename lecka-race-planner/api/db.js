@@ -60,6 +60,14 @@ export async function ensureMigrated() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `
+  await sql`
+    CREATE TABLE IF NOT EXISTS plan_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      race_type TEXT NOT NULL,
+      region TEXT DEFAULT 'us'
+    )
+  `
 
   migrated = true
 }
