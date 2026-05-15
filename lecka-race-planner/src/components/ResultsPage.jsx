@@ -729,42 +729,81 @@ function RaceTimeline({ events, totalDuration }) {
   )
 }
 
-// ── EmailCapture ──────────────────────────────────────────────────────────────
+// ── PlanDeliveryCard ──────────────────────────────────────────────────────────
 
-function EmailCapture({ targets, selection, form, region = 'us' }) {
+function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false }) {
   const { t } = useTranslation('results')
-  const [email,   setEmail]   = useState('')
-  const [state,   setState]   = useState('idle')
-  const [touched, setTouched] = useState(false)
+  const [email,      setEmail]      = useState('')
+  const [emailState, setEmailState] = useState('idle') // idle | sending | success | error
+  const [saveState,  setSaveState]  = useState('idle') // idle | saving | saved | error
+  const [touched,    setTouched]    = useState(false)
+
+  const userId     = localStorage.getItem('lecka_user_id')
+  const isLoggedIn = Boolean(userId)
 
   const isValid   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const showError = touched && email !== '' && !isValid
 
-  async function handleSubmit(e) {
+  async function handleSendPlan(e) {
     e.preventDefault()
     setTouched(true)
     if (!isValid) return
-    setState('sending')
+    setEmailState('sending')
     try {
-      const res = await fetch('/api/send-plan', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setState('success')
+      const fetches = [
+        fetch('/api/send-plan', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language }),
+        }),
+      ]
+      if (!isLoggedIn && !hideSave) {
+        try {
+          localStorage.setItem('lecka_pending_plan', JSON.stringify({
+            inputs: form, targets, selection, region, lang: i18n.language,
+          }))
+        } catch {}
+        fetches.push(
+          fetch('/api/auth/send-magic-link', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ email }),
+          })
+        )
+      }
+      const [planRes] = await Promise.all(fetches)
+      if (!planRes.ok) throw new Error(`HTTP ${planRes.status}`)
+      setEmailState('success')
       notifyEmailCapture(email, targets.race_type)
     } catch {
-      setState('error')
+      setEmailState('error')
     }
   }
 
-  if (state === 'success') {
+  async function handleSave() {
+    setSaveState('saving')
+    try {
+      const res = await fetch('/api/plans/save', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body:    JSON.stringify({ inputs: form, targets, selection, region, lang: i18n.language }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setSaveState('saved')
+    } catch {
+      setSaveState('error')
+    }
+  }
+
+  // Logged-out success: single unified message (includes magic-link hint when save is allowed)
+  if (!isLoggedIn && emailState === 'success') {
     return (
       <section className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5">
-        <p className="text-sm font-bold text-[#48C4B0]">{t('email.successTitle')}</p>
+        <p className="text-sm font-bold text-[#48C4B0]">✓ Plan sent to {email}</p>
         <p className="text-xs text-gray-500 mt-1">
-          {t('email.successBody', { email })}
+          {hideSave
+            ? 'Check your inbox for your PDF.'
+            : 'Check your inbox for your PDF and a login link to save your plan for later.'}
         </p>
       </section>
     )
@@ -774,207 +813,87 @@ function EmailCapture({ targets, selection, form, region = 'us' }) {
     <section>
       <SectionLabel>{t('section.emailPlan')}</SectionLabel>
       <div className="border-2 border-gray-100 rounded-2xl p-5">
-        <p className="text-sm text-gray-500 mb-4">
-          {t('email.intro')}
-        </p>
-        <form onSubmit={handleSubmit} noValidate>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={email}
-              onChange={e => { setEmail(e.target.value); setTouched(false) }}
-              onBlur={() => setTouched(true)}
-              placeholder={t('email.placeholder')}
-              disabled={state === 'sending'}
-              className={[
-                'flex-1 min-w-0 border-2 rounded-xl px-4 py-3 text-sm',
-                'focus:outline-none focus:border-[#48C4B0]',
-                'disabled:opacity-50',
-                showError ? 'border-red-300' : 'border-gray-200',
-              ].join(' ')}
-            />
-            <button
-              type="submit"
-              disabled={state === 'sending'}
-              className="min-h-[48px] px-5 bg-[#F64866] text-white rounded-xl text-sm
-                         font-semibold hover:bg-[#e03558] transition-colors
-                         disabled:opacity-50 whitespace-nowrap flex-shrink-0"
-            >
-              {state === 'sending' ? t('email.sending') : t('email.send')}
-            </button>
-          </div>
-          {showError && (
-            <p className="text-xs text-red-500 mt-2">{t('email.invalidEmail')}</p>
-          )}
-          {state === 'error' && (
-            <p className="text-xs text-red-500 mt-2">
-              {t('email.error')}
-            </p>
-          )}
-          <p className="text-xs text-gray-400 mt-3">
-            {t('email.consent')}
+        {/* Email send form */}
+        {emailState === 'success' ? (
+          <p className="text-sm font-bold text-[#48C4B0] mb-4">
+            ✓ {t('email.successBody', { email })}
           </p>
-        </form>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500 mb-4">{t('email.intro')}</p>
+            <form onSubmit={handleSendPlan} noValidate>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setTouched(false) }}
+                  onBlur={() => setTouched(true)}
+                  placeholder={t('email.placeholder')}
+                  disabled={emailState === 'sending'}
+                  className={[
+                    'flex-1 min-w-0 border-2 rounded-xl px-4 py-3 text-sm',
+                    'focus:outline-none focus:border-[#48C4B0]',
+                    'disabled:opacity-50',
+                    showError ? 'border-red-300' : 'border-gray-200',
+                  ].join(' ')}
+                />
+                <button
+                  type="submit"
+                  disabled={emailState === 'sending'}
+                  className="min-h-[48px] px-5 bg-[#F64866] text-white rounded-xl text-sm
+                             font-semibold hover:bg-[#e03558] transition-colors
+                             disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+                >
+                  {emailState === 'sending'
+                    ? t('email.sending')
+                    : isLoggedIn ? t('email.send') : 'Send my plan + save it →'}
+                </button>
+              </div>
+              {showError && (
+                <p className="text-xs text-red-500 mt-2">{t('email.invalidEmail')}</p>
+              )}
+              {emailState === 'error' && (
+                <p className="text-xs text-red-500 mt-2">{t('email.error')}</p>
+              )}
+              <p className="text-xs text-gray-400 mt-3">{t('email.consent')}</p>
+            </form>
+          </>
+        )}
+
+        {/* Logged-in: inline save section */}
+        {isLoggedIn && !hideSave && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-4 flex-wrap">
+            {saveState === 'saved' ? (
+              <>
+                <p className="text-sm font-semibold text-[#48C4B0]">✓ Plan saved to your account</p>
+                <a href="/dashboard" className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap">
+                  View in My Plans →
+                </a>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="text-sm font-bold text-[#1B1B1B]">Save this plan</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Add it to your race history.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saveState === 'saving'}
+                  className="min-h-[44px] px-5 bg-[#48C4B0] text-white rounded-xl text-sm
+                             font-semibold hover:bg-[#3db09d] transition-colors
+                             disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+                >
+                  {saveState === 'saving' ? 'Saving…' : 'Save to My Plans →'}
+                </button>
+                {saveState === 'error' && (
+                  <p className="text-xs text-red-500 mt-2 w-full">Something went wrong — please try again.</p>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
-    </section>
-  )
-}
-
-// ── SavePlanCard ──────────────────────────────────────────────────────────────
-
-function SavePlanCard({ targets, selection, form, region }) {
-  const [email,   setEmail]   = useState('')
-  const [state,   setState]   = useState('idle') // idle | sending | sent | saving | saved | error
-  const [touched, setTouched] = useState(false)
-
-  const userId     = localStorage.getItem('lecka_user_id')
-  const isLoggedIn = Boolean(userId)
-
-  // ── Logged-in path: save directly ──────────────────────────────────────────
-  if (isLoggedIn) {
-    async function handleSave() {
-      setState('saving')
-      try {
-        const res = await fetch('/api/plans/save', {
-          method:  'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${userId}`,
-          },
-          body: JSON.stringify({
-            inputs:    form,
-            targets,
-            selection,
-            region,
-            lang:      i18n.language,
-          }),
-        })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        setState('saved')
-      } catch {
-        setState('error')
-      }
-    }
-
-    if (state === 'saved') {
-      return (
-        <section className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5 flex items-center justify-between gap-4">
-          <p className="text-sm font-semibold text-[#48C4B0]">✓ Plan saved to your account</p>
-          <a href="/dashboard" className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap">
-            View in My Plans →
-          </a>
-        </section>
-      )
-    }
-
-    return (
-      <section className="border-2 border-gray-100 rounded-2xl p-5 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-bold text-[#1B1B1B]">Save this plan</p>
-          <p className="text-xs text-gray-400 mt-0.5">Add it to your race history.</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={state === 'saving'}
-          className="min-h-[44px] px-5 bg-[#48C4B0] text-white rounded-xl text-sm
-                     font-semibold hover:bg-[#3db09d] transition-colors
-                     disabled:opacity-50 whitespace-nowrap flex-shrink-0"
-        >
-          {state === 'saving' ? 'Saving…' : 'Save to My Plans →'}
-        </button>
-        {state === 'error' && (
-          <p className="text-xs text-red-500 mt-2 w-full">Something went wrong — please try again.</p>
-        )}
-      </section>
-    )
-  }
-
-  // ── Logged-out path: email → magic link ────────────────────────────────────
-  const isValid   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  const showError = touched && email !== '' && !isValid
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setTouched(true)
-    if (!isValid) return
-    setState('sending')
-
-    try {
-      localStorage.setItem('lecka_pending_plan', JSON.stringify({
-        inputs: form,
-        targets,
-        selection,
-        region,
-        lang: i18n.language,
-      }))
-
-      const res = await fetch('/api/auth/send-magic-link', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setState('sent')
-    } catch {
-      setState('error')
-    }
-  }
-
-  if (state === 'sent') {
-    return (
-      <section className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5">
-        <p className="text-sm font-bold text-[#48C4B0]">Check your inbox</p>
-        <p className="text-sm text-gray-500 mt-1">
-          Tap the link we sent to <strong>{email}</strong> to save your plan and create your account.
-        </p>
-      </section>
-    )
-  }
-
-  return (
-    <section className="border-2 border-gray-100 rounded-2xl p-5">
-      <p className="text-sm font-bold text-[#1B1B1B] mb-1">Save this plan to your race history</p>
-      <p className="text-sm text-gray-500 mb-4">
-        Enter your email and we'll send you a one-click login link. Your plan saves automatically.
-      </p>
-      <form onSubmit={handleSubmit} noValidate>
-        <div className="flex gap-2">
-          <input
-            type="email"
-            value={email}
-            onChange={e => { setEmail(e.target.value); setTouched(false) }}
-            onBlur={() => setTouched(true)}
-            placeholder="you@example.com"
-            disabled={state === 'sending'}
-            className={[
-              'flex-1 min-w-0 border-2 rounded-xl px-4 py-3 text-sm',
-              'focus:outline-none focus:border-[#48C4B0]',
-              'disabled:opacity-50',
-              showError ? 'border-red-300' : 'border-gray-200',
-            ].join(' ')}
-          />
-          <button
-            type="submit"
-            disabled={state === 'sending'}
-            className="min-h-[48px] px-4 bg-[#48C4B0] text-white rounded-xl text-sm
-                       font-semibold hover:bg-[#3db09d] transition-colors
-                       disabled:opacity-50 whitespace-nowrap flex-shrink-0"
-          >
-            {state === 'sending' ? 'Saving…' : 'Save my plan →'}
-          </button>
-        </div>
-        {showError && (
-          <p className="text-xs text-red-500 mt-2">Please enter a valid email address.</p>
-        )}
-        {state === 'error' && (
-          <p className="text-xs text-red-500 mt-2">Something went wrong — please try again.</p>
-        )}
-        <p className="text-xs text-gray-400 mt-3">
-          Already have an account?{' '}
-          <a href="/auth/login" className="text-[#48C4B0] hover:underline">Log in →</a>
-        </p>
-      </form>
     </section>
   )
 }
@@ -1708,11 +1627,8 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
         {/* ── Race timeline ────────────────────────────────────────────────── */}
         <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
 
-        {/* ── Email capture ────────────────────────────────────────────────── */}
-        <EmailCapture targets={targets} selection={effectiveSelection} form={form} region={region} />
-
-        {/* ── Save plan / account creation ─────────────────────────────────── */}
-        {!hideSave && <SavePlanCard targets={targets} selection={effectiveSelection} form={form} region={region} />}
+        {/* ── Email + save plan ────────────────────────────────────────────── */}
+        <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} />
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-10 text-center">
