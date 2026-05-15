@@ -7,6 +7,9 @@
   "field.raceName.placeholder": "z.B. Berlin Marathon 2026",
   "field.raceName.hint": "Optional — wird auf deinem Plan angezeigt",
 
+  "field.raceDate": "Renndatum",
+  "field.raceDate.hint": "Optional — hilft uns, deinen Countdown zu verfolgen",
+
   "field.sport": "Sportart",
   "field.sport.running": "Laufen",
   "field.sport.triathlon": "Triathlon",

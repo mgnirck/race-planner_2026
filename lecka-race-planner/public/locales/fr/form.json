@@ -7,6 +7,9 @@
   "field.raceName.placeholder": "ex. Marathon de Paris 2026",
   "field.raceName.hint": "Facultatif — apparaît sur votre plan",
 
+  "field.raceDate": "Date de course",
+  "field.raceDate.hint": "Facultatif — nous aide à suivre votre compte à rebours",
+
   "field.sport": "Sport",
   "field.sport.running": "Course à pied",
   "field.sport.triathlon": "Triathlon",

@@ -7,6 +7,9 @@
   "field.raceName.placeholder": "VD: VPBank Hanoi Marathon 2026",
   "field.raceName.hint": "Tuỳ chọn — hiển thị trên kế hoạch của bạn",
 
+  "field.raceDate": "Ngày thi đấu",
+  "field.raceDate.hint": "Tuỳ chọn — giúp chúng tôi theo dõi đếm ngược của bạn",
+
   "field.sport": "Môn thể thao",
   "field.sport.running": "Chạy bộ",
   "field.sport.triathlon": "Triathlon",

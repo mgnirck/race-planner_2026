@@ -1478,6 +1478,22 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     setTimeout(() => setCopyPlanState('idle'), 2000)
   }
 
+  function formatRaceDate(dateStr) {
+    if (!dateStr) return null
+    const d = new Date(dateStr + 'T00:00:00')
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    })
+  }
+
+  function daysUntilRace(dateStr) {
+    if (!dateStr) return null
+    const race  = new Date(dateStr + 'T00:00:00')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return Math.round((race - today) / (1000 * 60 * 60 * 24))
+  }
+
   // Prefer athlete's race name → triathlon type label (if triathlon) → distance typed → race_type label
   const heroTitle      = form.race_name ||
     (form.sport === 'triathlon' ? getRaceLabel(t, targets.race_type) : null) ||
@@ -1554,6 +1570,25 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 .map((w, i) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w)
                 .join(' ')}
             </span>
+          )}
+          {form.race_date && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-gray-500">
+                📅 {formatRaceDate(form.race_date)}
+              </span>
+              {daysUntilRace(form.race_date) > 0 && (
+                <span className="text-xs font-semibold text-white bg-[#48C4B0]
+                                 px-2.5 py-0.5 rounded-full">
+                  {daysUntilRace(form.race_date)} days to go
+                </span>
+              )}
+              {daysUntilRace(form.race_date) === 0 && (
+                <span className="text-xs font-semibold text-white bg-[#F64866]
+                                 px-2.5 py-0.5 rounded-full">
+                  Race day! 🎉
+                </span>
+              )}
+            </div>
           )}
           <p className="text-xs text-[#48C4B0] font-medium mt-2 italic">
             {hasAddons

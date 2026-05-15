@@ -7,6 +7,9 @@
   "field.raceName.placeholder": "e.g. Boston Marathon 2026",
   "field.raceName.hint": "Optional — shown on your plan",
 
+  "field.raceDate": "Race date",
+  "field.raceDate.hint": "Optional — helps us track your countdown",
+
   "field.sport": "Sport",
   "field.sport.running": "Running",
   "field.sport.triathlon": "Triathlon",

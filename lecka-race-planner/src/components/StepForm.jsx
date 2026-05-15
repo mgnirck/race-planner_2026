@@ -70,6 +70,7 @@ const DRAFT_KEY = 'lecka_form_draft'
 const DEFAULT_FORM = {
   // Step 1
   race_name:         '',
+  race_date:         '',
   custom_km:         '',
   custom_km_display: '',
   dist_unit:         'km',
@@ -328,6 +329,20 @@ function StepOne({ form, setForm }) {
                      focus:outline-none focus:border-[#48C4B0]"
         />
         <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceName.hint')}</p>
+      </div>
+
+      {/* Race date */}
+      <div>
+        <FieldLabel>{t('form:field.raceDate')}</FieldLabel>
+        <input
+          type="date"
+          value={form.race_date}
+          onChange={e => setForm(f => ({ ...f, race_date: e.target.value }))}
+          min={new Date().toISOString().split('T')[0]}
+          className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                     focus:outline-none focus:border-[#48C4B0]"
+        />
+        <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceDate.hint')}</p>
       </div>
 
       {/* Sport selector */}
