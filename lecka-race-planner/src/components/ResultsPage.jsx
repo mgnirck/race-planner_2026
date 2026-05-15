@@ -468,6 +468,23 @@ function NutritionSummary({ targets, provided }) {
             {t('nutrition.elevationAdjust', { pct: ELEVATION_MODIFIER_PCT[targets.elevation_tier] })}
           </p>
         )}
+
+        {/* Carry strategy tip */}
+        {(() => {
+          const f = targets.fluid_ml_per_hour
+          const d = targets.total_duration_minutes
+          let key
+          if (d > 300)           key = 'nutrition.carry.vest2'
+          else if (f > 500 && d > 120) key = 'nutrition.carry.vest1_5'
+          else if (f > 500)      key = 'nutrition.carry.twoBottles'
+          else if (d > 90)       key = 'nutrition.carry.softFlask'
+          else                   key = 'nutrition.carry.singleBottle'
+          return (
+            <div className="border-l-4 border-[#48C4B0] pl-3 py-1">
+              <p className="text-sm text-gray-600">{t(key)}</p>
+            </div>
+          )
+        })()}
       </div>
       <p className="text-xs text-gray-400 text-center mt-2">
         Numbers are personalised to your weight, conditions, and training level.
