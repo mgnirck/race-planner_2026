@@ -1362,12 +1362,17 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
     return embedCartURL(buildCartURLFromAggregated(vpItems, 'NUTRIPLAN10', '', region))
   }, [region])
 
-  const timeline = useMemo(() => {
-    const effectiveSelection = adjustTimelineSelection(
-      selection, manualQty, targets.total_duration_minutes, allProductsCatalog
-    )
-    return buildTimeline(effectiveSelection, targets.total_duration_minutes)
-  }, [selection, manualQty, targets])
+  // manualQty overrides must be reflected in anything sent off-device (email, saved
+  // plan) — the raw selection prop still has the engine's original quantities.
+  const effectiveSelection = useMemo(
+    () => adjustTimelineSelection(selection, manualQty, targets.total_duration_minutes, allProductsCatalog),
+    [selection, manualQty, targets]
+  )
+
+  const timeline = useMemo(
+    () => buildTimeline(effectiveSelection, targets.total_duration_minutes),
+    [effectiveSelection, targets.total_duration_minutes]
+  )
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
@@ -1692,10 +1697,10 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
         <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
 
         {/* ── Email capture ────────────────────────────────────────────────── */}
-        <EmailCapture targets={targets} selection={selection} form={form} region={region} />
+        <EmailCapture targets={targets} selection={effectiveSelection} form={form} region={region} />
 
         {/* ── Save plan / account creation ─────────────────────────────────── */}
-        {!hideSave && <SavePlanCard targets={targets} selection={selection} form={form} region={region} />}
+        {!hideSave && <SavePlanCard targets={targets} selection={effectiveSelection} form={form} region={region} />}
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-10 text-center">
