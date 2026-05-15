@@ -264,6 +264,62 @@ Fluid is not adjusted for elevation — the relationship between altitude, gradi
 
 ---
 
+## 4b. PRODUCT FRUCTOSE PROFILES — LAB-VERIFIED DATA
+
+### Source
+
+Eurofins lab reports, December 2025 – April 2026. Values are per-unit based on confirmed net weights from the product master sheet.
+
+### Standard Gel fructose profiles (Eurofins, Dec 2025)
+
+| Flavour | Net weight | Carbs/unit | Free fructose | Free glucose | Sucrose | Fructose % of carbs | Dual-transporter? |
+|---------|-----------|-----------|--------------|-------------|---------|---------------------|------------------|
+| Passion Fruit | 40g | 27g | 3.7g | 3.8g | 8.2g | 14% | No |
+| Banana | 44g | 25g | 1.2g | 1.2g | 14.7g | 5% | No |
+| Coffee Cacao | 43g | 22g | 0.1g | 0.4g | 15.3g | ~0% | No |
+| Lime Ginger | 40g | 27g | 7.1g | 6.7g | 0.4g | 26% | Yes |
+| Kumquat Honey | 40g | 26g | 6.7g | 6.3g | 0.35g | 26% | Yes |
+
+Lab reports: AR-25-VD-249580 (Passion Fruit), AR-25-VD-249581 (Banana), AR-25-VD-258719 (Coffee Cacao), AR-25-VD-251832 (Lime Ginger), AR-25-VD-251833 (Kumquat Honey).
+
+### Ultra Gel fructose profiles
+
+| Flavour | Net weight | Carbs/unit | Free fructose | Free glucose | Sucrose | Fructose % | Dual-transporter? |
+|---------|-----------|-----------|--------------|-------------|---------|-----------|------------------|
+| Passion Fruit Mango | 102g | 65g | 5.4g | 5.2g | 29.6g | 8% | No |
+| Banana Peanut Butter | 108g | 60g | 2.0g | 2.1g | 38.0g | 3% | No |
+
+Lab reports: AR-25-VD-256496 (Passion Fruit Mango, Jan 2026), AR-26-VD-082550 (Banana Peanut Butter, Apr 2026).
+
+**Note on Banana Peanut Butter:** Label not yet finalised at time of publication. Values derived from Eurofins lab report. Sodium: 448mg per 108g unit (4150mg/kg × 0.108kg). Carbs: 60g per 108g unit (55.1g/100g × 108g = 59.5g, rounded to 60g). Contains 6.4g fat per unit — classified as high-fat, which slows gastric emptying.
+
+### Corrections to previously assumed values
+
+The following values were updated from estimated to label/lab-confirmed:
+
+| Product | Field | Old value | New value | Source |
+|---------|-------|-----------|-----------|--------|
+| Passion Fruit | carbs_per_unit | 25g | 27g | Label (67.1g/100g × 40g) |
+| Passion Fruit | sodium_per_unit | 90mg | 88mg | Label confirmed |
+| Banana | carbs_per_unit | 22g | 25g | Label (55.9g/100g × 44g) |
+| Banana | sodium_per_unit | 100mg | 98mg | Label confirmed |
+| Banana | net_weight_g | assumed 40g | 44g | Product master |
+| Coffee Cacao | caffeine_mg | 90mg | 80mg | Label declared value (lab: 81.7mg → 80mg declared) |
+| Coffee Cacao | net_weight_g | assumed 40g | 43g | Product master |
+| Lime Ginger | sodium_per_unit | 105mg | 103mg | Label (2570mg/kg × 40g) |
+| Kumquat Honey | sodium_per_unit | 100mg | 96mg | Label (2390mg/kg × 40g) |
+| Ultra Gel PFM | sodium_per_unit | 410mg | 405mg | Label (3970mg/kg × 102g) |
+
+### Flavour-level dual-transporter classification
+
+Lime Ginger and Kumquat Honey are classified `dual_transporter: true` because 26% of their carbs are free fructose — sourced from real lime juice and raw honey respectively. At intakes up to 65g carbs/hour these flavours provide meaningful natural GLUT5 (fructose) activation alongside SGLT1 (glucose/sucrose) absorption.
+
+This is naturally occurring fructose in whole-food form, not an engineered 2:1 ratio product. For athletes targeting above 65g/hour, adding a purpose-engineered dual-transporter supplement (e.g. Maurten, SiS Beta Fuel) is still recommended.
+
+Passion Fruit (14%) provides a moderate fructose fraction from the fruit itself but is below the threshold for meaningful dual-transporter classification at practical intake rates. Banana (5%) and Coffee Cacao (~0%) are sucrose-dominant and classified as single-transporter.
+
+---
+
 ## 5. PRODUCT QUANTITY CALCULATION
 
 ### How many gels does the plan suggest?

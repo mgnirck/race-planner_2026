@@ -249,7 +249,25 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
     })
   }
 
-  return selected
+  // ── High-fat timing constraint ────────────────────────────────────────────
+  // High-fat products (e.g. Ultra Gel Banana Peanut Butter) slow gastric
+  // emptying. Assign them only to the first 75% of race duration; remove
+  // any slots in the final 25% where fast carb delivery is critical.
+
+  const earlyThreshold = Math.round(total_duration_minutes * 0.75)
+  for (const item of selected) {
+    if (!item.product.high_fat) continue
+    const filtered = item.timing_minutes.filter(m => m >= 0 && m <= earlyThreshold)
+    if (filtered.length < item.timing_minutes.length) {
+      item.timing_minutes = filtered
+      item.quantity = filtered.length
+      item.note = 'Best in the first half — peanut butter slows absorption'
+    }
+  }
+
+  return selected.filter(item =>
+    item.product.type === 'powder_placeholder' || item.quantity > 0
+  )
 }
 
 // ── Default-selection helpers ─────────────────────────────────────────────────
