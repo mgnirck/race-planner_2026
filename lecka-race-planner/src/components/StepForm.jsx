@@ -405,9 +405,10 @@ function StepOne({ form, setForm }) {
             <FieldLabel>{t('form:field.distance')}</FieldLabel>
             <div className="flex items-center gap-3">
               <input
-                type="number"
-                min="1"
-                max="500"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*\.?[0-9]*"
+                maxLength={5}
                 placeholder="e.g. 42"
                 value={form.custom_km_display}
                 onChange={e => handleDistChange(e.target.value)}
@@ -445,9 +446,10 @@ function StepOne({ form, setForm }) {
             <FieldLabel>{t('form:field.elevation')}</FieldLabel>
             <div className="flex items-center gap-3">
               <input
-                type="number"
-                min="0"
-                max="10000"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={5}
                 placeholder="0"
                 value={form.elev_display}
                 onChange={e => handleElevChange(e.target.value)}
@@ -532,10 +534,10 @@ function StepOne({ form, setForm }) {
         <div className="flex items-center gap-2">
           <div className="flex flex-col items-center gap-1">
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min="0"
-              max="200"
+              pattern="[0-9]*"
+              maxLength={3}
               placeholder="0"
               value={form.goal_time_h}
               onChange={e => setForm(f => ({ ...f, goal_time_h: e.target.value }))}
@@ -554,10 +556,10 @@ function StepOne({ form, setForm }) {
           <span className="text-lg font-semibold text-gray-300 pb-4">:</span>
           <div className="flex flex-col items-center gap-1">
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min="0"
-              max="59"
+              pattern="[0-9]*"
+              maxLength={2}
               placeholder="00"
               value={form.goal_time_m}
               onChange={e => setForm(f => ({ ...f, goal_time_m: e.target.value }))}
@@ -623,9 +625,10 @@ function StepTwo({ form, setForm }) {
         <FieldLabel>{t('form:field.weight')}</FieldLabel>
         <div className="flex items-center gap-3">
           <input
-            type="number"
-            min={weightMin}
-            max={weightMax}
+            type="text"
+            inputMode="decimal"
+            pattern="[0-9]*\.?[0-9]*"
+            maxLength={5}
             value={form.weight_value}
             onChange={e => setForm(f => ({ ...f, weight_value: e.target.value }))}
             className={[
