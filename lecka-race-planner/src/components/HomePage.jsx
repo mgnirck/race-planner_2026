@@ -42,6 +42,7 @@ function BagIcon() {
 
 export default function HomePage() {
   return (
+    <>
     <div className="bg-white min-h-screen">
       <Nav />
 
@@ -176,5 +177,6 @@ export default function HomePage() {
 
       </div>
     </footer>
+    </>
   )
 }
