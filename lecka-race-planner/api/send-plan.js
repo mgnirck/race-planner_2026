@@ -426,10 +426,10 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
 
   y = doc.lastAutoTable.finalY + 10
 
-  // ── Section 2a: Competitor add-ons (when present) ────────────────────────
+  // ── Section 2a: Add-ons (when present) ────────────────────────────────────
   if (resolvedAddonItems.length > 0) {
     y = ensureSpace(doc, y, 30)
-    y = sectionHeading(doc, 'Race Day Add-Ons (buy separately)', y, ML, CW)
+    y = sectionHeading(doc, 'Add-ons (buy separately)', y, ML, CW)
 
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
@@ -437,7 +437,7 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
     for (const item of resolvedAddonItems) {
       const name  = item.display_name ?? item.name ?? ''
       const carbs = (item.carbs_per_unit ?? 0) * (item.quantity ?? 0)
-      const line  = `• ${item.quantity}× ${name}${carbs > 0 ? ` (${carbs}g carbs)` : ''}`
+      const line  = `×${item.quantity}  ${name}${carbs > 0 ? `  — ${carbs}g carbs` : ''}`
       doc.text(line, ML, y)
       y += 6
     }
@@ -445,46 +445,11 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
     doc.setFont('helvetica', 'italic')
     doc.setFontSize(8)
     doc.setTextColor(C.gray)
-    doc.text('These products are not from Lecka. Purchase them directly from the respective brands.', ML, y)
+    doc.text('Source these products separately from your usual sports nutrition supplier.', ML, y)
     y += 10
   }
 
-  // ── Section 2b: Shopping recommendation (variety pack when cheaper) ───────
-  {
-    const unitsByPid = {}
-    const productByPid = {}
-    for (const item of selectedProducts) {
-      const pid = item.product.id
-      unitsByPid[pid] = (unitsByPid[pid] ?? 0) + item.quantity
-      productByPid[pid] = item.product
-    }
-    const gelAgg = Object.entries(unitsByPid)
-      .filter(([pid]) => productByPid[pid].type === 'gel')
-      .map(([pid, totalUnits]) => ({
-        product:   productByPid[pid],
-        totalUnits,
-        cartItems: computeCartItems(productByPid[pid], region, totalUnits),
-        linePrice: computeLinePrice(productByPid[pid], region, totalUnits),
-        cartUnits: computeCartItems(productByPid[pid], region, totalUnits).reduce((s, i) => s + i.quantity * i.units_per_pack, 0),
-      }))
-    const { usesVarietyPack, savedAmount } = computeOptimalGelCart(gelAgg, region, allProductsCatalog)
-    if (usesVarietyPack && savedAmount > 0) {
-      y = ensureSpace(doc, y, 20)
-      const currencySymbol = region === 'de' ? '\u20ac' : region === 'dk' ? 'kr' : region === 'vn' ? '\u20ab' : '$'
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9)
-      doc.setTextColor(C.green)
-      doc.text(
-        t('pdf.product.shoppingTip', { currency: currencySymbol, amount: region === 'vn' ? Math.round(savedAmount).toLocaleString('en-US') : savedAmount.toFixed(2) }),
-        ML, y
-      )
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(C.black)
-      y += 8
-    }
-  }
-
-  // ── Section 2c: Training preparation (when buying more than race needs) ──
+  // ── Section 2b: Training preparation (when buying more than race needs) ──
   const tInfo = computeTrainingInfo(selectedProducts, region)
   if (tInfo.hasOverage) {
     y = ensureSpace(doc, y, 55)
@@ -689,48 +654,6 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
     .map(item => `${item.product.name} × ${item.quantity}${item.note ? ` — ${item.note}` : ''}`)
     .join('\n')
 
-  // Check variety pack optimisation for email
-  const emailUnitsByPid = {}
-  const emailProductByPid = {}
-  for (const item of selectedProducts) {
-    const pid = item.product.id
-    emailUnitsByPid[pid] = (emailUnitsByPid[pid] ?? 0) + item.quantity
-    emailProductByPid[pid] = item.product
-  }
-  const emailGelAgg = Object.entries(emailUnitsByPid)
-    .filter(([pid]) => emailProductByPid[pid].type === 'gel')
-    .map(([pid, totalUnits]) => ({
-      product:   emailProductByPid[pid],
-      totalUnits,
-      cartItems: computeCartItems(emailProductByPid[pid], region, totalUnits),
-      linePrice: computeLinePrice(emailProductByPid[pid], region, totalUnits),
-      cartUnits: computeCartItems(emailProductByPid[pid], region, totalUnits).reduce((s, i) => s + i.quantity * i.units_per_pack, 0),
-    }))
-  const emailVpResult = computeOptimalGelCart(emailGelAgg, region, allProductsCatalog)
-  const currencySymbol = region === 'de' ? '&euro;' : region === 'dk' ? 'kr' : region === 'vn' ? '&#8363;' : '$'
-  const varietyPackHtml = emailVpResult.usesVarietyPack && emailVpResult.savedAmount > 0 ? `
-    <div style="background:#f0fdf9;border:2px solid #48C4B0;border-radius:8px;padding:14px 16px;margin:12px 0;">
-      <p style="margin:0;font-size:13px;color:#1B1B1B;">
-        <strong>&#10003; ${t('email.varietyPack.bestValue')}</strong> ${t('email.varietyPack.body', { currency: currencySymbol, amount: region === 'vn' ? Math.round(emailVpResult.savedAmount).toLocaleString('en-US') : emailVpResult.savedAmount.toFixed(2) })}
-      </p>
-    </div>` : ''
-
-  const emailTInfo = computeTrainingInfo(selectedProducts, region)
-  const trainingHtml = emailTInfo.hasOverage ? `
-    <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:16px;margin:20px 0;">
-      <p style="margin:0 0 8px;font-size:14px;font-weight:700;color:#1B1B1B;">${t('email.training.title')}</p>
-      <p style="margin:0 0 12px;font-size:13px;color:#374151;">
-        ${t('email.training.body', { count: emailTInfo.totalRaceUnits, cart: emailTInfo.totalCartUnits, extra: emailTInfo.extraUnits })}
-      </p>
-      <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#888;">${t('email.training.extrasTitle')}</p>
-      <ul style="margin:0;padding-left:18px;font-size:13px;color:#374151;line-height:1.8;">
-        <li>${t('email.training.tip1')}</li>
-        <li>${t('email.training.tip2')}</li>
-        <li>${t('email.training.tip3')}</li>
-        <li>${t('email.training.tip4')}</li>
-      </ul>
-    </div>` : ''
-
   const html = /* html */`<!DOCTYPE html>
 <html lang="${lang}">
 <head>
@@ -798,7 +721,6 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
                   font-family:monospace;font-size:13px;white-space:pre-wrap;color:#1B1B1B;">
 ${plainTextProductList}
       </div>
-      <a href="${cartUrl}" class="cta">${t('email.cta')}</a>
       ` : `
       <p style="margin-bottom: 6px;"><strong>${hasAddons ? 'Your real food foundation:' : t('email.productPlanTitle')}</strong></p>
       <ul>
@@ -821,19 +743,16 @@ ${plainTextProductList}
         </p>
       </div>` : ''}
 
-      ${varietyPackHtml}
+      `) : ''}
 
-      ${trainingHtml}
-
-      <a href="${cartUrl}" class="cta">${t('email.cta')}</a>
-
-      <div style="background:#f0fdf9;border:1px solid #48C4B0;border-radius:8px;padding:12px 16px;margin:0 0 20px;">
-        <p style="margin:0;font-size:13px;color:#1B1B1B;">
-          <strong>${t('email.discountTitle')}</strong> ${t('email.discountBody')}
-        </p>
-      </div>
-
-      ${hasAddons ? `<p style="font-size:12px;color:#9ca3af;text-align:center;margin:8px 0;">Cart includes Lecka products only. Purchase add-ons separately.</p>` : ''}`) : ''}
+      <p style="font-size:13px;color:#6b7280;margin:20px 0 0;">
+        Ready to get your products? Visit
+        <a href="https://www.getlecka.com"
+           style="color:#48C4B0;text-decoration:none;">
+          getlecka.com
+        </a>
+        or return to your plan page to order.
+      </p>
 
       <p class="note">
         ${t('email.note')}
