@@ -16,6 +16,7 @@ import { useTranslation, Trans } from 'react-i18next'
 import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engine/region-utils.js'
 import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
+import Nav from './Nav.jsx'
 import regionsConfig from '../config/regions.json'
 import allProductsCatalog from '../config/products.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
@@ -1382,20 +1383,24 @@ export default function ResultsPage({ targets, selection, form, onBack }) {
       )}
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
-        <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-sm text-[#48C4B0] font-medium hover:underline
-                       min-h-[44px] flex items-center"
-          >
-            {t('common:nav.back')}
-          </button>
-          <img src="/logo.svg" alt="Lecka" className="h-6" />
-          <LanguageSwitcher region={region} />
+      {isEmbedded ? (
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+          <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-sm text-[#48C4B0] font-medium hover:underline
+                         min-h-[44px] flex items-center"
+            >
+              {t('common:nav.back')}
+            </button>
+            <img src="/logo.svg" alt="Lecka" className="h-6" />
+            <LanguageSwitcher region={region} />
+          </div>
         </div>
-      </div>
+      ) : (
+        <Nav backHref="/planner" backLabel="Back to planner" />
+      )}
 
       <div className="max-w-lg mx-auto px-5 py-6 space-y-8">
 

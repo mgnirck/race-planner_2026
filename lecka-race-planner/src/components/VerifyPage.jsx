@@ -31,6 +31,8 @@ export default function VerifyPage() {
 
         // 2. Save pending plan if one was stored
         const pending = localStorage.getItem('lecka_pending_plan')
+        const next    = localStorage.getItem('lecka_auth_next')
+
         if (pending) {
           setStatus('saving')
           try {
@@ -47,7 +49,11 @@ export default function VerifyPage() {
             // Plan save failure is non-fatal — user is still logged in
           }
           localStorage.removeItem('lecka_pending_plan')
+          localStorage.removeItem('lecka_auth_next')
           window.location.replace('/dashboard?saved=true')
+        } else if (next) {
+          localStorage.removeItem('lecka_auth_next')
+          window.location.replace(next)
         } else {
           window.location.replace('/dashboard')
         }
