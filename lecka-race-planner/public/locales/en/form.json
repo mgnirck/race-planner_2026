@@ -1,7 +1,7 @@
 {
   "steps.race": "Your race",
   "steps.body": "Your body & preferences",
-  "steps.products": "Product preferences",
+  "steps.products": "Your fuelling style",
 
   "field.raceName": "Race or run name",
   "field.raceName.placeholder": "e.g. Boston Marathon 2026",

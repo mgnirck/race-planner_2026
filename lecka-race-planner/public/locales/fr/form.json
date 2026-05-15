@@ -1,7 +1,7 @@
 {
   "steps.race": "Votre course",
   "steps.body": "Votre corps & préférences",
-  "steps.products": "Préférences produits",
+  "steps.products": "Votre style de ravitaillement",
 
   "field.raceName": "Nom de la course ou de la sortie",
   "field.raceName.placeholder": "ex. Marathon de Paris 2026",

@@ -91,6 +91,7 @@ const DEFAULT_FORM = {
   caffeine_ok:     null,
   // Step 3
   preferred_product_ids: [],
+  fuelling_style: 'gels_only',
 }
 
 function loadDraft() {
@@ -788,7 +789,7 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
   )
 }
 
-// ── Step 3: Product preferences ───────────────────────────────────────────────
+// ── Step 3: Fuelling style + product preferences ──────────────────────────────
 
 function StepThree({ form, setForm }) {
   const { t } = useTranslation(['form', 'common'])
@@ -804,9 +805,67 @@ function StepThree({ form, setForm }) {
     })
   }
 
+  const style = form.fuelling_style
+
+  const barLabel = style === 'gels_and_bars'
+    ? 'Energy bars (during + around your race)'
+    : style === 'drink_mix_base'
+    ? 'Energy bars (optional, for variety)'
+    : 'Energy bars (for before and after your race)'
+
+  const barSublabel = style === 'drink_mix_base'
+    ? 'With a drink mix base, bars are supplementary'
+    : style === 'gels_and_bars'
+    ? null
+    : 'Bars are used pre-race and for recovery — not during'
+
   return (
     <div className="space-y-7">
-      <p className="text-sm text-gray-500 -mt-2">
+
+      {/* Fuelling style */}
+      <div>
+        <FieldLabel>Fuelling style</FieldLabel>
+        <div className="space-y-2">
+          <OptionCard
+            label="Gels only"
+            desc="Simple and fast — gels are your primary fuel source throughout"
+            selected={style === 'gels_only'}
+            onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_only' }))}
+          />
+          <OptionCard
+            label="Gels + bars"
+            desc="Real food variety — bars for steady energy, gels when you need a boost"
+            selected={style === 'gels_and_bars'}
+            onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_and_bars' }))}
+          />
+          <OptionCard
+            label="Drink mix + gels"
+            desc="Continuous carbs from your bottle, gels for intensity spikes"
+            selected={style === 'drink_mix_base'}
+            onClick={() => setForm(f => ({ ...f, fuelling_style: 'drink_mix_base' }))}
+          />
+          <OptionCard
+            label="Whatever works"
+            desc="No strong preference — give me a solid starting plan I can adjust"
+            selected={style === 'flexible'}
+            onClick={() => setForm(f => ({ ...f, fuelling_style: 'flexible' }))}
+          />
+        </div>
+        {style === 'drink_mix_base' && (
+          <p className="text-xs text-[#48C4B0] mt-3">
+            Lecka's carb + hydration powder is coming soon.{' '}
+            <a
+              href="mailto:info@getlecka.com?subject=Carb powder waitlist"
+              className="underline"
+            >
+              Join the waitlist to be first →
+            </a>
+          </p>
+        )}
+      </div>
+
+      {/* Product preferences */}
+      <p className="text-sm text-gray-500">
         {t('form:field.products.intro')}
       </p>
 
@@ -828,7 +887,10 @@ function StepThree({ form, setForm }) {
 
       {/* Bars */}
       <div>
-        <FieldLabel>{t('form:field.bars')}</FieldLabel>
+        <FieldLabel>{barLabel}</FieldLabel>
+        {barSublabel && (
+          <p className="text-xs text-gray-400 -mt-2 mb-3">{barSublabel}</p>
+        )}
         <div className="space-y-2">
           {bars.map(bar => (
             <ProductPreferenceCard
@@ -841,6 +903,7 @@ function StepThree({ form, setForm }) {
           ))}
         </div>
       </div>
+
     </div>
   )
 }
