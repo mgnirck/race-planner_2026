@@ -84,9 +84,10 @@
   },
 
   "caffeine_rules": {
-    "max_mg_per_hour":       200,
-    "recommended_dose_mg":   80,
-    "first_dose_offset_min": 45,
+    "max_mg_per_hour":         200,
+    "recommended_dose_mg":     80,
+    "first_dose_offset_min":   45,
+    "first_dose_race_fraction": 0.4,
     "note": "Caffeine gels replace one plain gel slot when caffeine_ok = true"
   },
 

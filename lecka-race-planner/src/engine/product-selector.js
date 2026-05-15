@@ -68,6 +68,22 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
   const useVariety = gelSlots.length >= 5
 
   // ── Assign caffeine vs plain to each slot ────────────────────────────────
+  //
+  // First caffeine dose targets the second half of the race when glycogen
+  // depletion and mental fatigue set in.  The threshold is the larger of the
+  // absolute minimum floor (first_dose_offset_min, default 45 min) and a
+  // fraction of the total race duration (first_dose_race_fraction, default 0.4).
+  //
+  // Expected first-eligible caffeine slot by race duration:
+  //   60 min  → max(45,  24) = 45 min  (floor dominates short races)
+  //  120 min  → max(45,  48) = 48 min
+  //  240 min  → max(45,  96) = 96 min  (1 h 36)
+  //  360 min  → max(45, 144) = 144 min (2 h 24)
+
+  const firstCaffeineMin = Math.max(
+    caffeineRules.first_dose_offset_min,
+    total_duration_minutes * (caffeineRules.first_dose_race_fraction ?? 0.4),
+  )
 
   const plainGelSlots = []
   const cafGelSlots   = []
@@ -77,7 +93,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us')
     const minutesSinceLast = slot - lastCaffeineDoseAt
     const isCaffeineEligible =
       caffeine_ok &&
-      slot >= caffeineRules.first_dose_offset_min &&
+      slot >= firstCaffeineMin &&
       minutesSinceLast >= 60
 
     if (isCaffeineEligible) {
