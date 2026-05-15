@@ -595,7 +595,7 @@ function StepOne({ form, setForm }) {
 
 // ── Step 2: Body, conditions & preferences ────────────────────────────────────
 
-function StepTwo({ form, setForm }) {
+function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) {
   const { t } = useTranslation(['form', 'common'])
   const weightOk      = toKg(form.weight_value, form.weight_unit) !== null
   const weightTouched = form.weight_value !== ''
@@ -619,6 +619,21 @@ function StepTwo({ form, setForm }) {
 
   return (
     <div className="space-y-7">
+
+      {/* Pre-fill badge */}
+      {showPrefillBadge && (
+        <div className="flex items-center justify-between gap-2 bg-[#48C4B0]/10 border border-[#48C4B0]/30 rounded-full px-4 py-2">
+          <span className="text-xs font-medium text-[#48C4B0]">Pre-filled from your profile</span>
+          <button
+            type="button"
+            onClick={onDismissPrefill}
+            aria-label="Dismiss"
+            className="text-[#48C4B0]/60 hover:text-[#48C4B0] text-sm leading-none"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Weight */}
       <div>
@@ -866,12 +881,52 @@ export default function StepForm({ onComplete }) {
   const { t } = useTranslation(['form', 'common'])
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
+  const [profilePrefilled, setProfilePrefilled] = useState(false)
+  const [prefillDismissed, setPrefillDismissed] = useState(false)
 
   // Persist form to sessionStorage on every change so a refresh or accidental
   // navigation away doesn't wipe the user's progress.
   useEffect(() => {
     try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(form)) } catch {}
   }, [form])
+
+  // Pre-fill profile fields from /api/auth/me for logged-in users.
+  // Only fills fields still at their default value — never overwrites user edits.
+  // Silently falls back to defaults on any failure.
+  useEffect(() => {
+    const userId = localStorage.getItem('lecka_user_id')
+    if (!userId) return
+    const controller = new AbortController()
+    fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${userId}` },
+      signal: controller.signal,
+    })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
+      .then(profile => {
+        setForm(f => {
+          const patch = {}
+          if (profile.weight_kg != null && f.weight_value === DEFAULT_FORM.weight_value && f.weight_unit === DEFAULT_FORM.weight_unit) {
+            const unit = profile.weight_unit === 'lb' ? 'lb' : 'kg'
+            const displayVal = unit === 'lb'
+              ? String(Math.round(profile.weight_kg * 2.20462))
+              : String(Math.round(profile.weight_kg))
+            patch.weight_value = displayVal
+            patch.weight_unit  = unit
+          }
+          if (profile.gender         != null && f.gender          === DEFAULT_FORM.gender)          patch.gender          = profile.gender
+          if (profile.athlete_profile != null && f.athlete_profile === DEFAULT_FORM.athlete_profile) patch.athlete_profile = profile.athlete_profile
+          if (profile.caffeine_ok    != null && f.caffeine_ok     === DEFAULT_FORM.caffeine_ok)     patch.caffeine_ok     = profile.caffeine_ok
+          if (profile.dist_unit      != null && f.dist_unit       === DEFAULT_FORM.dist_unit)       patch.dist_unit       = profile.dist_unit
+          if (Object.keys(patch).length === 0) return f
+          setProfilePrefilled(true)
+          return { ...f, ...patch }
+        })
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') console.warn('[StepForm] profile prefill failed:', err)
+      })
+    return () => controller.abort()
+  }, [])
 
   const stepValid = { 1: isStep1Valid(form), 2: isStep2Valid(form), 3: isStep3Valid(form) }
   const canAdvance = stepValid[step]
@@ -933,7 +988,14 @@ export default function StepForm({ onComplete }) {
       {/* ── Step content ── */}
       <div className="max-w-md mx-auto w-full px-5 pb-4">
         {step === 1 && <StepOne form={form} setForm={setForm} />}
-        {step === 2 && <StepTwo form={form} setForm={setForm} />}
+        {step === 2 && (
+          <StepTwo
+            form={form}
+            setForm={setForm}
+            showPrefillBadge={profilePrefilled && !prefillDismissed}
+            onDismissPrefill={() => setPrefillDismissed(true)}
+          />
+        )}
         {step === 3 && <StepThree form={form} setForm={setForm} />}
       </div>
 
