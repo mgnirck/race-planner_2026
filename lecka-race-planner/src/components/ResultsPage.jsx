@@ -1410,6 +1410,14 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     [effectiveSelection, addonTimelineItems, targets.total_duration_minutes]
   )
 
+  const gapSelection = useMemo(() =>
+    aggregated.map(row => {
+      const selItem = effectiveSelection.find(s => s.product.id === row.product.id)
+      return { product: row.product, quantity: row.totalUnits, note: selItem?.note ?? '' }
+    }),
+    [aggregated, effectiveSelection]
+  )
+
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
     (sum, row) => sum + row.cartItems.reduce((s, item) => s + item.quantity, 0), 0
