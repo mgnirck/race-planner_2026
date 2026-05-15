@@ -37,6 +37,18 @@ const _require = createRequire(import.meta.url)
 const allProductsCatalog = _require('../src/config/products.json')
 import { getServerT } from './i18n-server.js'
 
+const _validateLocale = (() => {
+  const t = getServerT('en')
+  const testKey = 'pdf.header.tagline'
+  const result = t(testKey)
+  if (result === testKey) {
+    console.error('[send-plan] LOCALE VALIDATION FAILED: ' +
+      'i18n keys are not resolving. Check api/locales/en/pdf.json exists.')
+  } else {
+    console.log('[send-plan] Locale validation OK:', result)
+  }
+})()
+
 const { jsPDF } = jsPDFModule
 
 // ── Brand colours ─────────────────────────────────────────────────────────────
