@@ -3,7 +3,7 @@
   "nav.startOver": "← Start over",
   "nav.backToPlanner": "← Back to planner",
 
-  "step.ofTotal": "Step {{step}} of 3",
+  "step.ofTotal": "Step {{step}} of {{total}}",
   "step.next": "Next",
   "step.back": "Back",
   "step.buildMyPlan": "Build my plan",

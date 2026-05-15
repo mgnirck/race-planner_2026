@@ -13,8 +13,10 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { calculateTargets } from '../engine/nutrition-engine'
+import { needsDualTransporter, computeAddonCoverage, computeFoundationTargets } from '../engine/kit-calculator.js'
 import { selectProducts }   from '../engine/product-selector'
 import products             from '../config/products.json'
+import competitorProductsData from '../config/competitor-products.json'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
 import { detectRegion }     from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
@@ -92,6 +94,9 @@ const DEFAULT_FORM = {
   // Step 3
   preferred_product_ids: [],
   fuelling_style: 'gels_only',
+  // Step 4
+  want_addons: false,
+  addon_items: [],
 }
 
 function loadDraft() {
@@ -908,6 +913,250 @@ function StepThree({ form, setForm }) {
   )
 }
 
+// ── Step 4: Dual-transporter add-ons ─────────────────────────────────────────
+
+const competitorProducts = competitorProductsData.products
+
+const POPULAR_IDS = new Set(['maurten-gel-160', 'sis-beta-fuel-gel'])
+
+function AddonProductRow({ product, quantity, onChangeQty }) {
+  const isSelected = quantity > 0
+  return (
+    <div
+      className={[
+        'flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-colors',
+        isSelected ? 'border-[#48C4B0] border-l-4' : 'border-gray-200',
+      ].join(' ')}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-400">{product.brand}</span>
+          {POPULAR_IDS.has(product.id) && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#48C4B0]/10 text-[#48C4B0]">
+              Popular
+            </span>
+          )}
+        </div>
+        <p className={`text-sm font-semibold leading-tight mt-0.5 ${isSelected ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
+          {product.name}
+        </p>
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
+          {product.carbs_per_unit > 0 && (
+            <span className="text-xs text-gray-400">{product.carbs_per_unit}g carbs</span>
+          )}
+          {product.sodium_per_unit > 0 && (
+            <span className="text-xs text-gray-400">{product.sodium_per_unit}mg sodium</span>
+          )}
+          {product.caffeine && (
+            <span className="text-xs font-medium text-[#48C4B0]">{product.caffeine_mg}mg caffeine</span>
+          )}
+          {product.dual_transporter && (
+            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[#48C4B0]/10 text-[#48C4B0]">
+              Dual transport
+            </span>
+          )}
+        </div>
+      </div>
+      {/* Quantity stepper */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => onChangeQty(Math.max(0, quantity - 1))}
+          disabled={quantity === 0}
+          className={[
+            'w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-colors',
+            quantity === 0
+              ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+              : 'border-[#48C4B0] text-[#48C4B0] hover:bg-[#48C4B0]/10',
+          ].join(' ')}
+        >
+          −
+        </button>
+        <span className="w-6 text-center text-sm font-semibold text-[#1B1B1B]">
+          {quantity}
+        </span>
+        <button
+          type="button"
+          onClick={() => onChangeQty(Math.min(12, quantity + 1))}
+          disabled={quantity === 12}
+          className={[
+            'w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold transition-colors',
+            quantity === 12
+              ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+              : 'border-[#48C4B0] text-[#48C4B0] hover:bg-[#48C4B0]/10',
+          ].join(' ')}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function StepFour({ form, setForm, previewTargets }) {
+  const [showElectrolytes, setShowElectrolytes] = useState(false)
+
+  const highCarbGels = competitorProducts.filter(p => p.category === 'high_carb_gel')
+  const electrolytes = competitorProducts.filter(p => p.category === 'electrolyte')
+  const realFood     = competitorProducts.filter(p => p.category === 'real_food_extra')
+
+  const isHotConditions = form.conditions === 'hot' || form.conditions === 'humid'
+  const extraCarbs = previewTargets
+    ? Math.max(0, previewTargets.carb_per_hour - 65)
+    : 0
+
+  function getQty(id) {
+    return form.addon_items.find(i => i.id === id)?.quantity ?? 0
+  }
+
+  function setQty(id, qty) {
+    setForm(f => {
+      const existing = f.addon_items.filter(i => i.id !== id)
+      return {
+        ...f,
+        addon_items: qty > 0 ? [...existing, { id, quantity: qty }] : existing,
+      }
+    })
+  }
+
+  return (
+    <div className="space-y-7">
+
+      {/* Context box */}
+      {previewTargets && (
+        <div className="rounded-xl border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 px-4 py-4 space-y-2">
+          <p className="text-sm font-semibold text-[#1B1B1B]">Your real food foundation</p>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Lecka covers up to 65g carbs/hour — the maximum your body can absorb
+            from a single carbohydrate source. Your target for this race is{' '}
+            <span className="font-semibold text-[#1B1B1B]">{previewTargets.carb_per_hour}g/hour</span>.
+          </p>
+          {extraCarbs > 0 && (
+            <p className="text-sm text-gray-600 leading-relaxed">
+              The extra{' '}
+              <span className="font-semibold text-[#1B1B1B]">{extraCarbs}g/hour</span>{' '}
+              needs a second carbohydrate source. Sports science calls this the
+              dual-transporter protocol — combining glucose (from real food like Lecka)
+              with fructose (from products below).
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Binary choice */}
+      <div>
+        <FieldLabel>Want to add performance products?</FieldLabel>
+        <div className="space-y-2">
+          <OptionCard
+            label="Lecka only — I'm good"
+            desc="I'll fuel with Lecka and manage the intensity on race day. I can always adjust my plan later."
+            selected={!form.want_addons}
+            onClick={() => setForm(f => ({ ...f, want_addons: false, addon_items: [] }))}
+          />
+          <OptionCard
+            label="Add performance products"
+            desc="I'll add high-carb products to reach my full target. Show me what athletes use."
+            selected={form.want_addons}
+            onClick={() => setForm(f => ({ ...f, want_addons: true }))}
+          />
+        </div>
+      </div>
+
+      {/* Add-on picker */}
+      {form.want_addons && (
+        <div className="space-y-7">
+
+          {/* High-carb gels */}
+          <div>
+            <FieldLabel>High-carb gels</FieldLabel>
+            <p className="text-xs text-gray-400 -mt-2 mb-3">
+              Dual-transporter carbs to reach 75–90g/hour alongside Lecka
+            </p>
+            <div className="space-y-2">
+              {highCarbGels.map(p => (
+                <AddonProductRow
+                  key={p.id}
+                  product={p}
+                  quantity={getQty(p.id)}
+                  onChangeQty={qty => setQty(p.id, qty)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Electrolyte top-up */}
+          <div>
+            {isHotConditions ? (
+              <>
+                <FieldLabel>Electrolyte top-up</FieldLabel>
+                <div className="space-y-2">
+                  {electrolytes.map(p => (
+                    <AddonProductRow
+                      key={p.id}
+                      product={p}
+                      quantity={getQty(p.id)}
+                      onChangeQty={qty => setQty(p.id, qty)}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                {!showElectrolytes ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowElectrolytes(true)}
+                    className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
+                  >
+                    + Add electrolyte products (optional)
+                  </button>
+                ) : (
+                  <>
+                    <FieldLabel>Electrolyte top-up</FieldLabel>
+                    <div className="space-y-2">
+                      {electrolytes.map(p => (
+                        <AddonProductRow
+                          key={p.id}
+                          product={p}
+                          quantity={getQty(p.id)}
+                          onChangeQty={qty => setQty(p.id, qty)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Real food extras */}
+          <div>
+            <FieldLabel>Real food add-ons</FieldLabel>
+            <p className="text-xs text-gray-400 -mt-2 mb-3">
+              Available at aid stations or easy to carry
+            </p>
+            <div className="space-y-2">
+              {realFood.map(p => (
+                <AddonProductRow
+                  key={p.id}
+                  product={p}
+                  quantity={getQty(p.id)}
+                  onChangeQty={qty => setQty(p.id, qty)}
+                />
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              These fit Lecka's real food philosophy — no synthetic additives
+            </p>
+          </div>
+
+        </div>
+      )}
+
+    </div>
+  )
+}
+
 // ── Step validation ───────────────────────────────────────────────────────────
 
 function isStep1Valid(form) {
@@ -946,6 +1195,9 @@ export default function StepForm({ onComplete }) {
   const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
   const [profilePrefilled, setProfilePrefilled] = useState(false)
   const [prefillDismissed, setPrefillDismissed] = useState(false)
+  const [previewTargets, setPreviewTargets] = useState(null)
+
+  const totalSteps = previewTargets && needsDualTransporter(previewTargets) ? 4 : 3
 
   // Persist form to sessionStorage on every change so a refresh or accidental
   // navigation away doesn't wipe the user's progress.
@@ -991,21 +1243,48 @@ export default function StepForm({ onComplete }) {
     return () => controller.abort()
   }, [])
 
-  const stepValid = { 1: isStep1Valid(form), 2: isStep2Valid(form), 3: isStep3Valid(form) }
+  const stepValid = { 1: isStep1Valid(form), 2: isStep2Valid(form), 3: isStep3Valid(form), 4: true }
   const canAdvance = stepValid[step]
 
   function handleNext() {
-    if (step < 3) {
+    if (step === 2) {
+      // Compute preview targets so we know whether Step 4 is needed
+      try {
+        const weight_kg    = toKg(form.weight_value, form.weight_unit)
+        const goal_minutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
+        const preview = calculateTargets({
+          race_type:        form.race_type,
+          goal_minutes,
+          weight_kg,
+          gender:           form.gender,
+          conditions:       form.conditions,
+          effort:           form.effort,
+          caffeine_ok:      form.caffeine_ok,
+          athlete_profile:  form.athlete_profile,
+          elevation_gain_m: form.elevation_gain_m,
+          distance_km:      parseFloat(form.custom_km) || 0,
+        })
+        setPreviewTargets(preview)
+      } catch {
+        setPreviewTargets(null)
+      }
       setStep(s => s + 1)
       return
     }
+
+    if (step < totalSteps) {
+      setStep(s => s + 1)
+      return
+    }
+
+    // Final step — build the plan
     const weight_kg    = toKg(form.weight_value, form.weight_unit)
     const goal_minutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
     const h = Math.floor(goal_minutes / 60)
     const m = goal_minutes % 60
     const goal_time = `${h}:${String(m).padStart(2, '0')}`
 
-    const targets   = calculateTargets({
+    const targets = calculateTargets({
       race_type:        form.race_type,
       goal_minutes,
       weight_kg,
@@ -1017,10 +1296,28 @@ export default function StepForm({ onComplete }) {
       elevation_gain_m: form.elevation_gain_m,
       distance_km:      parseFloat(form.custom_km) || 0,
     })
-    const selection = selectProducts(targets, form.preferred_product_ids, detectRegion)
+
+    const resolvedAddonItems = form.addon_items
+      .filter(i => i.quantity > 0)
+      .map(i => ({
+        product:  competitorProducts.find(p => p.id === i.id),
+        quantity: i.quantity,
+      }))
+      .filter(i => i.product !== undefined)
+
+    const addonCoverage      = computeAddonCoverage(resolvedAddonItems, goal_minutes)
+    const foundationTargets  = computeFoundationTargets(targets, addonCoverage)
+    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, detectRegion)
 
     try { sessionStorage.removeItem(DRAFT_KEY) } catch {}
-    onComplete({ targets, selection, form: { ...form, goal_time } })
+    onComplete({
+      targets,
+      foundationTargets,
+      selection,
+      addonCoverage,
+      resolvedAddonItems,
+      form: { ...form, goal_time },
+    })
   }
 
   return (
@@ -1030,7 +1327,7 @@ export default function StepForm({ onComplete }) {
       <div className="w-full h-1 bg-gray-100" aria-hidden="true">
         <div
           className="h-1 bg-[#48C4B0] transition-all duration-500 ease-in-out"
-          style={{ width: `${(step / 3) * 100}%` }}
+          style={{ width: `${(step / totalSteps) * 100}%` }}
         />
       </div>
 
@@ -1041,10 +1338,15 @@ export default function StepForm({ onComplete }) {
           <LanguageSwitcher region={detectRegion} />
         </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-          {t('common:step.ofTotal', { step })}
+          {t('common:step.ofTotal', { step, total: totalSteps })}
         </p>
         <h1 className="text-2xl font-bold text-[#1B1B1B] mt-1">
-          {[t('form:steps.race'), t('form:steps.body'), t('form:steps.products')][step - 1]}
+          {[
+            t('form:steps.race'),
+            t('form:steps.body'),
+            t('form:steps.products'),
+            'Performance add-ons',
+          ][step - 1]}
         </h1>
       </div>
 
@@ -1060,6 +1362,9 @@ export default function StepForm({ onComplete }) {
           />
         )}
         {step === 3 && <StepThree form={form} setForm={setForm} />}
+        {step === 4 && (
+          <StepFour form={form} setForm={setForm} previewTargets={previewTargets} />
+        )}
       </div>
 
       {/* ── Navigation — follows content naturally, no flex-1 stretch ── */}
@@ -1086,7 +1391,7 @@ export default function StepForm({ onComplete }) {
               : 'bg-gray-100 text-gray-400 cursor-not-allowed',
           ].join(' ')}
         >
-          {step === 3 ? t('common:step.buildMyPlan') : t('common:step.next')}
+          {step === totalSteps ? t('common:step.buildMyPlan') : t('common:step.next')}
         </button>
       </div>
 

@@ -3,7 +3,7 @@
   "nav.startOver": "← Bắt đầu lại",
   "nav.backToPlanner": "← Quay lại kế hoạch",
 
-  "step.ofTotal": "Bước {{step}} / 3",
+  "step.ofTotal": "Bước {{step}} / {{total}}",
   "step.next": "Tiếp theo",
   "step.back": "Quay lại",
   "step.buildMyPlan": "Tạo kế hoạch",

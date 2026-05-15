@@ -3,7 +3,7 @@
   "nav.startOver": "← Start forfra",
   "nav.backToPlanner": "← Tilbage til planlæggeren",
 
-  "step.ofTotal": "Trin {{step}} af 3",
+  "step.ofTotal": "Trin {{step}} af {{total}}",
   "step.next": "Næste",
   "step.back": "Tilbage",
   "step.buildMyPlan": "Byg min plan",
