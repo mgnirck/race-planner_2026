@@ -326,7 +326,8 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
 
   y = doc.lastAutoTable.finalY + 10
 
-  // ── Section 2: Product plan ───────────────────────────────────────────────
+  // ── Section 2: Product plan (omitted when no products available in region) ─
+  if (selectedProducts.length > 0) {
   y = ensureSpace(doc, y, 50)
   y = sectionHeading(doc, t('pdf.section.productPlan'), y, ML, CW)
 
@@ -429,6 +430,7 @@ function generatePDF(inputs, targets, selectedProducts, region = 'us', lang = 'e
     }
     y += 4
   }
+  } // end selectedProducts.length > 0
 
   // ── Section 3: Race day timeline ──────────────────────────────────────────
   y = ensureSpace(doc, y, 60)
@@ -554,6 +556,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
   const label   = raceLabel(inputs, t)
   const subject = t('email.subject', { label })
 
+  const hasProducts     = selectedProducts.length > 0
   const productListHtml = selectedProducts
     .map(item => `<li><strong>${item.product.name}</strong> &times;&nbsp;${item.quantity} &mdash; ${item.note ?? ''}</li>`)
     .join('\n')
@@ -654,6 +657,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
         </div>
       </div>
 
+      ${hasProducts ? `
       <p style="margin-bottom: 6px;"><strong>${t('email.productPlanTitle')}</strong></p>
       <ul>
         ${productListHtml}
@@ -669,7 +673,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, pdfBuffer
         <p style="margin:0;font-size:13px;color:#1B1B1B;">
           <strong>${t('email.discountTitle')}</strong> ${t('email.discountBody')}
         </p>
-      </div>
+      </div>` : ''}
 
       <p class="note">
         ${t('email.note')}
@@ -890,8 +894,8 @@ export default async function handler(req, res) {
   if (!targets || typeof targets !== 'object') {
     return res.status(400).json({ success: false, error: 'Missing field: targets' })
   }
-  if (!Array.isArray(selectedProducts) || selectedProducts.length === 0) {
-    return res.status(400).json({ success: false, error: 'Missing field: selectedProducts (must be a non-empty array)' })
+  if (!Array.isArray(selectedProducts)) {
+    return res.status(400).json({ success: false, error: 'Missing field: selectedProducts (must be an array)' })
   }
 
   // ── Generate PDF ───────────────────────────────────────────────────────────

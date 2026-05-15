@@ -1515,27 +1515,39 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
         <section>
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('results:section.whatToTake')}</p>
-            <button
-              type="button"
-              onClick={() => setShowCartEditor(true)}
-              className="text-xs text-[#48C4B0] font-semibold hover:underline"
-            >
-              {t('results:cta.adjustPlan')}
-            </button>
+            {aggregated.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowCartEditor(true)}
+                className="text-xs text-[#48C4B0] font-semibold hover:underline"
+              >
+                {t('results:cta.adjustPlan')}
+              </button>
+            )}
           </div>
-          <div className="space-y-3">
-            {aggregated.map(row => (
-              <ProductCard
-                key={row.product.id}
-                {...row}
-                currencySymbol={regionConfig.currency_symbol}
-                decimals={regionConfig.decimals ?? 2}
-                cartUnits={row.cartUnits}
-                savedAmount={row.savedAmount ?? 0}
-                region={region}
-              />
-            ))}
-          </div>
+          {aggregated.length === 0 ? (
+            <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
+              We couldn&apos;t find products available in your region for this plan.
+              Try switching your region above, or contact us at{' '}
+              <a href="mailto:info@getlecka.com" className="text-[#48C4B0] underline">
+                info@getlecka.com
+              </a>.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {aggregated.map(row => (
+                <ProductCard
+                  key={row.product.id}
+                  {...row}
+                  currencySymbol={regionConfig.currency_symbol}
+                  decimals={regionConfig.decimals ?? 2}
+                  cartUnits={row.cartUnits}
+                  savedAmount={row.savedAmount ?? 0}
+                  region={region}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* ── Training preparation (shown when buying more than needed for race) */}
@@ -1610,8 +1622,8 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
           </section>
         )}
 
-        {/* ── Shop CTA ────────────────────────────────────────────────────── */}
-        <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
+        {/* ── Shop CTA — hidden when no products are available in the region ── */}
+        {aggregated.length > 0 && <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <span className="text-sm text-gray-500">
               {t('results:cta.packs', { count: totalPacks })}
@@ -1691,7 +1703,7 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
               </p>
             </div>
           )}
-        </section>
+        </section>}
 
         {/* ── Race timeline ────────────────────────────────────────────────── */}
         <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
