@@ -68,7 +68,10 @@ export default function App() {
         targets={plan.targets}
         selection={plan.selection}
         form={plan.form}
-        onBack={() => isEmbedded ? setPlan(null) : window.location.replace('/planner')}
+        onBack={() => {
+          try { sessionStorage.removeItem('lecka_form_draft') } catch {}
+          isEmbedded ? setPlan(null) : window.location.replace('/planner')
+        }}
       />
     )
   }

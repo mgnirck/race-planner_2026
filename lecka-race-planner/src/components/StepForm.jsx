@@ -10,7 +10,7 @@
  * onComplete({ targets, selection, form }) — called on final submit
  */
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
@@ -59,6 +59,52 @@ function displayToKm(displayVal, unit) {
   const n = parseFloat(displayVal)
   if (!isFinite(n) || n <= 0) return null
   return unit === 'mi' ? n * 1.60934 : n
+}
+
+// ── Session draft persistence ─────────────────────────────────────────────────
+
+const DRAFT_KEY = 'lecka_form_draft'
+
+const DEFAULT_FORM = {
+  // Step 1
+  race_name:         '',
+  custom_km:         '',
+  custom_km_display: '',
+  dist_unit:         'km',
+  surface_type:      '',
+  race_type:         '',
+  goal_time_h:       '',
+  goal_time_m:       '',
+  elevation_gain_m:  0,
+  elev_display:      '',
+  elev_unit:         'm',
+  gpx_parsed:        false,
+  sport:             'running',
+  triathlon_type:    '',
+  // Step 2
+  weight_value:    '70',
+  weight_unit:     'kg',
+  gender:          '',
+  conditions:      '',
+  effort:          '',
+  athlete_profile: '',
+  caffeine_ok:     null,
+  // Step 3
+  preferred_product_ids: [],
+}
+
+function loadDraft() {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    const draft = JSON.parse(raw)
+    // Discard drafts where the user hadn't entered any race info yet
+    if (!draft.race_type && !draft.custom_km && !draft.triathlon_type) return null
+    // Merge onto defaults so newly added fields always have a safe value
+    return { ...DEFAULT_FORM, ...draft }
+  } catch {
+    return null
+  }
 }
 
 // ── Primitive UI components ───────────────────────────────────────────────────
@@ -816,33 +862,13 @@ function isStep3Valid(_form) {
 export default function StepForm({ onComplete }) {
   const { t } = useTranslation(['form', 'common'])
   const [step, setStep] = useState(1)
-  const [form, setForm] = useState({
-    // Step 1
-    race_name:         '',
-    custom_km:         '',
-    custom_km_display: '',
-    dist_unit:         'km',
-    surface_type:      '',
-    race_type:         '',
-    goal_time_h:       '',
-    goal_time_m:       '',
-    elevation_gain_m:  0,
-    elev_display:      '',
-    elev_unit:         'm',
-    gpx_parsed:        false,
-    sport:             'running',
-    triathlon_type:    '',
-    // Step 2
-    weight_value:    '70',
-    weight_unit:     'kg',
-    gender:          '',
-    conditions:      '',
-    effort:          '',
-    athlete_profile: '',
-    caffeine_ok:     null,
-    // Step 3
-    preferred_product_ids: [],
-  })
+  const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
+
+  // Persist form to sessionStorage on every change so a refresh or accidental
+  // navigation away doesn't wipe the user's progress.
+  useEffect(() => {
+    try { sessionStorage.setItem(DRAFT_KEY, JSON.stringify(form)) } catch {}
+  }, [form])
 
   const stepValid = { 1: isStep1Valid(form), 2: isStep2Valid(form), 3: isStep3Valid(form) }
   const canAdvance = stepValid[step]
@@ -872,6 +898,7 @@ export default function StepForm({ onComplete }) {
     })
     const selection = selectProducts(targets, form.preferred_product_ids, detectRegion)
 
+    try { sessionStorage.removeItem(DRAFT_KEY) } catch {}
     onComplete({ targets, selection, form: { ...form, goal_time } })
   }
 
