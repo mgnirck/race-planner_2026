@@ -1304,7 +1304,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ResultsPage({ targets, selection, form, onBack, region: regionProp, hideSave = false }) {
+export default function ResultsPage({ targets, selection, form, onBack, region: regionProp, hideSave = false, isPublicView = false }) {
   const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
   const [showCartEditor, setShowCartEditor] = useState(false)
@@ -1716,13 +1716,22 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}
         <div className="pb-10 text-center">
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
-          >
-            {t('common:nav.startOver')}
-          </button>
+          {isPublicView ? (
+            <a
+              href="/planner"
+              className="text-sm font-semibold text-[#48C4B0] hover:underline transition-colors"
+            >
+              Build your own plan →
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
+            >
+              {t('common:nav.startOver')}
+            </button>
+          )}
         </div>
 
       </div>
