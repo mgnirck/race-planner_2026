@@ -34,6 +34,19 @@ function goalMinutesFromFields(h, m) {
   return total > 0 ? total : null
 }
 
+const PACE_BOUNDS = {
+  '5k':                { min: 12,  max: 120  },
+  '10k':               { min: 27,  max: 180  },
+  'half_marathon':     { min: 58,  max: 360  },
+  'marathon':          { min: 120, max: 720  },
+  'ultra_50k':         { min: 210, max: 1200 },
+  'ultra_100k':        { min: 480, max: 2400 },
+  'triathlon_sprint':  { min: 40,  max: 240  },
+  'triathlon_olympic': { min: 90,  max: 480  },
+  'triathlon_70_3':    { min: 210, max: 900  },
+  'triathlon_140_6':   { min: 480, max: 1800 },
+}
+
 function distanceToRaceType(km) {
   if (km <  10) return '5k'
   if (km <  20) return '10k'
@@ -609,6 +622,21 @@ function StepOne({ form, setForm }) {
         {!timeIsInvalid && goalMinutes === null && (
           <p className="text-xs text-gray-400 mt-1.5">{t('form:field.goalTime.hint')}</p>
         )}
+        {!timeIsInvalid && goalMinutes !== null && form.race_type && (() => {
+          const bounds = PACE_BOUNDS[form.race_type]
+          if (!bounds) return null
+          if (goalMinutes < bounds.min) return (
+            <p className="text-xs text-amber-600 mt-1.5">
+              That&apos;s a very fast target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+            </p>
+          )
+          if (goalMinutes > bounds.max) return (
+            <p className="text-xs text-amber-600 mt-1.5">
+              That&apos;s a very slow target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+            </p>
+          )
+          return null
+        })()}
       </div>
 
     </div>
