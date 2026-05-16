@@ -57,10 +57,10 @@ function distanceToRaceType(km) {
 }
 
 const TRIATHLON_OPTIONS = [
-  { key: 'triathlon_sprint',  label: 'Sprint',  sublabel: '750m swim · 20km bike · 5km run',    km: 51    },
-  { key: 'triathlon_olympic', label: 'Olympic', sublabel: '1.5km swim · 40km bike · 10km run',  km: 51.5  },
-  { key: 'triathlon_70_3',    label: '70.3',    sublabel: '1.9km swim · 90km bike · 21km run',  km: 113   },
-  { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226   },
+  { key: 'triathlon_sprint',  label: 'Sprint',  sublabel: '750m swim · 20km bike · 5km run',    km: 51,   hint: 'Typical finish times: 45 min – 2h'   },
+  { key: 'triathlon_olympic', label: 'Olympic', sublabel: '1.5km swim · 40km bike · 10km run',  km: 51.5, hint: 'Typical finish times: 1h45 – 4h'     },
+  { key: 'triathlon_70_3',    label: '70.3',    sublabel: '1.9km swim · 90km bike · 21km run',  km: 113,  hint: 'Typical finish times: 3h30 – 8h'     },
+  { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226,  hint: 'Typical finish times: 8h – 17h'      },
 ]
 
 function toKg(value, unit) {
@@ -631,6 +631,17 @@ function StepOne({ form, setForm }) {
         {!timeIsInvalid && goalMinutes === null && (
           <p className="text-xs text-gray-400 mt-1.5">{t('form:field.goalTime.hint')}</p>
         )}
+        {/* Triathlon typical-times hint — hide once the user has a valid in-range time */}
+        {form.sport === 'triathlon' && form.triathlon_type && (() => {
+          const opt = TRIATHLON_OPTIONS.find(o => o.key === form.triathlon_type)
+          if (!opt) return null
+          const bounds = PACE_BOUNDS[form.triathlon_type]
+          const inRange = goalMinutes !== null && bounds && goalMinutes >= bounds.min && goalMinutes <= bounds.max
+          if (inRange) return null
+          return (
+            <p className="text-xs text-gray-400 mt-1.5">{opt.hint}</p>
+          )
+        })()}
         {!timeIsInvalid && goalMinutes !== null && form.race_type && (() => {
           const bounds = PACE_BOUNDS[form.race_type]
           if (!bounds) return null
