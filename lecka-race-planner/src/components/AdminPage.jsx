@@ -40,6 +40,9 @@ const REGION_LABELS = {
   hk: 'Hong Kong',
 }
 
+const CATALOG_REGIONS      = ['us', 'de', 'dk', 'ch', 'vn']
+const CATALOG_REGION_CODES = { us: 'US', de: 'DE', dk: 'DK', ch: 'CH', vn: 'VN' }
+
 const ATHLETE_PROFILE_LABELS = {
   untrained: 'New to endurance sports',
   intermediate: 'Intermediate',
@@ -544,9 +547,6 @@ function AthletesTab({ data }) {
 
 // ── Tab: Products ─────────────────────────────────────────────────────────────
 
-const CATALOG_REGIONS = ['us', 'de', 'dk', 'ch', 'vn']
-const REGION_LABELS   = { us: 'US', de: 'DE', dk: 'DK', ch: 'CH', vn: 'VN' }
-
 const SEED_LABELS = {
   idle:    'Sync from products.json',
   confirm: 'Confirm sync?',
@@ -780,7 +780,7 @@ function ProductsTab({ data, password }) {
                  style={{ gridTemplateColumns: '1fr repeat(5, 3rem)' }}>
               <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Product</span>
               {CATALOG_REGIONS.map(r => (
-                <span key={r} className="text-xs font-semibold uppercase tracking-wider text-gray-400 text-center">{REGION_LABELS[r]}</span>
+                <span key={r} className="text-xs font-semibold uppercase tracking-wider text-gray-400 text-center">{CATALOG_REGION_CODES[r]}</span>
               ))}
             </div>
 
@@ -837,7 +837,7 @@ function ProductsTab({ data, password }) {
                           if (!reg?.variants?.length) return null
                           return (
                             <div key={region}>
-                              <p className="text-xs font-semibold text-gray-400 mb-2">{REGION_LABELS[region]}</p>
+                              <p className="text-xs font-semibold text-gray-400 mb-2">{CATALOG_REGION_CODES[region]}</p>
                               <div className="space-y-1.5">
                                 {reg.variants.map(v => {
                                   const priceKey = `v:${v.id}:price`
