@@ -1031,6 +1031,7 @@ function AddonProductRow({ product, quantity, onChangeQty }) {
 
 function StepFour({ form, setForm, previewTargets }) {
   const [showElectrolytes, setShowElectrolytes] = useState(false)
+  const [showScienceTooltip, setShowScienceTooltip] = useState(false)
 
   const highCarbGels = competitorProducts.filter(p => p.category === 'high_carb_gel')
   const electrolytes = competitorProducts.filter(p => p.category === 'electrolyte')
@@ -1061,20 +1062,47 @@ function StepFour({ form, setForm, previewTargets }) {
       {/* Context box */}
       {previewTargets && (
         <div className="rounded-xl border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 px-4 py-4 space-y-2">
-          <p className="text-sm font-semibold text-[#1B1B1B]">Your real food foundation</p>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Lecka covers up to 65g carbs/hour — the maximum your body can absorb
-            from a single carbohydrate source. Your target for this race is{' '}
-            <span className="font-semibold text-[#1B1B1B]">{previewTargets.carb_per_hour}g/hour</span>.
-          </p>
-          {extraCarbs > 0 && (
-            <p className="text-sm text-gray-600 leading-relaxed">
-              The extra{' '}
-              <span className="font-semibold text-[#1B1B1B]">{extraCarbs}g/hour</span>{' '}
-              needs a second carbohydrate source. Sports science calls this the
-              dual-transporter protocol — combining glucose (from real food like Lecka)
-              with fructose (from products below).
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-[#1B1B1B]">
+              Your Lecka foundation covers {Math.min(65, previewTargets.carb_per_hour)}g carbs/hour
             </p>
+            <button
+              type="button"
+              onClick={() => setShowScienceTooltip(v => !v)}
+              className="text-[#48C4B0] hover:text-[#3db09d] flex-shrink-0"
+              aria-label="Show absorption science"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          {extraCarbs > 0 ? (
+            <>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                For races this long, your body can absorb even more if you add a second type of fuel alongside your gels.
+              </p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Adding{' '}
+                <span className="font-semibold text-[#1B1B1B]">{extraCarbs}g/hour</span>{' '}
+                from the products below gets you to your full target.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Your Lecka gels cover your full target — the options below are optional extras.
+            </p>
+          )}
+          {showScienceTooltip && (
+            <div className="mt-2 pt-3 border-t border-[#48C4B0]/30 text-xs text-gray-500 leading-relaxed space-y-1">
+              <p className="font-semibold text-gray-600">The science behind the limit</p>
+              <p>
+                Your gut absorbs glucose (from real food like Lecka) via one transporter (SGLT1),
+                which maxes out at around 60–65g carbs/hour. A second transporter (GLUT5) handles
+                fructose independently — so combining both types lets you absorb 90g/hour or more.
+                Sports scientists call this the dual-transporter protocol.
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -1084,7 +1112,7 @@ function StepFour({ form, setForm, previewTargets }) {
         <FieldLabel>Want to add performance products?</FieldLabel>
         <div className="space-y-2">
           <OptionCard
-            label="Lecka only — I'm good"
+            label="Lecka gels are enough for me"
             desc="I'll fuel with Lecka and manage the intensity on race day. I can always adjust my plan later."
             selected={!form.want_addons}
             onClick={() => setForm(f => ({ ...f, want_addons: false, addon_items: [] }))}
