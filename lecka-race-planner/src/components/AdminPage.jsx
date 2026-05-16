@@ -886,7 +886,7 @@ export default function AdminPage() {
     if (!gate.unlocked) return
     setAnalyticsLoading(true)
     setAnalyticsError(null)
-    fetch('/api/admin/analytics', {
+    fetch('/api/record-plan?analytics=1', {
       headers: { 'X-Admin-Password': gate.entered },
     })
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
