@@ -1635,6 +1635,18 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           {t('results:research.learnMore')}
         </button>
 
+        {/* ── Pre-race sodium loading callout ─────────────────────────────── */}
+        {['hot', 'humid'].includes(targets.conditions) && targets.total_duration_minutes >= 240 && (
+          <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
+            <p className="font-semibold text-amber-800 mb-1">Pre-race sodium loading recommended</p>
+            <p className="text-amber-900">
+              2–4 hours before your start, mix ~2 teaspoons of salt (~10g) into 1L of water or electrolyte drink.
+              Sip steadily — don&apos;t chug. This boosts blood sodium and plasma volume, helping you perform in the heat.
+            </p>
+            <p className="text-xs text-amber-700 mt-2">This guidance also appears in your PDF plan.</p>
+          </div>
+        )}
+
         {/* ── Act 1: What to take ──────────────────────────────────────────── */}
         <section>
           <SectionLabel>What to take</SectionLabel>
