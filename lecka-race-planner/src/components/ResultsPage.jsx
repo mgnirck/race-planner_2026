@@ -1611,6 +1611,14 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               ? 'Real food foundation + add-ons — your complete race plan.'
               : 'Lecka is your real food foundation. Everything else is optional.'}
           </p>
+          {form.training_mode === true && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1
+                            bg-amber-50 border border-amber-200 rounded-full">
+              <span className="text-xs font-semibold text-amber-700">
+                Training mode — carb targets reduced for gut adaptation
+              </span>
+            </div>
+          )}
         </div>
 
         {/* ── Warnings ────────────────────────────────────────────────────── */}

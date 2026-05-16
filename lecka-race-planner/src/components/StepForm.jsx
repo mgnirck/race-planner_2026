@@ -92,6 +92,7 @@ const DEFAULT_FORM = {
   effort:          '',
   athlete_profile: '',
   caffeine_ok:     null,
+  training_mode:   false,
   // Step 3
   preferred_product_ids: [],
   fuelling_style: 'gels_only',
@@ -805,6 +806,26 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
         </div>
       </div>
 
+      {/* Gut training mode */}
+      <div>
+        <FieldLabel>Gut training mode</FieldLabel>
+        <p className="text-xs text-gray-400 mb-2">
+          Reduce carb targets by 30% — for training runs before race day, not race day itself.
+        </p>
+        <div className="flex gap-2">
+          <Pill
+            label="Yes"
+            selected={form.training_mode === true}
+            onClick={() => setForm(f => ({ ...f, training_mode: true }))}
+          />
+          <Pill
+            label="No"
+            selected={form.training_mode === false}
+            onClick={() => setForm(f => ({ ...f, training_mode: false }))}
+          />
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -1310,6 +1331,7 @@ export default function StepForm({ onComplete }) {
       athlete_profile:  form.athlete_profile,
       elevation_gain_m: form.elevation_gain_m,
       distance_km:      parseFloat(form.custom_km) || 0,
+      training_mode:    form.training_mode,
     })
 
     const resolvedAddonItems = form.addon_items
