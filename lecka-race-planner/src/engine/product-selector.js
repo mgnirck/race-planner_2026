@@ -99,7 +99,8 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
     const isCaffeineEligible =
       caffeine_ok &&
       slot >= firstCaffeineMin &&
-      minutesSinceLast >= 60
+      minutesSinceLast >= 60 &&
+      (total_duration_minutes - slot) >= 30
 
     if (isCaffeineEligible) {
       cafGelSlots.push(slot)
