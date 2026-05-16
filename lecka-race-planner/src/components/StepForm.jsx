@@ -238,11 +238,14 @@ function StepOne({ form, setForm }) {
   function handleDistChange(rawValue) {
     setForm(f => {
       const kmVal = displayToKm(rawValue, f.dist_unit)
+      const MAX_KM = 250
+      const overMax = kmVal !== null && kmVal > MAX_KM
       return {
         ...f,
         custom_km_display: rawValue,
-        custom_km:  kmVal !== null ? String(Math.round(kmVal * 10) / 10) : '',
-        race_type:  kmVal ? distanceToRaceType(kmVal) : '',
+        custom_km:     kmVal !== null ? String(Math.round(kmVal * 10) / 10) : '',
+        race_type:     kmVal ? distanceToRaceType(kmVal) : '',
+        dist_warning:  overMax,
       }
     })
   }
@@ -472,6 +475,12 @@ function StepOne({ form, setForm }) {
             {form.custom_km_display && (
               <p className="text-xs text-[#48C4B0] mt-1.5">
                 {t('form:field.distance.hint', { value: form.custom_km_display, unit: form.dist_unit })}
+              </p>
+            )}
+            {form.dist_warning && (
+              <p className="text-xs text-amber-600 mt-1.5">
+                That&apos;s a very long distance — your plan will be calculated as Ultra 100km+.
+                If this looks wrong, check your distance units.
               </p>
             )}
           </div>
