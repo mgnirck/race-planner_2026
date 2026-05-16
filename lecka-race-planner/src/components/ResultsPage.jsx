@@ -129,7 +129,7 @@ function aggregateByProduct(selection, region = 'us', manualQty = null) {
       } else if (map[id]) {
         map[id].totalUnits = units
       } else {
-        const product = allProductsCatalog.find(p => p.id === id && (p.type === 'gel' || p.type === 'bar'))
+        const product = allProductsCatalog.find(p => p.id === id && (p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar'))
         if (product) map[id] = { product, totalUnits: units }
       }
     }
@@ -149,7 +149,7 @@ function computeTrainingInfo(aggregated) {
   let gelRaceUnits = 0, gelCartUnits = 0
   let barRaceUnits = 0, barCartUnits = 0
   for (const row of aggregated) {
-    if (row.product.type === 'gel' || row.product.type === 'variety_pack') {
+    if (row.product.type === 'gel' || row.product.type === 'ultra_gel' || row.product.type === 'variety_pack') {
       gelRaceUnits += row.totalUnits
       gelCartUnits += row.cartUnits
     } else if (row.product.type === 'bar') {
@@ -308,7 +308,7 @@ function adjustTimelineSelection(selection, manualQty, totalDuration, allProduct
     if (!product) continue
 
     const timings = []
-    if (product.type === 'gel') {
+    if (product.type === 'gel' || product.type === 'ultra_gel') {
       for (let i = 0; i < qty; i++) timings.push(Math.min(20 + i * 30, totalDuration - 1))
     } else if (product.type === 'bar') {
       const beforeQty = Math.ceil(qty / 2)
@@ -1160,7 +1160,7 @@ function ResearchModal({ onClose }) {
 function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig, provided, targets }) {
   const { t } = useTranslation(['results', 'form'])
   const availableProducts = useMemo(() =>
-    allProductsCatalog.filter(p => (p.type === 'gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
+    allProductsCatalog.filter(p => (p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
     [region]
   )
 
@@ -1185,7 +1185,7 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
     }
   }, [onClose])
 
-  const gels = availableProducts.filter(p => p.type === 'gel')
+  const gels = availableProducts.filter(p => p.type === 'gel' || p.type === 'ultra_gel')
   const bars = availableProducts.filter(p => p.type === 'bar')
 
   function ProductRow({ product }) {

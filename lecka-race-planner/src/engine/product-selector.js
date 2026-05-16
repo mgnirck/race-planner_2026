@@ -45,7 +45,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
   // independently — explicit picks for one type are never discarded.
 
   const preferred     = availableProducts.filter(p => preferredProductIds.includes(p.id))
-  const preferredGels = preferred.filter(p => p.type === 'gel')
+  const preferredGels = preferred.filter(p => p.type === 'gel' || p.type === 'ultra_gel')
   const preferredBars = preferred.filter(p => p.type === 'bar')
 
   const selectedGels = preferredGels.length > 0
@@ -280,7 +280,7 @@ function resolveDefaultGels(availableProducts, caffeine_ok) {
   const ids = caffeine_ok ? GEL_DEFAULTS_CAFFEINE : GEL_DEFAULTS_NO_CAFFEINE
   const defaults = ids.map(id => availableProducts.find(p => p.id === id)).filter(Boolean)
   if (defaults.length > 0) return defaults
-  const fallback = availableProducts.find(p => p.type === 'gel')
+  const fallback = availableProducts.find(p => p.type === 'gel' || p.type === 'ultra_gel')
   return fallback ? [fallback] : []
 }
 
