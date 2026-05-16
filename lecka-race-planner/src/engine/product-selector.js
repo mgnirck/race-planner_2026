@@ -69,6 +69,8 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
 
   const gelSlots = buildGelSlots(total_carbs, selectedGels, total_duration_minutes, timingRules)
 
+  const duringNote = `First intake at ~${getFirstIntakeMin(total_duration_minutes)} min, then every 30 min`
+
   // Use flavour variety when the race is long enough to warrant it
   const useVariety = gelSlots.length >= 5
 
@@ -128,7 +130,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
           product,
           quantity:       slots.length,
           timing_minutes: slots,
-          note:           timingRules.during.note,
+          note:           duringNote,
         })
       }
     } else {
@@ -136,7 +138,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
         product:        plainGels[0],
         quantity:       plainGelSlots.length,
         timing_minutes: plainGelSlots,
-        note:           timingRules.during.note,
+        note:           duringNote,
       })
     }
   }
@@ -156,7 +158,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
           product,
           quantity:       slots.length,
           timing_minutes: slots,
-          note:           `${timingRules.during.note} — caffeine boost`,
+          note:           `${duringNote} — caffeine boost`,
         })
       }
     } else {
@@ -164,7 +166,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
         product:        cafGels[0],
         quantity:       cafGelSlots.length,
         timing_minutes: cafGelSlots,
-        note: `${timingRules.during.note} — caffeine boost at ${cafGelSlots.map(m => formatMin(m)).join(', ')}`,
+        note: `${duringNote} — caffeine boost at ${cafGelSlots.map(m => formatMin(m)).join(', ')}`,
       })
     }
   }
@@ -294,6 +296,13 @@ function resolveDefaultBars(availableProducts) {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+function getFirstIntakeMin(totalDurationMinutes) {
+  if (totalDurationMinutes < 60)  return 15  // very short: get carbs in early
+  if (totalDurationMinutes < 120) return 30  // under 2h: standard race start
+  if (totalDurationMinutes < 240) return 25  // marathon zone: slightly earlier
+  return 20                                   // ultra: front-load from 20 min
+}
+
 /**
  * Builds an array of gel timing slots whose combined carbs meet total_carbs.
  *
@@ -302,7 +311,7 @@ function resolveDefaultBars(availableProducts) {
  * capped so no two consecutive slots are closer than min_interval_min apart.
  */
 function buildGelSlots(totalCarbs, selectedGels, totalDurationMinutes, timingRules) {
-  const firstIntake = timingRules.during.first_intake_min
+  const firstIntake = getFirstIntakeMin(totalDurationMinutes)
   const minInterval = timingRules.during.min_interval_min
 
   if (selectedGels.length === 0 || totalCarbs <= 0 || firstIntake >= totalDurationMinutes) {
