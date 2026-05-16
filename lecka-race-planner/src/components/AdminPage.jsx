@@ -1,30 +1,89 @@
 /**
- * AdminPage.jsx
+ * AdminPage.jsx — /admin
  *
- * Route: /admin
- *
- * Password-protected analytics view. On unlock it fetches aggregate stats from
- * GET /api/record-plan (server-side /tmp counter). Falls back to localStorage
- * when the API is unavailable (offline, local dev without Vercel CLI).
- *
- * Security note
- * -------------
- * The password is compared client-side against import.meta.env.VITE_ADMIN_PASSWORD.
- * This is intentionally lightweight — the page only shows non-sensitive aggregate
- * stats. Do not use this mechanism to protect personal data.
- *
- * Data sources (in priority order)
- * ----------------------------------
- * 1. GET /api/record-plan  — server-side /tmp counter (all users, approx.)
- * 2. localStorage 'lecka_plans_v1' — this-browser fallback (offline / dev)
+ * Password-protected analytics dashboard. After unlock, fetches rich analytics
+ * from /api/admin/analytics in parallel with the existing /api/record-plan
+ * fallback counter.
  */
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import allProducts from '../config/products.json'
+import competitorProducts from '../config/competitor-products.json'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = 'lecka_plans_v1'
+const CONFIGURED_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? ''
+const IS_DEV = import.meta.env.MODE === 'development'
+
+const RACE_TYPE_LABELS = {
+  '5k': '5 km road',
+  '10k': '10 km road',
+  half_marathon: 'Half marathon',
+  marathon: 'Marathon',
+  ultra_50k: 'Ultra 50 km',
+  ultra_100k: 'Ultra 100 km+',
+  triathlon_sprint: 'Sprint triathlon',
+  triathlon_olympic: 'Olympic triathlon',
+  triathlon_70_3: '70.3 Triathlon',
+  triathlon_140_6: 'Ironman 140.6',
+}
+
+const REGION_LABELS = {
+  us: 'United States',
+  de: 'Germany',
+  dk: 'Denmark',
+  ch: 'Switzerland',
+  vn: 'Vietnam',
+  sg: 'Singapore',
+  hk: 'Hong Kong',
+}
+
+const ATHLETE_PROFILE_LABELS = {
+  untrained: 'New to endurance sports',
+  intermediate: 'Intermediate',
+  trained: 'Trained athlete',
+  elite: 'Elite / competitive',
+}
+
+const FUELLING_STYLE_LABELS = {
+  gels_only: 'Gels only',
+  gels_and_bars: 'Gels + bars',
+  drink_mix_base: 'Drink mix + gels',
+  flexible: 'No preference',
+  not_set: 'Not answered (pre-feature)',
+}
+
+const CONDITION_COLORS = {
+  cool: 'blue',
+  mild: 'teal',
+  warm: 'amber',
+  hot: 'red',
+  humid: 'purple',
+}
+
+const EFFORT_COLORS = {
+  easy: 'teal',
+  race_pace: 'amber',
+  hard: 'red',
+}
+
+const BAR_COLORS = {
+  blue: '#185FA5',
+  teal: '#48C4B0',
+  amber: '#BA7517',
+  red: '#A32D2D',
+  purple: '#534AB7',
+}
+
+const productNameById = Object.fromEntries(
+  allProducts.map(p => [p.id, p.name])
+)
+
+const competitorNameById = Object.fromEntries(
+  competitorProducts.products.map(p => [p.id, p.display_name])
+)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -57,19 +116,27 @@ function countByRaceType(plans, tFn) {
     .map(([key, count]) => ({ key, label: tFn ? tFn(`common:racetype.${key}`, { defaultValue: key }) : key, count }))
 }
 
-// ── Password gate ─────────────────────────────────────────────────────────────
+function formatMinutes(m) {
+  if (m == null) return '—'
+  const h = Math.floor(m / 60)
+  const min = m % 60
+  return `${h}:${String(min).padStart(2, '0')}`
+}
 
-const CONFIGURED_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? ''
-const IS_DEV              = import.meta.env.MODE === 'development'
+function dateToKey(d) {
+  if (d instanceof Date) return d.toISOString().slice(0, 10)
+  return String(d).slice(0, 10)
+}
+
+// ── Password gate hook ────────────────────────────────────────────────────────
 
 function usePasswordGate(t) {
   const [entered, setEntered] = useState('')
   const [unlocked, setUnlocked] = useState(IS_DEV && !CONFIGURED_PASSWORD)
-  const [error, setError]    = useState(false)
+  const [error, setError] = useState(false)
 
   function attempt() {
     if (!CONFIGURED_PASSWORD) {
-      // No password configured — allow in dev, block in prod
       if (IS_DEV) { setUnlocked(true); return }
       setError(true)
       return
@@ -86,7 +153,68 @@ function usePasswordGate(t) {
   return { unlocked, entered, setEntered, attempt, error }
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── Shared UI components ──────────────────────────────────────────────────────
+
+function SectionLabel({ children }) {
+  return (
+    <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
+      {children}
+    </p>
+  )
+}
+
+function MetricCard({ value, label, sub, highlight = false }) {
+  return (
+    <div className="bg-gray-50 rounded-2xl p-4 text-center">
+      <p className="text-xs font-semibold text-gray-500 mb-1">{label}</p>
+      <p className={`text-3xl font-bold ${highlight ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
+        {value}
+      </p>
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    </div>
+  )
+}
+
+function BarRow({ label, count, pct, color = 'teal' }) {
+  const barColor = BAR_COLORS[color] ?? BAR_COLORS.teal
+  return (
+    <div className="mb-3">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-sm font-medium text-gray-800">{label}</span>
+        <span className="text-sm text-gray-500">
+          <span className="font-semibold text-gray-800">{count}</span>
+          {pct != null && (
+            <span className="ml-1.5 text-xs text-gray-400">{pct}%</span>
+          )}
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct ?? 0}%`, backgroundColor: barColor }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function GoalTimeRow({ row }) {
+  return (
+    <tr className="border-t border-gray-100">
+      <td className="py-2 pr-3 text-sm font-medium text-gray-800">
+        {RACE_TYPE_LABELS[row.race_type] ?? row.race_type}
+        {row.count < 3 && (
+          <span className="ml-1.5 text-xs text-gray-400 font-normal">(small sample)</span>
+        )}
+      </td>
+      <td className="py-2 px-2 text-sm text-center text-gray-700">{formatMinutes(row.avg_minutes)}</td>
+      <td className="py-2 px-2 text-sm text-center text-gray-500">{formatMinutes(row.median_minutes)}</td>
+      <td className="py-2 px-2 text-sm text-center text-gray-500">{formatMinutes(row.min_minutes)}</td>
+      <td className="py-2 px-2 text-sm text-center text-gray-500">{formatMinutes(row.max_minutes)}</td>
+      <td className="py-2 pl-2 text-sm text-center text-gray-400">{row.count}</td>
+    </tr>
+  )
+}
 
 function StatBox({ value, label, sub }) {
   return (
@@ -98,15 +226,638 @@ function StatBox({ value, label, sub }) {
   )
 }
 
+function DataUnavailable() {
+  return <p className="text-sm text-gray-400 italic py-2">Data unavailable</p>
+}
+
+function SkeletonBar({ h = 'h-4', w = 'w-full' }) {
+  return <div className={`${h} ${w} bg-gray-200 rounded animate-pulse`} />
+}
+
+function SectionSkeleton() {
+  return (
+    <div className="space-y-3">
+      <SkeletonBar h="h-3" w="w-24" />
+      <SkeletonBar h="h-8" />
+      <SkeletonBar h="h-8" />
+      <SkeletonBar h="h-8" w="w-3/4" />
+    </div>
+  )
+}
+
+// ── Tab: Overview ─────────────────────────────────────────────────────────────
+
+function OverviewTab({ data }) {
+  const ov = data.overview
+  const raceTypes = data.by_race_type
+  const regions = data.by_region
+  const conditions = data.by_conditions
+  const effort = data.by_effort
+  const addon = data.addon_usage
+  const caffeine = data.caffeine_usage
+
+  return (
+    <div className="space-y-8">
+      {/* Row 1 — four MetricCards */}
+      <section>
+        {ov ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricCard value={ov.total_plans} label="Total plans" highlight />
+            <MetricCard value={ov.this_month} label="This month" highlight />
+            <MetricCard value={ov.this_week} label="This week" highlight />
+            <MetricCard
+              value={ov.registered_users}
+              label="Registered users"
+              sub={`${ov.email_capture_rate_pct ?? 0}% with email`}
+            />
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 2 — Race type breakdown */}
+      <section>
+        <SectionLabel>Race types</SectionLabel>
+        {raceTypes ? (
+          raceTypes.map(r => (
+            <BarRow
+              key={r.key}
+              label={RACE_TYPE_LABELS[r.key] ?? r.key}
+              count={r.count}
+              pct={r.pct}
+              color="teal"
+            />
+          ))
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 3 — Region breakdown */}
+      <section>
+        <SectionLabel>By region</SectionLabel>
+        {regions ? (
+          regions
+            .filter(r => r.key != null)
+            .map(r => (
+              <BarRow
+                key={r.key}
+                label={REGION_LABELS[r.key] ?? r.key.toUpperCase()}
+                count={r.count}
+                pct={r.pct}
+                color="teal"
+              />
+            ))
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 4 — Conditions + Effort */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <section>
+          <SectionLabel>Race conditions</SectionLabel>
+          {conditions ? (
+            conditions.map(r => (
+              <BarRow
+                key={r.key}
+                label={r.key ? r.key.charAt(0).toUpperCase() + r.key.slice(1) : '—'}
+                count={r.count}
+                pct={r.pct}
+                color={CONDITION_COLORS[r.key] ?? 'teal'}
+              />
+            ))
+          ) : (
+            <DataUnavailable />
+          )}
+        </section>
+
+        <section>
+          <SectionLabel>Effort level</SectionLabel>
+          {effort ? (
+            effort.map(r => (
+              <BarRow
+                key={r.key}
+                label={r.key === 'race_pace' ? 'Race pace' : r.key ? r.key.charAt(0).toUpperCase() + r.key.slice(1) : '—'}
+                count={r.count}
+                pct={r.pct}
+                color={EFFORT_COLORS[r.key] ?? 'teal'}
+              />
+            ))
+          ) : (
+            <DataUnavailable />
+          )}
+        </section>
+      </div>
+
+      {/* Row 5 — Add-on usage */}
+      <section>
+        <SectionLabel>Competitor add-on usage</SectionLabel>
+        {addon ? (
+          <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-2xl px-5 py-4">
+            <p className="text-base font-semibold text-gray-800">
+              {addon.addon_usage_pct ?? 0}% of plans include add-on products
+              <span className="text-gray-500 font-normal"> (Maurten, SiS, etc.)</span>
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {addon.plans_with_addons} of {addon.total_plans} plans
+            </p>
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 6 — Caffeine */}
+      <section>
+        <SectionLabel>Caffeine preference</SectionLabel>
+        {caffeine ? (
+          <div className="grid grid-cols-2 gap-3">
+            {caffeine.map(r => (
+              <MetricCard
+                key={r.key}
+                value={r.count}
+                label={r.key === 'with_caffeine' ? 'With caffeine' : 'No caffeine'}
+                sub={`${r.pct}%`}
+                highlight={r.key === 'with_caffeine'}
+              />
+            ))}
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+    </div>
+  )
+}
+
+// ── Tab: Athletes ─────────────────────────────────────────────────────────────
+
+function AthletesTab({ data }) {
+  const ov = data.overview
+  const gender = data.by_gender
+  const profile = data.by_athlete_profile
+  const fuelling = data.by_fuelling_style
+  const goalTimes = data.avg_goal_time_by_race_type
+  const elevation = data.elevation_usage
+  const training = data.training_mode_usage
+
+  const showTraining =
+    training != null &&
+    training.some(r => r.key === 'training_mode' && r.count > 0)
+
+  return (
+    <div className="space-y-8">
+      {/* Row 1 — two MetricCards */}
+      <section>
+        {ov ? (
+          <div className="grid grid-cols-2 gap-3">
+            <MetricCard value={ov.registered_users} label="Registered users" highlight />
+            <MetricCard value={ov.anonymous_plans} label="Anonymous plans" />
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 2 — Gender */}
+      <section>
+        <SectionLabel>Gender</SectionLabel>
+        {gender ? (
+          gender.map(r => (
+            <BarRow
+              key={r.key}
+              label={r.key ? r.key.charAt(0).toUpperCase() + r.key.slice(1) : '—'}
+              count={r.count}
+              pct={r.pct}
+              color="teal"
+            />
+          ))
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 3 — Athlete profile */}
+      <section>
+        <SectionLabel>Training level</SectionLabel>
+        {profile ? (
+          profile.map(r => (
+            <BarRow
+              key={r.key}
+              label={ATHLETE_PROFILE_LABELS[r.key] ?? r.key}
+              count={r.count}
+              pct={r.pct}
+              color="teal"
+            />
+          ))
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 4 — Fuelling style */}
+      <section>
+        <SectionLabel>Fuelling style preference</SectionLabel>
+        {fuelling ? (
+          fuelling.map(r => (
+            <BarRow
+              key={r.key}
+              label={FUELLING_STYLE_LABELS[r.key] ?? r.key}
+              count={r.count}
+              pct={r.pct}
+              color="teal"
+            />
+          ))
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 5 — Goal times table */}
+      <section>
+        <SectionLabel>Goal times by race type</SectionLabel>
+        {goalTimes ? (
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full min-w-[480px] text-left">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="pb-2 pr-3 text-xs font-semibold text-gray-500">Race type</th>
+                  <th className="pb-2 px-2 text-xs font-semibold text-gray-500 text-center">Avg</th>
+                  <th className="pb-2 px-2 text-xs font-semibold text-gray-500 text-center">Median</th>
+                  <th className="pb-2 px-2 text-xs font-semibold text-gray-500 text-center">Fastest</th>
+                  <th className="pb-2 px-2 text-xs font-semibold text-gray-500 text-center">Slowest</th>
+                  <th className="pb-2 pl-2 text-xs font-semibold text-gray-500 text-center">Plans</th>
+                </tr>
+              </thead>
+              <tbody>
+                {goalTimes.map(r => <GoalTimeRow key={r.race_type} row={r} />)}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 6 — Elevation */}
+      <section>
+        <SectionLabel>GPX / elevation usage</SectionLabel>
+        {elevation ? (
+          <div className="bg-gray-50 rounded-2xl px-5 py-4">
+            <p className="text-base font-semibold text-gray-800">
+              {elevation.total_plans > 0
+                ? `${Math.round((elevation.plans_with_elevation / elevation.total_plans) * 100)}%`
+                : '0%'}{' '}
+              <span className="font-normal text-gray-500">of plans include elevation data</span>
+            </p>
+            {elevation.avg_elevation_when_used != null && (
+              <p className="text-xs text-gray-500 mt-1">
+                Avg elevation gain when used: {elevation.avg_elevation_when_used}m
+              </p>
+            )}
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 7 — Training mode (hidden until feature is live) */}
+      {showTraining && (
+        <section>
+          <SectionLabel>Plan mode</SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            {training.map(r => (
+              <MetricCard
+                key={r.key}
+                value={r.count}
+                label={r.key === 'training_mode' ? 'Training mode' : 'Race mode'}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
+// ── Tab: Products ─────────────────────────────────────────────────────────────
+
+function ProductsTab({ data }) {
+  const preferred = data.preferred_products
+  const addons = data.addon_product_breakdown
+  const [showAll, setShowAll] = useState(false)
+
+  const maxFeaturing = preferred?.[0]?.plans_featuring ?? 1
+  const visibleProducts = preferred
+    ? (showAll ? preferred : preferred.slice(0, 10))
+    : []
+
+  return (
+    <div className="space-y-8">
+      {/* Row 1 — Lecka products leaderboard */}
+      <section>
+        <SectionLabel>Most planned Lecka products</SectionLabel>
+        {preferred ? (
+          <>
+            {visibleProducts.map(p => {
+              const pct = Math.round((p.plans_featuring / maxFeaturing) * 100)
+              return (
+                <div key={p.product_id} className="mb-4">
+                  <div className="flex items-start justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-800">
+                      {productNameById[p.product_id] ?? p.product_id}
+                    </span>
+                    <div className="text-right ml-4 shrink-0">
+                      <p className="text-sm font-semibold text-gray-800">
+                        {p.plans_featuring} plans
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {p.total_units_planned} total units
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ width: `${pct}%`, backgroundColor: BAR_COLORS.teal }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+            {preferred.length > 10 && (
+              <button
+                type="button"
+                onClick={() => setShowAll(v => !v)}
+                className="text-xs text-[#48C4B0] font-semibold hover:underline mt-1"
+              >
+                {showAll ? 'Show fewer' : `Show all ${preferred.length} products`}
+              </button>
+            )}
+          </>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Row 2 — Competitor add-on products */}
+      <section>
+        <SectionLabel>Competitor products selected by athletes</SectionLabel>
+        {addons && addons.length > 0 ? (
+          addons.map(p => (
+            <BarRow
+              key={p.product_id}
+              label={competitorNameById[p.product_id] ?? p.product_id}
+              count={p.plans_featuring}
+              pct={addons[0].plans_featuring > 0
+                ? Math.round((p.plans_featuring / addons[0].plans_featuring) * 100)
+                : 0}
+              color="amber"
+            />
+          ))
+        ) : (
+          <p className="text-sm text-gray-500 py-2">
+            No add-on data yet — this will populate as athletes use the performance add-ons feature.
+          </p>
+        )}
+      </section>
+    </div>
+  )
+}
+
+// ── Tab: Timeline ─────────────────────────────────────────────────────────────
+
+function TimelineTab({ data }) {
+  const lineCanvasRef = useRef(null)
+  const barCanvasRef = useRef(null)
+
+  const plansOverTime = data.plans_over_time
+  const byMonth = data.by_month
+
+  function renderLineChart() {
+    if (!lineCanvasRef.current || !plansOverTime) return
+    if (window.__leckaLineChart) {
+      window.__leckaLineChart.destroy()
+      window.__leckaLineChart = null
+    }
+
+    const dates = []
+    for (let i = 89; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      dates.push(d.toISOString().slice(0, 10))
+    }
+
+    const countMap = Object.fromEntries(
+      plansOverTime.map(r => [dateToKey(r.date), r.count])
+    )
+    const counts = dates.map(d => countMap[d] ?? 0)
+    const labels = dates.map(d =>
+      new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    )
+
+    window.__leckaLineChart = new window.Chart(lineCanvasRef.current, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: counts,
+          fill: true,
+          backgroundColor: 'rgba(72, 196, 176, 0.12)',
+          borderColor: '#48C4B0',
+          borderWidth: 2,
+          pointRadius: 2,
+          pointHoverRadius: 4,
+          tension: 0.3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.y} plans`,
+              title: items => new Date(dates[items[0].dataIndex] + 'T12:00:00')
+                .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxTicksLimit: 13 },
+          },
+          y: {
+            min: 0,
+            ticks: { stepSize: 1, precision: 0 },
+            grid: { color: 'rgba(0,0,0,0.06)' },
+          },
+        },
+      },
+    })
+  }
+
+  function renderBarChart() {
+    if (!barCanvasRef.current || !byMonth) return
+    if (window.__leckaBarChart) {
+      window.__leckaBarChart.destroy()
+      window.__leckaBarChart = null
+    }
+
+    const labels = byMonth.map(r => {
+      const [year, month] = r.month.split('-')
+      const name = new Date(parseInt(year), parseInt(month) - 1, 1)
+        .toLocaleDateString('en-US', { month: 'short' })
+      return `${name} '${year.slice(2)}`
+    })
+    const counts = byMonth.map(r => r.count)
+
+    window.__leckaBarChart = new window.Chart(barCanvasRef.current, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: counts,
+          backgroundColor: '#48C4B0',
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.parsed.y} plans`,
+              title: items => `${labels[items[0].dataIndex]}`,
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            min: 0,
+            ticks: { stepSize: 1, precision: 0 },
+            grid: { color: 'rgba(0,0,0,0.06)' },
+          },
+        },
+      },
+    })
+  }
+
+  useEffect(() => {
+    if (!plansOverTime) return
+
+    const doRender = () => {
+      renderLineChart()
+      renderBarChart()
+    }
+
+    if (window.Chart) {
+      doRender()
+      return () => {
+        if (window.__leckaLineChart) { window.__leckaLineChart.destroy(); window.__leckaLineChart = null }
+        if (window.__leckaBarChart) { window.__leckaBarChart.destroy(); window.__leckaBarChart = null }
+      }
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'
+    script.onload = doRender
+    document.head.appendChild(script)
+
+    return () => {
+      if (window.__leckaLineChart) { window.__leckaLineChart.destroy(); window.__leckaLineChart = null }
+      if (window.__leckaBarChart) { window.__leckaBarChart.destroy(); window.__leckaBarChart = null }
+    }
+  }, [data])
+
+  // Compute derived metrics from padded data
+  const derivedMetrics = useMemo(() => {
+    if (!plansOverTime) return null
+    const today = new Date()
+    const thirtyDaysAgo = new Date(today)
+    thirtyDaysAgo.setDate(today.getDate() - 30)
+
+    const busiest = plansOverTime.reduce(
+      (max, r) => (r.count > max.count ? r : max),
+      { count: 0, date: '' }
+    )
+    const busiestLabel = busiest.date
+      ? `${new Date(dateToKey(busiest.date) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${busiest.count} plans`
+      : '—'
+
+    const last30Sum = plansOverTime
+      .filter(r => new Date(dateToKey(r.date) + 'T12:00:00') >= thirtyDaysAgo)
+      .reduce((sum, r) => sum + r.count, 0)
+    const dailyAvg = (last30Sum / 30).toFixed(1)
+
+    const total90 = plansOverTime.reduce((sum, r) => sum + r.count, 0)
+    const weeklyAvg = (total90 / 13).toFixed(1)
+
+    return { busiestLabel, dailyAvg, weeklyAvg }
+  }, [plansOverTime])
+
+  return (
+    <div className="space-y-8">
+      {/* Line chart */}
+      <section>
+        <SectionLabel>Plans generated (last 90 days)</SectionLabel>
+        {plansOverTime ? (
+          <div style={{ height: 240 }}>
+            <canvas ref={lineCanvasRef} />
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* Derived metrics */}
+      {derivedMetrics && (
+        <section>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <MetricCard value={derivedMetrics.busiestLabel} label="Busiest single day" />
+            <MetricCard value={derivedMetrics.dailyAvg} label="Daily avg (last 30 days)" highlight />
+            <MetricCard value={derivedMetrics.weeklyAvg} label="Weekly avg (last 90 days)" highlight />
+          </div>
+        </section>
+      )}
+
+      {/* Bar chart — monthly */}
+      <section>
+        <SectionLabel>Monthly volume (last 12 months)</SectionLabel>
+        {byMonth ? (
+          <div style={{ height: 200 }}>
+            <canvas ref={barCanvasRef} />
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
+
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'athletes', label: 'Athletes' },
+  { id: 'products', label: 'Products' },
+  { id: 'timeline', label: 'Timeline' },
+]
 
 export default function AdminPage() {
   const { t, i18n } = useTranslation(['admin', 'common'])
   const gate = usePasswordGate(t)
 
-  // ── Server stats ────────────────────────────────────────────────────────────
-  // null = not yet fetched | object = success | 'error' = failed
-  const [serverStats,  setServerStats]  = useState(null)
+  // ── Existing: record-plan fetch ─────────────────────────────────────────────
+  const [serverStats, setServerStats] = useState(null)
   const [serverFetching, setServerFetching] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -125,28 +876,41 @@ export default function AdminPage() {
       .finally(() => setServerFetching(false))
   }, [gate.unlocked, refreshKey])
 
-  // ── localStorage fallback ────────────────────────────────────────────────────
-  const localPlans     = useMemo(loadPlans, [gate.unlocked])
-  const localMonthLen  = useMemo(() => thisMonthPlans(localPlans).length, [localPlans])
+  // ── New: analytics fetch ────────────────────────────────────────────────────
+  const [analyticsData, setAnalyticsData] = useState(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsError, setAnalyticsError] = useState(null)
+  const [activeTab, setActiveTab] = useState('overview')
+
+  useEffect(() => {
+    if (!gate.unlocked) return
+    setAnalyticsLoading(true)
+    setAnalyticsError(null)
+    fetch('/api/admin/analytics', {
+      headers: { 'X-Admin-Password': gate.entered },
+    })
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
+      .then(data => { setAnalyticsData(data); setAnalyticsLoading(false) })
+      .catch(err => { setAnalyticsError(err.message); setAnalyticsLoading(false) })
+  }, [gate.unlocked, refreshKey])
+
+  // ── localStorage fallback ───────────────────────────────────────────────────
+  const localPlans = useMemo(loadPlans, [gate.unlocked])
+  const localMonthLen = useMemo(() => thisMonthPlans(localPlans).length, [localPlans])
   const localBreakdown = useMemo(() => countByRaceType(localPlans, t), [localPlans, t])
 
-  // ── Derived display values — prefer server, fall back to local ───────────────
   const serverOk = serverStats && serverStats !== 'error'
-
-  const displayTotal  = serverOk ? serverStats.total      : localPlans.length
-  const displayMonth  = serverOk ? serverStats.this_month : localMonthLen
+  const displayTotal = serverOk ? serverStats.total : localPlans.length
+  const displayMonth = serverOk ? serverStats.this_month : localMonthLen
   const displayBreakdown = serverOk
     ? serverStats.by_race_type.map(r => ({
-        key:   r.key,
+        key: r.key,
         label: t(`common:racetype.${r.key}`, { defaultValue: r.key }),
         count: r.count,
       }))
     : localBreakdown
-  const displayRegions = serverOk && serverStats.by_region
-    ? serverStats.by_region
-    : null
+  const displayRegions = serverOk && serverStats.by_region ? serverStats.by_region : null
   const topRaceType = displayBreakdown[0]
-
   const now = new Date()
   const monthLabel = now.toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' })
 
@@ -161,15 +925,13 @@ export default function AdminPage() {
           <h1 className="text-xl font-bold text-[#1B1B1B] mb-6">{t('enterPassword')}</h1>
 
           {!CONFIGURED_PASSWORD && !IS_DEV && (
-            <p className="text-sm text-red-500 mb-4">
-              {t('noPasswordSet')}
-            </p>
+            <p className="text-sm text-red-500 mb-4">{t('noPasswordSet')}</p>
           )}
 
           <input
             type="password"
             value={gate.entered}
-            onChange={e => { gate.setEntered(e.target.value); }}
+            onChange={e => { gate.setEntered(e.target.value) }}
             onKeyDown={e => e.key === 'Enter' && gate.attempt()}
             placeholder={t('passwordPlaceholder')}
             className={[
@@ -199,7 +961,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between max-w-2xl mx-auto">
+      <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between max-w-3xl mx-auto">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('header.label')}</p>
           <h1 className="text-lg font-bold text-[#1B1B1B]">{t('header.title')}</h1>
@@ -209,144 +971,115 @@ export default function AdminPage() {
         </a>
       </div>
 
-      <div className="max-w-2xl mx-auto px-5 py-8 space-y-8">
-
-        {/* Data source indicator */}
-        <div className="flex items-center gap-2">
-          {serverFetching ? (
-            <span className="text-xs text-gray-400">{t('status.loading')}</span>
-          ) : serverOk ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold
-                             text-[#2D6A4F] bg-[#2D6A4F]/8 px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F] inline-block" />
-              {t('status.live')}
-              {serverStats.generated_at && (
-                <span className="text-[#2D6A4F]/60 font-normal">
-                  · {new Date(serverStats.generated_at).toLocaleTimeString()}
-                </span>
-              )}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold
-                             text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
-              {serverStats === 'error' ? t('status.serverUnavailable') : t('status.localData')}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={refreshStats}
-            disabled={serverFetching}
-            className="ml-auto text-xs text-[#2D6A4F] font-medium hover:underline
-                       disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {serverFetching ? t('status.refreshing') : t('status.refresh')}
-          </button>
-        </div>
-
-        {/* This month / all-time counts */}
-        <section>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-            {monthLabel}
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <StatBox value={displayMonth} label={t('stats.plansThisMonth')} />
-            <StatBox value={displayTotal} label={t('stats.plansAllTime')} />
-          </div>
-        </section>
-
-        {/* Top race type */}
-        {topRaceType && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-              {t('stats.mostPopular')}
-            </p>
-            <div className="border-2 border-[#2D6A4F]/20 rounded-2xl p-5 flex items-center gap-4">
-              <div className="flex-1">
-                <p className="text-lg font-bold text-[#1B1B1B]">{topRaceType.label}</p>
-                <p className="text-sm text-gray-400 mt-0.5">
-                  {t('stats.planCount', { count: topRaceType.count })}
-                  {displayTotal > 0 && (
-                    <> {t('stats.pctOfTotal', { pct: Math.round((topRaceType.count / displayTotal) * 100) })}</>
-                  )}
-                </p>
-              </div>
-              <div className="text-3xl font-bold text-[#74C69D]">#1</div>
-            </div>
-          </section>
+      {/* Status + refresh bar */}
+      <div className="border-b border-gray-100 px-5 py-2 max-w-3xl mx-auto flex items-center gap-2">
+        {serverFetching ? (
+          <span className="text-xs text-gray-400">{t('status.loading')}</span>
+        ) : serverOk ? (
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold
+                           text-[#2D6A4F] bg-[#2D6A4F]/8 px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#2D6A4F] inline-block" />
+            {t('status.live')}
+            {serverStats.generated_at && (
+              <span className="text-[#2D6A4F]/60 font-normal">
+                · {new Date(serverStats.generated_at).toLocaleTimeString()}
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold
+                           text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
+            {serverStats === 'error' ? t('status.serverUnavailable') : t('status.localData')}
+          </span>
         )}
+        <button
+          type="button"
+          onClick={refreshStats}
+          disabled={serverFetching || analyticsLoading}
+          className="ml-auto text-xs text-[#2D6A4F] font-medium hover:underline
+                     disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {serverFetching || analyticsLoading ? t('status.refreshing') : t('status.refresh')}
+        </button>
+      </div>
 
-        {/* Race type breakdown */}
-        {displayBreakdown.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-              {t('stats.allRaceTypes')}
-            </p>
-            <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
-              {displayBreakdown.map((row, i) => (
-                <div
-                  key={row.key}
-                  className={`flex items-center justify-between px-5 py-3 ${
-                    i !== displayBreakdown.length - 1 ? 'border-b border-gray-100' : ''
-                  }`}
-                >
-                  <span className="text-sm font-medium text-[#1B1B1B]">{row.label}</span>
-                  <div className="flex items-center gap-3">
-                    <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#2D6A4F] rounded-full"
-                        style={{ width: `${(row.count / displayBreakdown[0].count) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-sm text-gray-500 w-6 text-right">{row.count}</span>
-                  </div>
+      {/* Tab navigation — sticky on mobile */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-5 max-w-3xl mx-auto">
+        <div className="flex gap-0 overflow-x-auto">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={[
+                'px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+                activeTab === tab.id
+                  ? 'border-[#48C4B0] text-[#48C4B0]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab content */}
+      <div className="max-w-3xl mx-auto px-5 py-8">
+        {/* Analytics loading / error states */}
+        {analyticsLoading && (
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[0,1,2,3].map(i => (
+                <div key={i} className="bg-gray-50 rounded-2xl p-4 space-y-2">
+                  <SkeletonBar h="h-3" w="w-3/4" />
+                  <SkeletonBar h="h-8" />
                 </div>
               ))}
             </div>
-          </section>
+            <SectionSkeleton />
+            <SectionSkeleton />
+          </div>
         )}
 
-        {/* Region breakdown */}
-        {displayRegions && displayRegions.length > 0 && (
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
-              {t('stats.byRegion')}
+        {!analyticsLoading && analyticsError && (
+          <div className="text-center py-12">
+            <p className="text-sm text-gray-500 mb-4">
+              Could not load analytics. Check that the database is reachable.
             </p>
-            <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
-              {displayRegions.map((row, i) => {
-                const regionLabel = t(`region.${row.key}`, { defaultValue: row.key.toUpperCase() })
-                return (
-                  <div
-                    key={row.key}
-                    className={`flex items-center justify-between px-5 py-3 ${
-                      i !== displayRegions.length - 1 ? 'border-b border-gray-100' : ''
-                    }`}
-                  >
-                    <span className="text-sm font-medium text-[#1B1B1B]">{regionLabel}</span>
-                    <div className="flex items-center gap-3">
-                      <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#2D6A4F] rounded-full"
-                          style={{ width: `${(row.count / displayRegions[0].count) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-gray-500 w-6 text-right">{row.count}</span>
-                    </div>
-                  </div>
-                )
-              })}
+            <button
+              type="button"
+              onClick={refreshStats}
+              className="text-sm text-[#48C4B0] font-semibold hover:underline"
+            >
+              Retry
+            </button>
+
+            {/* Fallback: show legacy stats if analytics failed */}
+            <div className="mt-10 text-left">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+                {monthLabel}
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <StatBox value={displayMonth} label={t('stats.plansThisMonth')} />
+                <StatBox value={displayTotal} label={t('stats.plansAllTime')} />
+              </div>
             </div>
-          </section>
+          </div>
         )}
 
-        {displayTotal === 0 && !serverFetching && (
-          <p className="text-sm text-gray-400 text-center py-12">
-            {t('stats.noPlans')}
-          </p>
+        {!analyticsLoading && !analyticsError && analyticsData && (
+          <>
+            {activeTab === 'overview' && <OverviewTab data={analyticsData} />}
+            {activeTab === 'athletes' && <AthletesTab data={analyticsData} />}
+            {activeTab === 'products' && <ProductsTab data={analyticsData} />}
+            {activeTab === 'timeline' && <TimelineTab data={analyticsData} />}
+          </>
         )}
 
         {/* Footer */}
-        <p className="text-xs text-gray-300 text-center pb-4">
+        <p className="text-xs text-gray-300 text-center pt-8 pb-4">
           {t('footer')}
         </p>
       </div>
