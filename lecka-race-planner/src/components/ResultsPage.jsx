@@ -1619,6 +1619,21 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               </span>
             </div>
           )}
+          {form.fuelling_style && form.fuelling_style !== 'flexible' && (() => {
+            const labels = {
+              gels_only:      'Gel-based fuelling',
+              gels_and_bars:  'Gels + bars fuelling',
+              drink_mix_base: 'Drink mix + gels fuelling',
+            }
+            const label = labels[form.fuelling_style]
+            if (!label) return null
+            return (
+              <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full
+                               bg-[#48C4B0]/10 text-[#48C4B0] text-xs font-semibold">
+                {label}
+              </span>
+            )
+          })()}
         </div>
 
         {/* ── Warnings ────────────────────────────────────────────────────── */}
@@ -1649,7 +1664,22 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
         {/* ── Act 1: What to take ──────────────────────────────────────────── */}
         <section>
-          <SectionLabel>What to take</SectionLabel>
+          <SectionLabel>
+            {form.fuelling_style === 'gels_only'      ? 'Your gels'
+             : form.fuelling_style === 'gels_and_bars' ? 'Your gels and bars'
+             : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
+             : 'What to take'}
+          </SectionLabel>
+          {form.fuelling_style === 'drink_mix_base' && (
+            <p className="text-sm text-gray-500 -mt-2 mb-3">
+              Your plan uses gels as your primary fuel. The Lecka carb + hydration powder will
+              replace some of these gel slots when it launches —{' '}
+              <a href="https://www.getlecka.com" className="text-[#48C4B0] underline hover:text-[#3db09d]">
+                join the waitlist
+              </a>{' '}
+              to be notified.
+            </p>
+          )}
           {aggregated.length === 0 ? (
             <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
               We couldn&apos;t find products available in your region for this plan.
