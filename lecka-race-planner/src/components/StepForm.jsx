@@ -1331,7 +1331,12 @@ export default function StepForm({ onComplete }) {
       selection,
       addonCoverage,
       resolvedAddonItems,
-      form: { ...form, goal_time },
+      form: {
+        ...form,
+        goal_time,
+        addon_carbs_per_hour:      Math.round(addonCoverage.carbs_per_hour ?? 0),
+        foundation_carbs_per_hour: foundationTargets.carb_per_hour,
+      },
     })
   }
 
