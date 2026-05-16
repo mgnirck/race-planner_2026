@@ -18,8 +18,9 @@ import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engi
 import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
 import Nav from './Nav.jsx'
 import regionsConfig from '../config/regions.json'
-import allProductsCatalog from '../config/products.json'
+import FALLBACK_PRODUCTS from '../config/products.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
+import { useProducts } from '../hooks/useProducts.js'
 import LanguageSwitcher from './LanguageSwitcher.jsx'
 import i18n from '../i18n.js'
 import { getRaceLabel, getEffortLabel, getConditionLabel } from '../i18n-utils.js'
@@ -114,7 +115,7 @@ function buildAddonTimelineItems(resolvedAddonItems, totalDurationMinutes) {
   })
 }
 
-function aggregateByProduct(selection, region = 'us', manualQty = null) {
+function aggregateByProduct(selection, region = 'us', manualQty = null, catalog = FALLBACK_PRODUCTS) {
   const map = {}
   for (const item of selection) {
     const id = item.product.id
@@ -129,7 +130,7 @@ function aggregateByProduct(selection, region = 'us', manualQty = null) {
       } else if (map[id]) {
         map[id].totalUnits = units
       } else {
-        const product = allProductsCatalog.find(p => p.id === id && (p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar'))
+        const product = catalog.find(p => p.id === id && (p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar'))
         if (product) map[id] = { product, totalUnits: units }
       }
     }
@@ -166,7 +167,7 @@ function computeTrainingInfo(aggregated) {
   }
 }
 
-function computeProvidedNutrition(selection, manualQty, totalDurationMinutes) {
+function computeProvidedNutrition(selection, manualQty, totalDurationMinutes, catalog = FALLBACK_PRODUCTS) {
   const qtyMap = {}
   const productById = {}
 
@@ -183,7 +184,7 @@ function computeProvidedNutrition(selection, manualQty, totalDurationMinutes) {
       } else {
         qtyMap[id] = qty
         if (!productById[id]) {
-          const p = allProductsCatalog.find(p => p.id === id)
+          const p = catalog.find(p => p.id === id)
           if (p) productById[id] = p
         }
       }
@@ -1157,11 +1158,11 @@ function ResearchModal({ onClose }) {
 
 // ── CartEditorModal ───────────────────────────────────────────────────────────
 
-function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig, provided, targets }) {
+function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig, provided, targets, catalog }) {
   const { t } = useTranslation(['results', 'form'])
   const availableProducts = useMemo(() =>
-    allProductsCatalog.filter(p => (p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
-    [region]
+    (catalog ?? FALLBACK_PRODUCTS).filter(p => (p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
+    [catalog, region]
   )
 
   function getCurrentQty(productId) {
@@ -1332,6 +1333,9 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const [copyPlanState,  setCopyPlanState]  = useState('idle') // idle | copied
   const regionConfig = getRegionConfig(region)
 
+  const { products: liveProducts } = useProducts()
+  const allProductsCatalog = liveProducts ?? FALLBACK_PRODUCTS
+
   // Reset manual overrides when plan inputs change
   useEffect(() => { setManualQty(null) }, [selection, region])
 
@@ -1348,13 +1352,13 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const hasAddons = resolvedAddonItems.length > 0
 
   const aggregated   = useMemo(
-    () => aggregateByProduct(leckaSelection, region, manualQty),
-    [leckaSelection, region, manualQty]
+    () => aggregateByProduct(leckaSelection, region, manualQty, allProductsCatalog),
+    [leckaSelection, region, manualQty, allProductsCatalog]
   )
   const trainingInfo = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
   const provided     = useMemo(
-    () => computeProvidedNutrition(leckaSelection, manualQty, targets.total_duration_minutes),
-    [leckaSelection, manualQty, targets.total_duration_minutes]
+    () => computeProvidedNutrition(leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog),
+    [leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog]
   )
 
   // Variety pack CTA — always just 1× gel variety pack + 1× bar variety pack, nothing else
@@ -1391,13 +1395,13 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     }
 
     return embedCartURL(buildCartURLFromAggregated(vpItems, 'NUTRIPLAN10', '', region))
-  }, [region])
+  }, [region, allProductsCatalog])
 
   // manualQty overrides must be reflected in anything sent off-device (email, saved
   // plan) — the raw selection prop still has the engine's original quantities.
   const effectiveSelection = useMemo(
     () => adjustTimelineSelection(leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog),
-    [leckaSelection, manualQty, targets]
+    [leckaSelection, manualQty, targets, allProductsCatalog]
   )
 
   const addonTimelineItems = useMemo(
@@ -1538,6 +1542,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           regionConfig={regionConfig}
           provided={provided}
           targets={targets}
+          catalog={allProductsCatalog}
         />
       )}
 

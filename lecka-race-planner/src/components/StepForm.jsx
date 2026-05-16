@@ -15,8 +15,9 @@ import { useTranslation } from 'react-i18next'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { needsDualTransporter, computeAddonCoverage, computeFoundationTargets } from '../engine/kit-calculator.js'
 import { selectProducts }   from '../engine/product-selector'
-import products             from '../config/products.json'
+import FALLBACK_PRODUCTS    from '../config/products.json'
 import competitorProductsData from '../config/competitor-products.json'
+import { useProducts }      from '../hooks/useProducts.js'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
 import { detectRegion }     from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
@@ -882,6 +883,8 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
 
 function StepThree({ form, setForm }) {
   const { t } = useTranslation(['form', 'common'])
+  const { products: liveProducts } = useProducts()
+  const products = liveProducts ?? FALLBACK_PRODUCTS
   const gels = products.filter(p => p.type === 'gel' && isAvailableInRegion(p, detectRegion))
   const bars = products.filter(p => p.type === 'bar' && isAvailableInRegion(p, detectRegion))
 
@@ -1303,6 +1306,8 @@ function isStep3Valid(_form) {
 
 export default function StepForm({ onComplete }) {
   const { t } = useTranslation(['form', 'common'])
+  const { products: liveProducts } = useProducts()
+  const allProducts = liveProducts ?? FALLBACK_PRODUCTS
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
   const [profilePrefilled, setProfilePrefilled] = useState(false)
@@ -1420,7 +1425,7 @@ export default function StepForm({ onComplete }) {
 
     const addonCoverage      = computeAddonCoverage(resolvedAddonItems, goal_minutes)
     const foundationTargets  = computeFoundationTargets(targets, addonCoverage)
-    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, detectRegion, { fuelling_style: form.fuelling_style })
+    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, detectRegion, { fuelling_style: form.fuelling_style }, allProducts)
 
     try { sessionStorage.removeItem(DRAFT_KEY) } catch {}
     onComplete({

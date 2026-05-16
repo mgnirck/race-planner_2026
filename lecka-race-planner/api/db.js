@@ -68,6 +68,59 @@ export async function ensureMigrated() {
       region TEXT DEFAULT 'us'
     )
   `
+  await sql`
+    CREATE TABLE IF NOT EXISTS product_catalog (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      carbs_per_unit NUMERIC,
+      sodium_per_unit NUMERIC,
+      caffeine BOOLEAN DEFAULT false,
+      caffeine_mg INTEGER DEFAULT 0,
+      dual_transporter BOOLEAN DEFAULT false,
+      net_weight_g NUMERIC,
+      ideal_time TEXT[],
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS product_regions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      product_id TEXT NOT NULL REFERENCES product_catalog(id) ON DELETE CASCADE,
+      region TEXT NOT NULL,
+      available BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (product_id, region)
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS product_variants (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      product_id TEXT NOT NULL REFERENCES product_catalog(id) ON DELETE CASCADE,
+      region TEXT NOT NULL,
+      shopify_variant_id TEXT NOT NULL,
+      units_per_pack INTEGER NOT NULL,
+      price NUMERIC NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS product_audit (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      changed_at TIMESTAMPTZ DEFAULT NOW(),
+      product_id TEXT NOT NULL,
+      region TEXT,
+      field_changed TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_by TEXT DEFAULT 'admin'
+    )
+  `
 
   migrated = true
 }

@@ -20,11 +20,12 @@
  *   'drink_mix_base'                       → bars before + after + powder placeholder
  */
 
-import products      from '../config/products.json'
-import formulaConfig from '../config/formula-config.json'
+import staticProducts from '../config/products.json'
+import formulaConfig   from '../config/formula-config.json'
 import { isAvailableInRegion } from './region-utils.js'
 
-export function selectProducts(targets, preferredProductIds = [], region = 'us', options = {}) {
+export function selectProducts(targets, preferredProductIds = [], region = 'us', options = {}, allProducts = null) {
+  const products = allProducts ?? staticProducts
   const { total_duration_minutes, caffeine_ok, total_carbs } = targets
   const { timing_rules: timingRules, caffeine_rules: caffeineRules } = formulaConfig
 

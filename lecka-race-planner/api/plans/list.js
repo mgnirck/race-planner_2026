@@ -19,6 +19,27 @@ export default async function handler(req, res) {
   try {
     await ensureMigrated()
 
+    // ── GET ?planId=xxx — public plan lookup (replaces /api/plans/get) ─────────
+    // Plans are publicly readable by UUID. Auth is optional: only sets isOwner.
+    const { planId } = req.query ?? {}
+    if (planId) {
+      const user = await getUser(req)
+
+      const { rows } = await sql`
+        SELECT id, race_name, race_date, race_type, goal_minutes,
+               conditions, effort, inputs, targets, selection,
+               region, lang, user_id
+        FROM plans
+        WHERE id = ${planId}
+        LIMIT 1
+      `
+      if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
+
+      const { user_id, ...publicPlan } = rows[0]
+      return res.status(200).json({ ...publicPlan, isOwner: user ? user.id === user_id : false })
+    }
+
+    // ── GET — list user's own plans (requires auth) ────────────────────────────
     const user = await getUser(req)
     if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
@@ -31,10 +52,9 @@ export default async function handler(req, res) {
       WHERE p.user_id = ${user.id}
       ORDER BY p.created_at DESC
     `
-
     return res.status(200).json(rows)
   } catch (err) {
     console.error('[plans/list] error:', err)
-    return res.status(500).json({ error: 'Failed to list plans' })
+    return res.status(500).json({ error: 'Failed' })
   }
 }

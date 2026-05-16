@@ -15,7 +15,7 @@ export default function PlanViewPage() {
     // to determine whether this visitor is the owner (enables extra UI).
     const headers = userId ? { Authorization: `Bearer ${userId}` } : {}
 
-    fetch(`/api/plans/get?planId=${planId}`, { headers })
+    fetch(`/api/plans/list?planId=${planId}`, { headers })
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()

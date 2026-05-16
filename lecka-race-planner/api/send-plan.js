@@ -34,7 +34,20 @@ import { Resend }  from 'resend'
 import { computeCartItems, computeLinePrice, computeOptimalGelCart } from '../src/engine/region-utils.js'
 import { createRequire } from 'module'
 const _require = createRequire(import.meta.url)
-const allProductsCatalog = _require('../src/config/products.json')
+
+async function getAllProducts() {
+  try {
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000'
+    const res = await fetch(`${baseUrl}/api/products`)
+    if (!res.ok) throw new Error(`products API ${res.status}`)
+    return res.json()
+  } catch (err) {
+    console.warn('[send-plan] products API failed, using bundled JSON:', err.message)
+    return _require('../src/config/products.json')
+  }
+}
 import { getServerT } from './i18n-server.js'
 
 const _validateLocale = (() => {
@@ -976,6 +989,8 @@ export default async function handler(req, res) {
   }
 
   const { email, inputs, targets, selectedProducts, resolvedAddonItems = [], region = 'us', lang = 'en' } = req.body ?? {}
+
+  const allProductsCatalog = await getAllProducts()
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

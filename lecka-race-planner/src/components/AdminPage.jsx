@@ -6,7 +6,7 @@
  * fallback counter.
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import allProducts from '../config/products.json'
 import competitorProducts from '../config/competitor-products.json'
@@ -544,19 +544,142 @@ function AthletesTab({ data }) {
 
 // ── Tab: Products ─────────────────────────────────────────────────────────────
 
-function ProductsTab({ data }) {
+const CATALOG_REGIONS = ['us', 'de', 'dk', 'ch', 'vn']
+const REGION_LABELS   = { us: 'US', de: 'DE', dk: 'DK', ch: 'CH', vn: 'VN' }
+
+const SEED_LABELS = {
+  idle:    'Sync from products.json',
+  confirm: 'Confirm sync?',
+  seeding: 'Syncing…',
+  done:    'Synced ✓',
+  error:   'Sync failed',
+}
+
+function ProductsTab({ data, password }) {
+  // ── Analytics state ─────────────────────────────────────────────────────────
   const preferred = data.preferred_products
-  const addons = data.addon_product_breakdown
+  const addons    = data.addon_product_breakdown
   const [showAll, setShowAll] = useState(false)
 
-  const maxFeaturing = preferred?.[0]?.plans_featuring ?? 1
+  const maxFeaturing    = preferred?.[0]?.plans_featuring ?? 1
   const visibleProducts = preferred
     ? (showAll ? preferred : preferred.slice(0, 10))
     : []
 
+  // ── Catalog state ───────────────────────────────────────────────────────────
+  const [catalog,        setCatalog]        = useState(null)
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [catalogError,   setCatalogError]   = useState(null)
+  const [expandedId,     setExpandedId]     = useState(null)
+  const [savingKey,      setSavingKey]      = useState(null)
+  const [editDraft,      setEditDraft]      = useState({})
+  const [seedState,      setSeedState]      = useState('idle')
+
+  // ── Audit state ─────────────────────────────────────────────────────────────
+  const [auditOpen,    setAuditOpen]    = useState(false)
+  const [audit,        setAudit]        = useState(null)
+  const [auditLoading, setAuditLoading] = useState(false)
+
+  const adminFetch = useCallback((url, opts = {}) =>
+    fetch(url, {
+      ...opts,
+      headers: { 'X-Admin-Password': password, 'Content-Type': 'application/json', ...opts.headers },
+    }),
+  [password])
+
+  const loadCatalog = useCallback(() => {
+    setCatalogLoading(true)
+    setCatalogError(null)
+    adminFetch('/api/admin/products')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(rows => { setCatalog(rows); setCatalogLoading(false) })
+      .catch(err => { setCatalogError(String(err)); setCatalogLoading(false) })
+  }, [adminFetch])
+
+  useEffect(() => { loadCatalog() }, [loadCatalog])
+
+  function loadAudit() {
+    setAuditLoading(true)
+    adminFetch('/api/admin/products?op=audit')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(rows => { setAudit(rows); setAuditLoading(false) })
+      .catch(() => { setAuditLoading(false) })
+  }
+
+  function toggleAudit() {
+    if (!auditOpen && !audit) loadAudit()
+    setAuditOpen(v => !v)
+  }
+
+  async function toggleAvailability(productId, region, currentAvailable) {
+    const key = `avail:${productId}:${region}`
+    setSavingKey(key)
+    try {
+      const res = await adminFetch('/api/admin/products?op=availability', {
+        method: 'PATCH',
+        body: JSON.stringify({ product_id: productId, region, available: !currentAvailable }),
+      })
+      if (!res.ok) throw new Error()
+      setCatalog(prev => prev.map(p => {
+        if (p.id !== productId) return p
+        return { ...p, regions: p.regions.map(r => r.region === region ? { ...r, available: !currentAvailable } : r) }
+      }))
+    } catch { loadCatalog() }
+    finally { setSavingKey(null) }
+  }
+
+  async function saveVariantField(variantId, productId, region, field) {
+    const key  = `v:${variantId}:${field}`
+    const raw  = editDraft[key]
+    if (raw === undefined) return
+    const value = field === 'price' ? parseFloat(raw) : raw
+    if (field === 'price' && (isNaN(value) || value <= 0)) return
+    if (field === 'shopify_variant_id' && !/^\d+$/.test(String(value))) return
+
+    setSavingKey(key)
+    try {
+      const res = await adminFetch('/api/admin/products?op=variant', {
+        method: 'PATCH',
+        body: JSON.stringify({ variant_id: variantId, field, value }),
+      })
+      if (!res.ok) throw new Error()
+      setCatalog(prev => prev.map(p => {
+        if (p.id !== productId) return p
+        return {
+          ...p,
+          regions: p.regions.map(r => {
+            if (r.region !== region) return r
+            return { ...r, variants: (r.variants ?? []).map(v => v.id === variantId ? { ...v, [field]: value } : v) }
+          }),
+        }
+      }))
+      setEditDraft(prev => { const n = { ...prev }; delete n[key]; return n })
+    } catch { /* draft stays */ }
+    finally { setSavingKey(null) }
+  }
+
+  async function handleSeed() {
+    if (seedState === 'confirm') {
+      setSeedState('seeding')
+      try {
+        const res = await adminFetch('/api/admin/products?op=seed', { method: 'POST', body: '{}' })
+        if (!res.ok) throw new Error()
+        setSeedState('done')
+        loadCatalog()
+        setTimeout(() => setSeedState('idle'), 3000)
+      } catch {
+        setSeedState('error')
+        setTimeout(() => setSeedState('idle'), 3000)
+      }
+    } else if (seedState === 'idle') {
+      setSeedState('confirm')
+    }
+  }
+
   return (
     <div className="space-y-8">
-      {/* Row 1 — Lecka products leaderboard */}
+
+      {/* ── Analytics: Lecka products leaderboard ─────────────────────────── */}
       <section>
         <SectionLabel>Most planned Lecka products</SectionLabel>
         {preferred ? (
@@ -570,39 +693,28 @@ function ProductsTab({ data }) {
                       {productNameById[p.product_id] ?? p.product_id}
                     </span>
                     <div className="text-right ml-4 shrink-0">
-                      <p className="text-sm font-semibold text-gray-800">
-                        {p.plans_featuring} plans
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {p.total_units_planned} total units
-                      </p>
+                      <p className="text-sm font-semibold text-gray-800">{p.plans_featuring} plans</p>
+                      <p className="text-xs text-gray-400">{p.total_units_planned} total units</p>
                     </div>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%`, backgroundColor: BAR_COLORS.teal }}
-                    />
+                    <div className="h-full rounded-full transition-all duration-500"
+                         style={{ width: `${pct}%`, backgroundColor: BAR_COLORS.teal }} />
                   </div>
                 </div>
               )
             })}
             {preferred.length > 10 && (
-              <button
-                type="button"
-                onClick={() => setShowAll(v => !v)}
-                className="text-xs text-[#48C4B0] font-semibold hover:underline mt-1"
-              >
+              <button type="button" onClick={() => setShowAll(v => !v)}
+                className="text-xs text-[#48C4B0] font-semibold hover:underline mt-1">
                 {showAll ? 'Show fewer' : `Show all ${preferred.length} products`}
               </button>
             )}
           </>
-        ) : (
-          <DataUnavailable />
-        )}
+        ) : <DataUnavailable />}
       </section>
 
-      {/* Row 2 — Competitor add-on products */}
+      {/* ── Analytics: Competitor add-on products ─────────────────────────── */}
       <section>
         <SectionLabel>Competitor products selected by athletes</SectionLabel>
         {addons && addons.length > 0 ? (
@@ -623,6 +735,219 @@ function ProductsTab({ data }) {
           </p>
         )}
       </section>
+
+      {/* ── Catalog management ────────────────────────────────────────────── */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <SectionLabel>Catalog management</SectionLabel>
+          <button
+            type="button"
+            onClick={handleSeed}
+            disabled={seedState === 'seeding'}
+            className={[
+              'text-xs font-semibold px-3 py-1.5 rounded-lg border-2 transition-colors',
+              seedState === 'confirm'
+                ? 'border-amber-400 text-amber-600 bg-amber-50'
+                : seedState === 'done'
+                ? 'border-[#48C4B0] text-[#48C4B0] bg-[#48C4B0]/5'
+                : seedState === 'error'
+                ? 'border-red-300 text-red-500 bg-red-50'
+                : 'border-gray-200 text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0]',
+            ].join(' ')}
+          >
+            {SEED_LABELS[seedState]}
+          </button>
+        </div>
+
+        {catalogLoading && (
+          <div className="space-y-2">
+            {[0,1,2,3].map(i => <SkeletonBar key={i} h="h-12" />)}
+          </div>
+        )}
+
+        {!catalogLoading && catalogError && (
+          <div className="text-sm text-red-500 py-2">
+            Could not load catalog.{' '}
+            <button type="button" onClick={loadCatalog}
+              className="text-[#48C4B0] font-semibold hover:underline">Retry</button>
+          </div>
+        )}
+
+        {!catalogLoading && catalog && (
+          <>
+            {/* Region header */}
+            <div className="grid items-center px-3 py-1 mb-1"
+                 style={{ gridTemplateColumns: '1fr repeat(5, 3rem)' }}>
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Product</span>
+              {CATALOG_REGIONS.map(r => (
+                <span key={r} className="text-xs font-semibold uppercase tracking-wider text-gray-400 text-center">{REGION_LABELS[r]}</span>
+              ))}
+            </div>
+
+            <div className="space-y-1.5">
+              {catalog.map(product => {
+                const regMap = Object.fromEntries((product.regions ?? []).map(r => [r.region, r]))
+                const isExpanded = expandedId === product.id
+
+                return (
+                  <div key={product.id} className="border-2 border-gray-100 rounded-xl overflow-hidden">
+                    {/* Availability row */}
+                    <div className="grid items-center px-3 py-2.5"
+                         style={{ gridTemplateColumns: '1fr repeat(5, 3rem)' }}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(isExpanded ? null : product.id)}
+                        className="flex items-center gap-2 text-left min-w-0"
+                      >
+                        <span className="text-sm font-medium text-[#1B1B1B] truncate">{product.name}</span>
+                        <span className="text-xs text-gray-400 shrink-0">{product.type}</span>
+                        <span className="text-gray-300 shrink-0 text-xs ml-1">{isExpanded ? '▲' : '▼'}</span>
+                      </button>
+
+                      {CATALOG_REGIONS.map(region => {
+                        const reg    = regMap[region]
+                        const aKey   = `avail:${product.id}:${region}`
+                        const isAvail  = reg?.available ?? false
+                        const isSaving = savingKey === aKey
+                        return (
+                          <div key={region} className="flex justify-center">
+                            <button
+                              type="button"
+                              disabled={isSaving || !reg}
+                              onClick={() => toggleAvailability(product.id, region, isAvail)}
+                              className={[
+                                'w-10 h-6 rounded-full text-[10px] font-bold transition-colors',
+                                isAvail  ? 'bg-[#48C4B0] text-white'  : 'bg-gray-100 text-gray-400',
+                                isSaving ? 'opacity-50 cursor-wait'   : '',
+                                !reg     ? 'opacity-20 cursor-default' : '',
+                              ].join(' ')}
+                            >
+                              {isSaving ? '…' : isAvail ? 'ON' : 'OFF'}
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Variant editor — expands per product */}
+                    {isExpanded && (
+                      <div className="border-t border-gray-100 px-3 pb-3 space-y-4 pt-3">
+                        {CATALOG_REGIONS.map(region => {
+                          const reg = regMap[region]
+                          if (!reg?.variants?.length) return null
+                          return (
+                            <div key={region}>
+                              <p className="text-xs font-semibold text-gray-400 mb-2">{REGION_LABELS[region]}</p>
+                              <div className="space-y-1.5">
+                                {reg.variants.map(v => {
+                                  const priceKey = `v:${v.id}:price`
+                                  const vidKey   = `v:${v.id}:shopify_variant_id`
+                                  const priceDraft = editDraft[priceKey]
+                                  const vidDraft   = editDraft[vidKey]
+                                  return (
+                                    <div key={v.id} className="flex items-center gap-3 text-xs">
+                                      <span className="text-gray-500 w-16 shrink-0">{v.units_per_pack}× pack</span>
+
+                                      {/* Price */}
+                                      <label className="flex items-center gap-1">
+                                        <span className="text-gray-400">Price</span>
+                                        <input
+                                          className="w-16 border border-gray-200 rounded px-1.5 py-0.5 text-xs"
+                                          value={priceDraft ?? String(v.price)}
+                                          onChange={e => setEditDraft(d => ({ ...d, [priceKey]: e.target.value }))}
+                                        />
+                                        {priceDraft !== undefined && (
+                                          <button
+                                            type="button"
+                                            disabled={savingKey === priceKey}
+                                            onClick={() => saveVariantField(v.id, product.id, region, 'price')}
+                                            className="text-[#48C4B0] font-bold"
+                                          >✓</button>
+                                        )}
+                                      </label>
+
+                                      {/* Shopify variant ID */}
+                                      <label className="flex items-center gap-1 ml-2">
+                                        <span className="text-gray-400">VID</span>
+                                        <input
+                                          className="w-28 border border-gray-200 rounded px-1.5 py-0.5 text-xs font-mono"
+                                          value={vidDraft ?? v.shopify_variant_id}
+                                          onChange={e => setEditDraft(d => ({ ...d, [vidKey]: e.target.value }))}
+                                        />
+                                        {vidDraft !== undefined && (
+                                          <button
+                                            type="button"
+                                            disabled={savingKey === vidKey}
+                                            onClick={() => saveVariantField(v.id, product.id, region, 'shopify_variant_id')}
+                                            className="text-[#48C4B0] font-bold"
+                                          >✓</button>
+                                        )}
+                                      </label>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {CATALOG_REGIONS.every(r => !regMap[r]?.variants?.length) && (
+                          <p className="text-xs text-gray-400">No variants configured for this product.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* ── Audit log ─────────────────────────────────────────────────────── */}
+      <section>
+        <button
+          type="button"
+          onClick={toggleAudit}
+          className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-gray-700"
+        >
+          <span>Audit log</span>
+          <span className="text-gray-300 text-xs">{auditOpen ? '▲' : '▼'}</span>
+        </button>
+
+        {auditOpen && (
+          <div className="mt-3">
+            {auditLoading && <SkeletonBar h="h-32" />}
+            {!auditLoading && audit?.length === 0 && (
+              <p className="text-sm text-gray-400">No audit entries yet.</p>
+            )}
+            {!auditLoading && audit && audit.length > 0 && (
+              <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                {audit.map(entry => (
+                  <div key={entry.id}
+                       className="grid gap-x-2 text-xs text-gray-600 py-0.5"
+                       style={{ gridTemplateColumns: 'auto auto auto 1fr' }}>
+                    <span className="text-gray-400">
+                      {new Date(entry.changed_at).toLocaleString()}
+                    </span>
+                    <span className="font-mono font-medium truncate">{entry.product_id}</span>
+                    <span className="text-gray-400">{entry.region ?? ''}</span>
+                    <span>
+                      <span className="font-semibold">{entry.field_changed}</span>
+                      {entry.old_value != null && (
+                        <span className="text-red-400 line-through ml-1">{entry.old_value}</span>
+                      )}
+                      {entry.new_value != null && (
+                        <span className="text-[#48C4B0] ml-1">{entry.new_value}</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
     </div>
   )
 }
@@ -1073,7 +1398,7 @@ export default function AdminPage() {
           <>
             {activeTab === 'overview' && <OverviewTab data={analyticsData} />}
             {activeTab === 'athletes' && <AthletesTab data={analyticsData} />}
-            {activeTab === 'products' && <ProductsTab data={analyticsData} />}
+            {activeTab === 'products' && <ProductsTab data={analyticsData} password={gate.entered} />}
             {activeTab === 'timeline' && <TimelineTab data={analyticsData} />}
           </>
         )}

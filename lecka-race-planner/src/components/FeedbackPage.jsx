@@ -112,7 +112,7 @@ export default function FeedbackPage({ planId }) {
     }
     if (!planId) { setLoadError(true); return }
 
-    fetch(`/api/plans/get?planId=${planId}`, {
+    fetch(`/api/plans/list?planId=${planId}`, {
       headers: { 'Authorization': `Bearer ${userId}` },
     })
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -131,7 +131,7 @@ export default function FeedbackPage({ planId }) {
     setSubmitError(false)
 
     try {
-      const res = await fetch('/api/feedback/save', {
+      const res = await fetch('/api/feedback', {
         method:  'POST',
         headers: {
           'Content-Type':  'application/json',
