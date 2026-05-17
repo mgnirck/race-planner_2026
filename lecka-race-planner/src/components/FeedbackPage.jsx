@@ -112,7 +112,7 @@ export default function FeedbackPage({ planId }) {
     }
     if (!planId) { setLoadError(true); return }
 
-    fetch(`/api/plans/list?planId=${planId}`, {
+    fetch(`/api/plans?planId=${planId}`, {
       headers: { 'Authorization': `Bearer ${userId}` },
     })
       .then(r => r.ok ? r.json() : Promise.reject())

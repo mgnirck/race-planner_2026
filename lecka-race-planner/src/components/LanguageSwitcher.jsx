@@ -20,7 +20,7 @@ export default function LanguageSwitcher({ compact = false }) {
     window.history.replaceState({}, '', url)
     const userId = localStorage.getItem('lecka_user_id')
     if (userId) {
-      fetch('/api/auth/preferences', {
+      fetch('/api/auth/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

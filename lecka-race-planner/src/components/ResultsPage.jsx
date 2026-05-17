@@ -880,7 +880,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
   async function handleSave() {
     setSaveState('saving')
     try {
-      const res = await fetch('/api/plans/save', {
+      const res = await fetch('/api/plans', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
         body:    JSON.stringify({
@@ -1438,7 +1438,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     saveRegion(newRegion)
     const userId = localStorage.getItem('lecka_user_id')
     if (userId) {
-      fetch('/api/auth/preferences', {
+      fetch('/api/auth/me', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

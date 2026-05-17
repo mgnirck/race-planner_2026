@@ -72,7 +72,7 @@ function AddDateInline({ planId, userId, onSaved }) {
     if (!value) return
     setSaving(true)
     try {
-      const res = await fetch('/api/plans/update', {
+      const res = await fetch('/api/plans', {
         method:  'PATCH',
         headers: {
           'Content-Type':  'application/json',
@@ -204,7 +204,7 @@ export default function DashboardPage() {
       return
     }
 
-    fetch('/api/plans/list', {
+    fetch('/api/plans', {
       headers: { 'Authorization': `Bearer ${userId}` },
     })
       .then(r => r.ok ? r.json() : Promise.reject())
