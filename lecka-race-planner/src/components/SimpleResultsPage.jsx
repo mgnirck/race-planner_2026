@@ -379,8 +379,23 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
     }
   }
 
-  const heroTitle     = RACE_LABELS[targets.race_type] ?? targets.race_type
+  const isLoggedIn    = Boolean(localStorage.getItem('lecka_user_id'))
+  const heroTitle     = (form.race_name && form.race_name.trim()) || RACE_LABELS[targets.race_type] ?? targets.race_type
   const conditionText = CONDITION_LABELS[targets.conditions] ?? targets.conditions
+
+  function formatRaceDate(dateStr) {
+    if (!dateStr) return null
+    const d = new Date(dateStr + 'T00:00:00')
+    return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
+  function daysUntilRace(dateStr) {
+    if (!dateStr) return null
+    const race  = new Date(dateStr + 'T00:00:00')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return Math.round((race - today) / (1000 * 60 * 60 * 24))
+  }
 
   return (
     <div className="bg-white">
@@ -420,6 +435,23 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
             {conditionText}
             {' · Race pace'}
           </p>
+          {form.race_date && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-gray-500">
+                📅 {formatRaceDate(form.race_date)}
+              </span>
+              {daysUntilRace(form.race_date) > 0 && (
+                <span className="text-xs font-semibold text-white bg-[#48C4B0] px-2.5 py-0.5 rounded-full">
+                  {daysUntilRace(form.race_date)} days to go
+                </span>
+              )}
+              {daysUntilRace(form.race_date) === 0 && (
+                <span className="text-xs font-semibold text-white bg-[#F64866] px-2.5 py-0.5 rounded-full">
+                  Race day! 🎉
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Section 2: Numbers ───────────────────────────────────────────── */}
@@ -508,6 +540,24 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
             )}
           </section>
         )}
+
+        {/* ── Pro plan upsell ───────────────────────────────────────────────── */}
+        <div className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5">
+          <p className="text-sm font-semibold text-[#1B1B1B]">Want a more precise plan?</p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+            {isLoggedIn
+              ? 'The Pro planner uses your exact weight, fitness level, and conditions to sharpen your carb, sodium, and fluid targets. It also adds elevation data and a detailed race timeline.'
+              : 'The Pro planner personalises every number to your body and race conditions — and saves your plans so you can track them across races.'}
+          </p>
+          <a
+            href="/planner/pro"
+            className="mt-3 flex items-center justify-center w-full min-h-[48px]
+                       bg-white border-2 border-[#48C4B0] text-[#48C4B0] font-semibold
+                       rounded-xl text-sm hover:bg-[#48C4B0] hover:text-white transition-colors"
+          >
+            Build my Pro plan →
+          </a>
+        </div>
 
         {/* ── Section 5: Buy / order ────────────────────────────────────────── */}
         <section>
@@ -667,7 +717,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           </section>
         )}
 
-        {/* ── Section 7: Footer ─────────────────────────────────────────────── */}
+        {/* ── Footer ────────────────────────────────────────────────────────── */}
         <div className="pb-8 space-y-3 text-center border-t border-gray-100 pt-6">
           <button
             type="button"
@@ -676,12 +726,6 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           >
             Plan another race →
           </button>
-          <a
-            href="/planner/pro"
-            className="block text-sm text-[#48C4B0] hover:underline"
-          >
-            Want more precision? Try the Pro planner →
-          </a>
           <p className="text-xs text-gray-400">
             © Lecka ·{' '}
             <a

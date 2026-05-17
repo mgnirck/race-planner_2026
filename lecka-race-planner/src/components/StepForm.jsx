@@ -23,6 +23,7 @@ import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
 import { getSavedRegion, saveRegion } from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
 import LanguageSwitcher     from './LanguageSwitcher.jsx'
+import WeightInput, { toKg } from './shared/WeightInput.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -64,13 +65,6 @@ const TRIATHLON_OPTIONS = [
   { key: 'triathlon_70_3',    label: '70.3',    sublabel: '1.9km swim · 90km bike · 21km run',  km: 113,  hint: 'Typical finish times: 3h30 – 8h'     },
   { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226,  hint: 'Typical finish times: 8h – 17h'      },
 ]
-
-function toKg(value, unit) {
-  const n = parseFloat(value)
-  if (!isFinite(n) || n <= 0) return null
-  const kg = unit === 'lb' ? n / 2.20462 : n
-  return kg >= 40 && kg <= 140 ? kg : null
-}
 
 function displayToKm(displayVal, unit) {
   const n = parseFloat(displayVal)
@@ -669,25 +663,6 @@ function StepOne({ form, setForm }) {
 
 function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) {
   const { t } = useTranslation(['form', 'common'])
-  const weightOk      = toKg(form.weight_value, form.weight_unit) !== null
-  const weightTouched = form.weight_value !== ''
-
-  function switchUnit(newUnit) {
-    if (form.weight_unit === newUnit) return
-    const n = parseFloat(form.weight_value)
-    if (isFinite(n) && n > 0) {
-      const converted =
-        newUnit === 'lb'
-          ? Math.round(n * 2.20462)
-          : Math.round(n / 2.20462)
-      setForm(f => ({ ...f, weight_unit: newUnit, weight_value: String(converted) }))
-    } else {
-      setForm(f => ({ ...f, weight_unit: newUnit }))
-    }
-  }
-
-  const weightMin = form.weight_unit === 'kg' ? 40  : 88
-  const weightMax = form.weight_unit === 'kg' ? 140 : 309
 
   return (
     <div className="space-y-7">
@@ -710,43 +685,11 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
       {/* Weight */}
       <div>
         <FieldLabel>{t('form:field.weight')}</FieldLabel>
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            inputMode="decimal"
-            pattern="[0-9]*\.?[0-9]*"
-            maxLength={5}
-            value={form.weight_value}
-            onChange={e => setForm(f => ({ ...f, weight_value: e.target.value }))}
-            className={[
-              'w-24 border-2 rounded-lg px-3 py-2.5 text-sm',
-              'focus:outline-none focus:border-[#48C4B0]',
-              weightTouched && !weightOk ? 'border-red-300' : 'border-gray-200',
-            ].join(' ')}
-          />
-          <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
-            {['kg', 'lb'].map(unit => (
-              <button
-                key={unit}
-                type="button"
-                onClick={() => switchUnit(unit)}
-                className={[
-                  'px-3 py-2 min-h-[38px] transition-colors',
-                  form.weight_unit === unit
-                    ? 'bg-[#48C4B0] text-white'
-                    : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
-                ].join(' ')}
-              >
-                {unit}
-              </button>
-            ))}
-          </div>
-        </div>
-        {weightTouched && !weightOk && (
-          <p className="text-xs text-red-400 mt-1.5">
-            {t('form:field.weight.error', { min: weightMin, max: weightMax, unit: form.weight_unit })}
-          </p>
-        )}
+        <WeightInput
+          value={form.weight_value}
+          unit={form.weight_unit}
+          onChange={(value, unit) => setForm(f => ({ ...f, weight_value: value, weight_unit: unit }))}
+        />
       </div>
 
       {/* Gender */}

@@ -3,6 +3,7 @@ import Nav from './Nav.jsx'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
 import { goalMinutesFromFields } from '../utils/form-helpers.js'
+import WeightInput, { toKg } from './shared/WeightInput.jsx'
 import FALLBACK_PRODUCTS from '../config/products.json'
 import { useProducts }   from '../hooks/useProducts.js'
 
@@ -62,14 +63,22 @@ function Pill({ label, selected, onClick }) {
   )
 }
 
+const DEFAULT_FORM = {
+  race_name:    '',
+  race_date:    '',
+  race_type:    '',
+  goal_time_h:  '',
+  goal_time_m:  '',
+  conditions:   'mild',
+  gender:       '',
+  weight_value: '',
+  weight_unit:  'kg',
+  email:        '',
+}
+
 export default function SimpleForm({ onComplete }) {
-  const [race_type,   setRaceType]   = useState('')
-  const [goal_time_h, setGoalH]      = useState('')
-  const [goal_time_m, setGoalM]      = useState('')
-  const [conditions,  setConditions] = useState('mild')
-  const [email,       setEmail]      = useState('')
-  const [profile,     setProfile]    = useState(SIMPLE_DEFAULTS)
-  const [submitting,  setSubmitting] = useState(false)
+  const [form,       setForm]       = useState(DEFAULT_FORM)
+  const [submitting, setSubmitting] = useState(false)
 
   const { products: liveProducts } = useProducts()
   const catalog = liveProducts ?? FALLBACK_PRODUCTS
@@ -83,23 +92,30 @@ export default function SimpleForm({ onComplete }) {
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data) return
-        setProfile(prev => ({
-          ...prev,
-          weight_kg:       data.weight_kg       ?? prev.weight_kg,
-          gender:          data.gender           ?? prev.gender,
-          athlete_profile: data.athlete_profile  ?? prev.athlete_profile,
-          caffeine_ok:     data.caffeine_ok      ?? prev.caffeine_ok,
-        }))
+        setForm(f => {
+          const patch = {}
+
+          if (data.weight_kg != null && f.weight_value === '') {
+            const unit       = data.weight_unit === 'lb' ? 'lb' : 'kg'
+            const displayVal = unit === 'lb'
+              ? String(Math.round(data.weight_kg * 2.20462))
+              : String(Math.round(data.weight_kg))
+            patch.weight_value = displayVal
+            patch.weight_unit  = unit
+          }
+          if (data.gender && f.gender === '') {
+            patch.gender = data.gender
+          }
+
+          return { ...f, ...patch }
+        })
       })
       .catch(() => {})
   }, [])
 
-  const goalMinutes = goalMinutesFromFields(goal_time_h, goal_time_m)
+  const goalMinutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
   const goalValid   = goalMinutes !== null
-  const canSubmit   = race_type !== '' && goalValid && !submitting
-
-  const goalDisplayH = Math.floor(goalMinutes ?? 0 / 60)
-  const goalDisplayM = (goalMinutes ?? 0) % 60
+  const canSubmit   = form.race_type !== '' && goalValid && !submitting
 
   function buildGoalLabel() {
     if (!goalValid) return null
@@ -119,17 +135,20 @@ export default function SimpleForm({ onComplete }) {
     const m = goalMinutes % 60
     const goalTimeFormatted = h > 0 ? `${h}:${String(m).padStart(2, '0')}` : `0:${String(m).padStart(2, '0')}`
 
+    const weight_kg = toKg(form.weight_value, form.weight_unit) ?? SIMPLE_DEFAULTS.weight_kg
+    const gender    = form.gender !== '' ? form.gender : SIMPLE_DEFAULTS.gender
+
     const engineInputs = {
-      race_type,
+      race_type:        form.race_type,
       goal_minutes:     goalMinutes,
-      weight_kg:        profile.weight_kg,
-      gender:           profile.gender,
-      conditions,
+      weight_kg,
+      gender,
+      conditions:       form.conditions,
       effort:           SIMPLE_DEFAULTS.effort,
-      caffeine_ok:      profile.caffeine_ok,
+      caffeine_ok:      SIMPLE_DEFAULTS.caffeine_ok,
       elevation_gain_m: SIMPLE_DEFAULTS.elevation_gain_m,
       distance_km:      SIMPLE_DEFAULTS.distance_km,
-      athlete_profile:  profile.athlete_profile,
+      athlete_profile:  SIMPLE_DEFAULTS.athlete_profile,
       training_mode:    SIMPLE_DEFAULTS.training_mode,
     }
 
@@ -141,19 +160,20 @@ export default function SimpleForm({ onComplete }) {
       addon_items:           [],
     })
 
-    const form = {
-      race_type,
+    const outForm = {
+      race_name:        form.race_name.trim(),
+      race_date:        form.race_date,
+      race_type:        form.race_type,
       goal_time:        goalTimeFormatted,
-      goal_time_h,
-      goal_time_m,
-      conditions,
-      email,
-      weight_value:     String(profile.weight_kg),
-      weight_unit:      'kg',
-      gender:           profile.gender,
-      athlete_profile:  profile.athlete_profile,
-      caffeine_ok:      profile.caffeine_ok,
-      race_name:        '',
+      goal_time_h:      form.goal_time_h,
+      goal_time_m:      form.goal_time_m,
+      conditions:       form.conditions,
+      gender:           gender,
+      weight_value:     form.weight_value || '70',
+      weight_unit:      form.weight_unit,
+      email:            form.email,
+      athlete_profile:  SIMPLE_DEFAULTS.athlete_profile,
+      caffeine_ok:      SIMPLE_DEFAULTS.caffeine_ok,
       surface_type:     '',
       elevation_gain_m: 0,
       dist_unit:        'km',
@@ -165,12 +185,14 @@ export default function SimpleForm({ onComplete }) {
       mode:               'simple',
       targets,
       selection,
-      form,
+      form:               outForm,
       resolvedAddonItems: [],
       addonCoverage:      null,
       foundationTargets:  targets,
     })
   }
+
+  const today = new Date().toISOString().split('T')[0]
 
   return (
     <div className="bg-white min-h-screen">
@@ -179,7 +201,35 @@ export default function SimpleForm({ onComplete }) {
       <div className="max-w-lg mx-auto px-6 pt-8 pb-16">
         <form onSubmit={handleSubmit} noValidate>
 
-          {/* Race type */}
+          {/* 1. Race name */}
+          <div className="mb-8">
+            <SectionLabel>Race name</SectionLabel>
+            <input
+              type="text"
+              placeholder="e.g. Cape Town Marathon 2026"
+              value={form.race_name}
+              onChange={e => setForm(f => ({ ...f, race_name: e.target.value }))}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
+                         focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
+            />
+            <p className="text-xs text-gray-400 mt-1.5">Optional — shown on your plan</p>
+          </div>
+
+          {/* 2. Race date */}
+          <div className="mb-8">
+            <SectionLabel>Race date</SectionLabel>
+            <input
+              type="date"
+              value={form.race_date}
+              min={today}
+              onChange={e => setForm(f => ({ ...f, race_date: e.target.value }))}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
+                         focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
+            />
+            <p className="text-xs text-gray-400 mt-1.5">Optional — helps track your countdown</p>
+          </div>
+
+          {/* 3. Race type */}
           <div className="mb-8">
             <SectionLabel>What are you racing?</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -187,14 +237,14 @@ export default function SimpleForm({ onComplete }) {
                 <Pill
                   key={opt.key}
                   label={opt.label}
-                  selected={race_type === opt.key}
-                  onClick={() => setRaceType(opt.key)}
+                  selected={form.race_type === opt.key}
+                  onClick={() => setForm(f => ({ ...f, race_type: opt.key }))}
                 />
               ))}
             </div>
           </div>
 
-          {/* Goal time */}
+          {/* 4. Goal time */}
           <div className="mb-8">
             <SectionLabel>Your goal time</SectionLabel>
             <div className="flex items-center gap-3">
@@ -204,8 +254,8 @@ export default function SimpleForm({ onComplete }) {
                   min="0"
                   max="200"
                   placeholder="h"
-                  value={goal_time_h}
-                  onChange={e => setGoalH(e.target.value)}
+                  value={form.goal_time_h}
+                  onChange={e => setForm(f => ({ ...f, goal_time_h: e.target.value }))}
                   className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-center
                              text-lg font-semibold focus:outline-none focus:border-[#48C4B0]
                              text-[#1B1B1B]"
@@ -219,8 +269,8 @@ export default function SimpleForm({ onComplete }) {
                   min="0"
                   max="59"
                   placeholder="mm"
-                  value={goal_time_m}
-                  onChange={e => setGoalM(e.target.value)}
+                  value={form.goal_time_m}
+                  onChange={e => setForm(f => ({ ...f, goal_time_m: e.target.value }))}
                   className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-center
                              text-lg font-semibold focus:outline-none focus:border-[#48C4B0]
                              text-[#1B1B1B]"
@@ -235,7 +285,7 @@ export default function SimpleForm({ onComplete }) {
             )}
           </div>
 
-          {/* Race conditions */}
+          {/* 5. Race conditions */}
           <div className="mb-8">
             <SectionLabel>Expected conditions on race day</SectionLabel>
             <div className="flex gap-2">
@@ -243,11 +293,11 @@ export default function SimpleForm({ onComplete }) {
                 <button
                   key={opt.key}
                   type="button"
-                  onClick={() => setConditions(opt.key)}
+                  onClick={() => setForm(f => ({ ...f, conditions: opt.key }))}
                   className={[
                     'flex-1 flex flex-col items-center justify-center gap-1',
                     'min-h-[64px] rounded-xl border-2 transition-colors',
-                    conditions === opt.key
+                    form.conditions === opt.key
                       ? 'border-[#48C4B0] bg-[#48C4B0]/10'
                       : 'border-gray-200 bg-white',
                   ].join(' ')}
@@ -259,15 +309,46 @@ export default function SimpleForm({ onComplete }) {
             </div>
           </div>
 
-          {/* Email (optional) */}
+          {/* 6. Gender */}
+          <div className="mb-8">
+            <SectionLabel>You are</SectionLabel>
+            <div className="flex gap-2">
+              {[
+                { key: 'female', label: 'Female' },
+                { key: 'male',   label: 'Male'   },
+              ].map(g => (
+                <Pill
+                  key={g.key}
+                  label={g.label}
+                  selected={form.gender === g.key}
+                  onClick={() => setForm(f => ({ ...f, gender: f.gender === g.key ? '' : g.key }))}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 7. Weight */}
+          <div className="mb-8">
+            <SectionLabel>Your weight</SectionLabel>
+            <WeightInput
+              value={form.weight_value}
+              unit={form.weight_unit}
+              onChange={(value, unit) => setForm(f => ({ ...f, weight_value: value, weight_unit: unit }))}
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Used to personalise your sodium and fluid targets.
+            </p>
+          </div>
+
+          {/* 8. Email (optional) */}
           <div className="mb-8">
             <p className="text-xs text-gray-400 mb-2">
               Your email — get your plan as a PDF
             </p>
             <input
               type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              value={form.email}
+              onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
               placeholder="you@example.com"
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
                          focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
