@@ -21,6 +21,11 @@ export async function ensureMigrated() {
     )
   `
   await sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS preferred_region TEXT DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS preferred_lang TEXT DEFAULT 'en'
+  `
+  await sql`
     CREATE TABLE IF NOT EXISTS plans (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,

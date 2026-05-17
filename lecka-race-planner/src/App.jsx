@@ -8,7 +8,7 @@ import FeedbackPage  from './components/FeedbackPage'
 import HomePage      from './components/HomePage'
 import LoginPage     from './components/LoginPage'
 import PlanViewPage  from './components/PlanViewPage'
-import { isEmbedded, detectRegion } from './embed.js'
+import { isEmbedded, getSavedRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
 
@@ -87,7 +87,7 @@ export default function App() {
   function handleComplete(result) {
     recordPlan(
       result.targets?.race_type ?? result.form?.race_type ?? 'unknown',
-      detectRegion,
+      getSavedRegion(),
     )
     saveCurrentPlan(result)
     setPlan(result)

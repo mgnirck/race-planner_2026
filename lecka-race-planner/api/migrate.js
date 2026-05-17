@@ -19,6 +19,11 @@ export default async function handler(req, res) {
         dist_unit TEXT DEFAULT 'km'
       )
     `
+    await sql`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS preferred_region TEXT DEFAULT NULL,
+        ADD COLUMN IF NOT EXISTS preferred_lang TEXT DEFAULT 'en'
+    `
 
     await sql`
       CREATE TABLE IF NOT EXISTS plans (

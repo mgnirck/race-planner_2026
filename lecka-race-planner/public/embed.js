@@ -1,21 +1,17 @@
 /**
  * Lecka Race Planner — Shopify embed helper
- * ==========================================
- * Include this script ONCE on any Shopify page that hosts the planner iframe.
  *
- * <script src="https://YOUR_VERCEL_URL/embed.js"></script>
- * <iframe data-lecka src="https://YOUR_VERCEL_URL/?utm_source=shopify_embed"
- *         width="100%" height="600" frameborder="0" scrolling="no"></iframe>
+ * Include this script once on any Shopify page that hosts the planner iframe.
+ * The planner is universal — no per-market configuration needed. Athletes
+ * select their region and language within the planner itself.
  *
- * What this script does
- * ---------------------
- * 1. Auto-sizes every iframe[data-lecka] to match the planner's content height,
- *    eliminating scrollbars inside the embed.
- * 2. Injects utm_source=shopify_embed into any iframe[data-lecka] src that
- *    doesn't already carry a utm_source parameter.
+ * What this script does:
+ * 1. Auto-sizes every iframe[data-lecka] to match the planner's content height.
+ * 2. Injects utm_source=shopify_embed into any iframe[data-lecka] src.
  * 3. Listens for postMessage events from the planner:
  *    - lecka:resize       → updates iframe height
  *    - lecka:emailCapture → fires a DOM CustomEvent + pushes to GTM dataLayer
+ *    - lecka:haravanCart  → handles Haravan cart flow for VN storefronts
  */
 
 (function (win, doc) {
@@ -23,7 +19,6 @@
 
   // ── Origin safety check ─────────────────────────────────────────────────────
   // Accept messages from any *.vercel.app subdomain OR the live Lecka domain.
-  // Adjust ALLOWED_ORIGINS after you set a custom domain.
   var ALLOWED_ORIGINS = [
     'https://plan.getlecka.com',
     'https://www.getlecka.com',

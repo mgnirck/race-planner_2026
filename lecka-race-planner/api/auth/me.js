@@ -20,7 +20,8 @@ export default async function handler(req, res) {
 
     const { rows } = await sql`
       SELECT id, email, created_at, weight_kg, weight_unit, gender,
-             athlete_profile, caffeine_ok, dist_unit
+             athlete_profile, caffeine_ok, dist_unit,
+             preferred_region, preferred_lang
       FROM users
       WHERE id = ${token}
       LIMIT 1

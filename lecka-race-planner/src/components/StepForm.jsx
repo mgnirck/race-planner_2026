@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '../i18n.js'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { needsDualTransporter, computeAddonCoverage, computeFoundationTargets } from '../engine/kit-calculator.js'
 import { selectProducts }   from '../engine/product-selector'
@@ -19,7 +20,7 @@ import FALLBACK_PRODUCTS    from '../config/products.json'
 import competitorProductsData from '../config/competitor-products.json'
 import { useProducts }      from '../hooks/useProducts.js'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
-import { detectRegion }     from '../embed.js'
+import { getSavedRegion, saveRegion } from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
 import LanguageSwitcher     from './LanguageSwitcher.jsx'
 
@@ -885,8 +886,8 @@ function StepThree({ form, setForm }) {
   const { t } = useTranslation(['form', 'common'])
   const { products: liveProducts } = useProducts()
   const products = liveProducts ?? FALLBACK_PRODUCTS
-  const gels = products.filter(p => p.type === 'gel' && isAvailableInRegion(p, detectRegion))
-  const bars = products.filter(p => p.type === 'bar' && isAvailableInRegion(p, detectRegion))
+  const gels = products.filter(p => p.type === 'gel' && isAvailableInRegion(p, getSavedRegion()))
+  const bars = products.filter(p => p.type === 'bar' && isAvailableInRegion(p, getSavedRegion()))
 
   function toggleProduct(id) {
     setForm(f => {
@@ -1353,6 +1354,15 @@ export default function StepForm({ onComplete }) {
           setProfilePrefilled(true)
           return { ...f, ...patch }
         })
+
+        if (profile.preferred_region) {
+          saveRegion(profile.preferred_region)
+        }
+
+        if (profile.preferred_lang && profile.preferred_lang !== i18n.language) {
+          i18n.changeLanguage(profile.preferred_lang)
+          try { localStorage.setItem('lecka_lang', profile.preferred_lang) } catch {}
+        }
       })
       .catch(err => {
         if (err.name !== 'AbortError') console.warn('[StepForm] profile prefill failed:', err)
@@ -1425,7 +1435,7 @@ export default function StepForm({ onComplete }) {
 
     const addonCoverage      = computeAddonCoverage(resolvedAddonItems, goal_minutes)
     const foundationTargets  = computeFoundationTargets(targets, addonCoverage)
-    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, detectRegion, { fuelling_style: form.fuelling_style }, allProducts)
+    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, getSavedRegion(), { fuelling_style: form.fuelling_style }, allProducts)
 
     try { sessionStorage.removeItem(DRAFT_KEY) } catch {}
     onComplete({
@@ -1458,7 +1468,7 @@ export default function StepForm({ onComplete }) {
       <div className="max-w-md mx-auto w-full px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-5">
           <img src="/logo.svg" alt="Lecka" className="h-7" />
-          <LanguageSwitcher region={detectRegion} />
+          <LanguageSwitcher compact />
         </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
           {t('common:step.ofTotal', { step, total: totalSteps })}

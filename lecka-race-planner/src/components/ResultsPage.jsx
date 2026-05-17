@@ -15,7 +15,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engine/region-utils.js'
-import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
+import { isEmbedded, notifyEmailCapture, embedCartURL, getSavedRegion, saveRegion, getRegionConfig } from '../embed.js'
 import Nav from './Nav.jsx'
 import regionsConfig from '../config/regions.json'
 import FALLBACK_PRODUCTS from '../config/products.json'
@@ -1327,7 +1327,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
   const [showCartEditor, setShowCartEditor] = useState(false)
-  const [region,         setRegion]         = useState(regionProp ?? detectRegion)
+  const [region,         setRegion]         = useState(regionProp ?? getSavedRegion())
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
   const [copyPlanState,  setCopyPlanState]  = useState('idle') // idle | copied
@@ -1432,6 +1432,22 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     () => embedCartURL(buildCartURLFromAggregated(aggregated, 'NUTRIPLAN10', '', region)),
     [aggregated, region]
   )
+
+  function handleRegionChange(newRegion) {
+    setRegion(newRegion)
+    saveRegion(newRegion)
+    const userId = localStorage.getItem('lecka_user_id')
+    if (userId) {
+      fetch('/api/auth/preferences', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userId}`,
+        },
+        body: JSON.stringify({ preferred_region: newRegion }),
+      }).catch(() => {})
+    }
+  }
 
   // VN region: open Zalo or Facebook chat and copy order summary to clipboard
   function copyToClipboard(text) {
@@ -1559,7 +1575,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               {t('common:nav.back')}
             </button>
             <img src="/logo.svg" alt="Lecka" className="h-6" />
-            <LanguageSwitcher region={region} />
+            <LanguageSwitcher compact />
           </div>
         </div>
       ) : (
@@ -1828,33 +1844,36 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         </div>
 
         {/* ── Act 2: Region picker ──────────────────────────────────────────── */}
-        {!isEmbedded && (
-          <section>
-            <SectionLabel>{t('results:section.shippingTo')}</SectionLabel>
-            <div className="flex gap-2 flex-wrap">
-              {Object.entries(regionsConfig).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setRegion(key)}
-                  className={[
-                    'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
-                    region === key
-                      ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                      : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                  ].join(' ')}
-                >
-                  {cfg.label}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
+        <section>
+          <SectionLabel>Where do you want to order?</SectionLabel>
+          <div className="flex gap-2 flex-wrap">
+            {Object.entries(regionsConfig).map(([key, cfg]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleRegionChange(key)}
+                className={[
+                  'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                  region === key
+                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                    : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                ].join(' ')}
+              >
+                {cfg.label}
+              </button>
+            ))}
+          </div>
+        </section>
 
         {/* ── Act 2: Get your products ──────────────────────────────────────── */}
         <section>
           <SectionLabel>Get your products</SectionLabel>
-          {aggregated.length === 0 ? (
+          {region == null ? (
+            <div className="border-2 border-gray-100 rounded-2xl p-6 text-center text-sm text-gray-500">
+              <p className="font-semibold text-[#1B1B1B] mb-1">Select your region above</p>
+              <p>to see local pricing and order.</p>
+            </div>
+          ) : aggregated.length === 0 ? (
             <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
               We couldn&apos;t find products available in your region. Try switching region above.
             </div>
