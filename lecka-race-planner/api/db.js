@@ -74,6 +74,10 @@ export async function ensureMigrated() {
     )
   `
   await sql`
+    ALTER TABLE plan_events
+      ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'simple'
+  `
+  await sql`
     CREATE TABLE IF NOT EXISTS product_catalog (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,

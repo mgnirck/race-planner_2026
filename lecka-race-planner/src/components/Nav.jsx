@@ -46,6 +46,13 @@ export default function Nav({ backHref, backLabel }) {
                 My plans
               </a>
               <a
+                href="/planner/pro"
+                className="text-sm font-medium text-[#1B1B1B] hover:text-[#48C4B0]
+                           transition-colors hidden sm:block"
+              >
+                Pro plan
+              </a>
+              <a
                 href="/dashboard"
                 aria-label="My plans"
                 className="w-8 h-8 rounded-full bg-[#48C4B0] text-white flex items-center

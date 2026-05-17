@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import StepForm      from './components/StepForm'
-import ResultsPage   from './components/ResultsPage'
-import AdminPage     from './components/AdminPage'
-import VerifyPage    from './components/VerifyPage'
-import DashboardPage from './components/DashboardPage'
-import FeedbackPage  from './components/FeedbackPage'
-import HomePage      from './components/HomePage'
-import LoginPage     from './components/LoginPage'
-import PlanViewPage  from './components/PlanViewPage'
+import StepForm         from './components/StepForm'
+import ResultsPage      from './components/ResultsPage'
+import SimpleForm       from './components/SimpleForm'
+import SimpleResultsPage from './components/SimpleResultsPage'
+import AdminPage        from './components/AdminPage'
+import VerifyPage       from './components/VerifyPage'
+import DashboardPage    from './components/DashboardPage'
+import FeedbackPage     from './components/FeedbackPage'
+import HomePage         from './components/HomePage'
+import LoginPage        from './components/LoginPage'
+import PlanViewPage     from './components/PlanViewPage'
 import { isEmbedded, getSavedRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
@@ -33,11 +35,11 @@ function loadCurrentPlan() {
   }
 }
 
-function recordPlan(race_type, region) {
+function recordPlan(race_type, region, mode = 'simple') {
   fetch('/api/record-plan', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ race_type, region }),
+    body:    JSON.stringify({ race_type, region, mode }),
   }).catch(() => {})
 
   try {
@@ -83,28 +85,58 @@ export default function App() {
   // Standalone homepage — only when not in Shopify embed
   if (PATH === '/' && !isEmbedded) return <HomePage />
 
-  // Planner flow — /planner (standalone) and / (embedded)
-  function handleComplete(result) {
+  // ── Pro planner — existing full form ─────────────────────────────────────
+  if (PATH === '/planner/pro') {
+    function handleComplete(result) {
+      recordPlan(
+        result.targets?.race_type ?? result.form?.race_type ?? 'unknown',
+        getSavedRegion(),
+        'pro',
+      )
+      saveCurrentPlan(result)
+      setPlan(result)
+    }
+
+    if (plan) {
+      return (
+        <ResultsPage
+          targets={plan.targets}
+          foundationTargets={plan.foundationTargets ?? plan.targets}
+          selection={plan.selection}
+          addonCoverage={plan.addonCoverage ?? null}
+          resolvedAddonItems={plan.resolvedAddonItems ?? []}
+          form={plan.form}
+          onBack={() => {
+            try { sessionStorage.removeItem('lecka_form_draft') } catch {}
+            window.location.replace('/planner/pro')
+          }}
+        />
+      )
+    }
+
+    return <StepForm onComplete={handleComplete} />
+  }
+
+  // ── Simple planner — lightweight form at /planner and embedded / ──────────
+  function handleSimpleComplete(result) {
     recordPlan(
       result.targets?.race_type ?? result.form?.race_type ?? 'unknown',
       getSavedRegion(),
+      'simple',
     )
     saveCurrentPlan(result)
     setPlan(result)
   }
 
-  if (plan) {
+  if (plan && plan.mode === 'simple') {
     return (
-      <ResultsPage
+      <SimpleResultsPage
         targets={plan.targets}
-        foundationTargets={plan.foundationTargets ?? plan.targets}
         selection={plan.selection}
-        addonCoverage={plan.addonCoverage ?? null}
-        resolvedAddonItems={plan.resolvedAddonItems ?? []}
         form={plan.form}
         onBack={() => {
           try { sessionStorage.removeItem('lecka_form_draft') } catch {}
-          isEmbedded ? setPlan(null) : window.location.replace('/planner')
+          setPlan(null)
         }}
       />
     )
@@ -134,7 +166,7 @@ export default function App() {
           </div>
         </div>
       )}
-      <StepForm onComplete={handleComplete} />
+      <SimpleForm onComplete={handleSimpleComplete} />
     </>
   )
 }

@@ -249,7 +249,7 @@ export default async function handler(req, res) {
 
   // ── POST — record a new plan ────────────────────────────────────────────────
   if (req.method === 'POST') {
-    const { race_type, region } = req.body ?? {}
+    const { race_type, region, mode } = req.body ?? {}
 
     if (!race_type || typeof race_type !== 'string') {
       return res.status(400).json({ error: 'race_type is required' })
@@ -258,7 +258,8 @@ export default async function handler(req, res) {
     try {
       await ensureMigrated()
       const safeRegion = (region && typeof region === 'string') ? region : 'us'
-      await sql`INSERT INTO plan_events (race_type, region) VALUES (${race_type}, ${safeRegion})`
+      const safeMode   = (mode === 'pro' || mode === 'simple') ? mode : 'simple'
+      await sql`INSERT INTO plan_events (race_type, region, mode) VALUES (${race_type}, ${safeRegion}, ${safeMode})`
       return res.status(201).json({ ok: true })
     } catch (err) {
       console.error('[record-plan] insert error:', err)
