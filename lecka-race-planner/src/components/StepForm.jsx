@@ -22,8 +22,8 @@ import { useProducts }      from '../hooks/useProducts.js'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
 import { getSavedRegion, saveRegion } from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
-import LanguageSwitcher     from './LanguageSwitcher.jsx'
 import WeightInput, { toKg } from './shared/WeightInput.jsx'
+import ProductPreferencePicker from './shared/ProductPreferencePicker.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -174,49 +174,6 @@ function FieldLabel({ children }) {
     <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
       {children}
     </p>
-  )
-}
-
-function ProductPreferenceCard({ product, selected, onToggle, t }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={[
-        'w-full px-4 py-3 rounded-xl border-2 text-left transition-colors',
-        selected
-          ? 'border-[#48C4B0] bg-[#48C4B0]/5'
-          : 'border-gray-200 bg-white hover:border-[#48C4B0]/50',
-      ].join(' ')}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm font-semibold leading-tight ${selected ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
-            {product.name}
-          </p>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-            <span className="text-xs text-gray-400">{t('form:product.carbs', { value: product.carbs_per_unit })}</span>
-            <span className="text-xs text-gray-400">{t('form:product.sodium', { value: product.sodium_per_unit })}</span>
-            {product.caffeine && (
-              <span className="text-xs font-medium text-[#48C4B0]">{t('form:product.caffeine', { value: product.caffeine_mg })}</span>
-            )}
-          </div>
-        </div>
-        <div
-          className={[
-            'w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors',
-            selected ? 'bg-[#48C4B0] border-[#48C4B0]' : 'border-gray-300',
-          ].join(' ')}
-        >
-          {selected && (
-            <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          )}
-        </div>
-      </div>
-    </button>
   )
 }
 
@@ -661,7 +618,7 @@ function StepOne({ form, setForm }) {
 
 // ── Step 2: Body, conditions & preferences ────────────────────────────────────
 
-function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) {
+function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDismissPrefill }) {
   const { t } = useTranslation(['form', 'common'])
 
   return (
@@ -670,7 +627,7 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
       {/* Pre-fill badge */}
       {showPrefillBadge && (
         <div className="flex items-center justify-between gap-2 bg-[#48C4B0]/10 border border-[#48C4B0]/30 rounded-full px-4 py-2">
-          <span className="text-xs font-medium text-[#48C4B0]">Pre-filled from your profile</span>
+          <span className="text-xs font-medium text-[#48C4B0]">{prefillMessage ?? 'Pre-filled from your profile'}</span>
           <button
             type="button"
             onClick={onDismissPrefill}
@@ -827,33 +784,8 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
 
 function StepThree({ form, setForm }) {
   const { t } = useTranslation(['form', 'common'])
-  const { products: liveProducts } = useProducts()
-  const products = liveProducts ?? FALLBACK_PRODUCTS
-  const gels = products.filter(p => p.type === 'gel' && isAvailableInRegion(p, getSavedRegion()))
-  const bars = products.filter(p => p.type === 'bar' && isAvailableInRegion(p, getSavedRegion()))
-
-  function toggleProduct(id) {
-    setForm(f => {
-      const current = f.preferred_product_ids
-      return current.includes(id)
-        ? { ...f, preferred_product_ids: current.filter(x => x !== id) }
-        : { ...f, preferred_product_ids: [...current, id] }
-    })
-  }
 
   const style = form.fuelling_style
-
-  const barLabel = style === 'gels_and_bars'
-    ? 'Energy bars (during + around your race)'
-    : style === 'drink_mix_base'
-    ? 'Energy bars (optional, for variety)'
-    : 'Energy bars (for before and after your race)'
-
-  const barSublabel = style === 'drink_mix_base'
-    ? 'With a drink mix base, bars are supplementary'
-    : style === 'gels_and_bars'
-    ? null
-    : 'Bars are used pre-race and for recovery — not during'
 
   return (
     <div className="space-y-7">
@@ -905,40 +837,22 @@ function StepThree({ form, setForm }) {
         {t('form:field.products.intro')}
       </p>
 
-      {/* Gels */}
-      <div>
-        <FieldLabel>{t('form:field.gels')}</FieldLabel>
-        <div className="space-y-2">
-          {gels.map(gel => (
-            <ProductPreferenceCard
-              key={gel.id}
-              product={gel}
-              selected={form.preferred_product_ids.includes(gel.id)}
-              onToggle={() => toggleProduct(gel.id)}
-              t={t}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Bars */}
-      <div>
-        <FieldLabel>{barLabel}</FieldLabel>
-        {barSublabel && (
-          <p className="text-xs text-gray-400 -mt-2 mb-3">{barSublabel}</p>
-        )}
-        <div className="space-y-2">
-          {bars.map(bar => (
-            <ProductPreferenceCard
-              key={bar.id}
-              product={bar}
-              selected={form.preferred_product_ids.includes(bar.id)}
-              onToggle={() => toggleProduct(bar.id)}
-              t={t}
-            />
-          ))}
-        </div>
-      </div>
+      <ProductPreferencePicker
+        preferredProductIds={form.preferred_product_ids}
+        onToggle={(id) =>
+          setForm(f => {
+            const current = f.preferred_product_ids
+            return {
+              ...f,
+              preferred_product_ids: current.includes(id)
+                ? current.filter(x => x !== id)
+                : [...current, id],
+            }
+          })
+        }
+        region={getSavedRegion() ?? 'us'}
+        caffeineOk={form.caffeine_ok !== false}
+      />
 
     </div>
   )
@@ -1254,6 +1168,8 @@ export default function StepForm({ onComplete }) {
   const allProducts = liveProducts ?? FALLBACK_PRODUCTS
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
+  const [fromSimple, setFromSimple] = useState(() => loadDraft()?._from_simple === true)
+  const [fromSimpleDismissed, setFromSimpleDismissed] = useState(false)
   const [profilePrefilled, setProfilePrefilled] = useState(false)
   const [prefillDismissed, setPrefillDismissed] = useState(false)
   const [previewTargets, setPreviewTargets] = useState(null)
@@ -1411,7 +1327,7 @@ export default function StepForm({ onComplete }) {
       <div className="max-w-md mx-auto w-full px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-5">
           <img src="/logo.svg" alt="Lecka" className="h-7" />
-          <LanguageSwitcher compact />
+          {/* Language switcher — re-enable when translations complete */}
         </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
           {t('common:step.ofTotal', { step, total: totalSteps })}
@@ -1433,8 +1349,19 @@ export default function StepForm({ onComplete }) {
           <StepTwo
             form={form}
             setForm={setForm}
-            showPrefillBadge={profilePrefilled && !prefillDismissed}
-            onDismissPrefill={() => setPrefillDismissed(true)}
+            showPrefillBadge={
+              (fromSimple && !fromSimpleDismissed) ||
+              (profilePrefilled && !prefillDismissed && !(fromSimple && !fromSimpleDismissed))
+            }
+            prefillMessage={
+              fromSimple && !fromSimpleDismissed
+                ? 'Pre-filled from your Quick plan — just add the details below.'
+                : undefined
+            }
+            onDismissPrefill={() => {
+              if (fromSimple && !fromSimpleDismissed) setFromSimpleDismissed(true)
+              else setPrefillDismissed(true)
+            }}
           />
         )}
         {step === 3 && <StepThree form={form} setForm={setForm} />}

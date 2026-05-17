@@ -6,7 +6,6 @@ import { isEmbedded, embedCartURL, getSavedRegion, saveRegion, getRegionConfig }
 import { useProducts } from '../hooks/useProducts.js'
 import FALLBACK_PRODUCTS from '../config/products.json'
 import regionsConfig from '../config/regions.json'
-import LanguageSwitcher from './LanguageSwitcher.jsx'
 import i18n from '../i18n.js'
 import { formatAddonSummary } from '../engine/kit-calculator.js'
 
@@ -379,6 +378,33 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
     }
   }
 
+  const [navigating, setNavigating] = useState(false)
+
+  function handleBuildProPlan() {
+    setNavigating(true)
+    const draft = {
+      race_name:              form.race_name ?? '',
+      race_date:              form.race_date ?? '',
+      race_type:              form.race_type ?? '',
+      goal_time_h:            form.goal_time_h ?? '',
+      goal_time_m:            form.goal_time_m ?? '',
+      conditions:             form.conditions ?? 'mild',
+      surface_type:           form.surface_type ?? '',
+      dist_unit:              form.dist_unit ?? 'km',
+      weight_value:           form.weight_value ?? '',
+      weight_unit:            form.weight_unit ?? 'kg',
+      gender:                 form.gender ?? '',
+      caffeine_ok:            form.caffeine_ok !== undefined ? form.caffeine_ok : null,
+      preferred_product_ids:  form.preferred_product_ids ?? [],
+      fuelling_style:         form.fuelling_style ?? 'gels_only',
+      _from_simple:           true,
+    }
+    try {
+      sessionStorage.setItem('lecka_form_draft', JSON.stringify(draft))
+    } catch {}
+    window.location.href = '/planner/pro'
+  }
+
   const isLoggedIn    = Boolean(localStorage.getItem('lecka_user_id'))
   const heroTitle     = (form.race_name && form.race_name.trim()) || (RACE_LABELS[targets.race_type] ?? targets.race_type)
   const conditionText = CONDITION_LABELS[targets.conditions] ?? targets.conditions
@@ -414,7 +440,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               ← Back
             </button>
             <img src="/logo.svg" alt="Lecka" className="h-6" />
-            <LanguageSwitcher compact />
+            {/* Language switcher — re-enable when translations complete */}
           </div>
         </div>
       ) : (
@@ -549,14 +575,17 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               ? 'The Pro planner uses your exact weight, fitness level, and conditions to sharpen your carb, sodium, and fluid targets. It also adds elevation data and a detailed race timeline.'
               : 'The Pro planner personalises every number to your body and race conditions — and saves your plans so you can track them across races.'}
           </p>
-          <a
-            href="/planner/pro"
+          <button
+            type="button"
+            onClick={handleBuildProPlan}
+            disabled={navigating}
             className="mt-3 flex items-center justify-center w-full min-h-[48px]
                        bg-white border-2 border-[#48C4B0] text-[#48C4B0] font-semibold
-                       rounded-xl text-sm hover:bg-[#48C4B0] hover:text-white transition-colors"
+                       rounded-xl text-sm hover:bg-[#48C4B0] hover:text-white transition-colors
+                       disabled:opacity-60"
           >
-            Build my Pro plan →
-          </a>
+            {navigating ? 'Opening Pro planner…' : 'Build my Pro plan →'}
+          </button>
         </div>
 
         {/* ── Section 5: Buy / order ────────────────────────────────────────── */}

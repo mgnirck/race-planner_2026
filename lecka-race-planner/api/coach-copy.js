@@ -97,6 +97,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields: race_type, goal_minutes, conditions, carb_per_hour' })
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('[coach-copy] ANTHROPIC_API_KEY not set — skipping AI copy')
+    return res.status(200).json({ copy: null })
+  }
+
   try {
     const controller = new AbortController()
     const timeout    = setTimeout(() => controller.abort(), 7000)
@@ -110,7 +115,7 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model:      'claude-sonnet-4-20250514',
+        model:      'claude-haiku-4-5-20251001',
         max_tokens: 500,
         system: `You are the voice of Lecka, a real food endurance nutrition brand.
 Write personalised coach copy for an athlete's race nutrition plan.

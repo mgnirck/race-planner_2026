@@ -1,6 +1,5 @@
 import React from 'react'
 import { isEmbedded } from '../embed.js'
-import LanguageSwitcher from './LanguageSwitcher.jsx'
 
 export default function Nav({ backHref, backLabel }) {
   if (isEmbedded) return null
@@ -33,9 +32,9 @@ export default function Nav({ backHref, backLabel }) {
           </a>
         </div>
 
-        {/* Right — language + auth */}
+        {/* Right — auth */}
         <div className="w-28 flex-shrink-0 flex items-center justify-end gap-2">
-          <LanguageSwitcher compact />
+          {/* Language switcher — re-enable when translations complete */}
           {userId ? (
             <>
               <a

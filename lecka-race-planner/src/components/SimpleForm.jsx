@@ -4,8 +4,10 @@ import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
 import { goalMinutesFromFields } from '../utils/form-helpers.js'
 import WeightInput, { toKg } from './shared/WeightInput.jsx'
+import ProductPreferencePicker from './shared/ProductPreferencePicker.jsx'
 import FALLBACK_PRODUCTS from '../config/products.json'
 import { useProducts }   from '../hooks/useProducts.js'
+import { getSavedRegion } from '../embed.js'
 
 const RACE_OPTIONS = [
   { key: '5k',              label: '5 km' },
@@ -64,16 +66,19 @@ function Pill({ label, selected, onClick }) {
 }
 
 const DEFAULT_FORM = {
-  race_name:    '',
-  race_date:    '',
-  race_type:    '',
-  goal_time_h:  '',
-  goal_time_m:  '',
-  conditions:   'mild',
-  gender:       '',
-  weight_value: '',
-  weight_unit:  'kg',
-  email:        '',
+  race_name:              '',
+  race_date:              '',
+  race_type:              '',
+  goal_time_h:            '',
+  goal_time_m:            '',
+  conditions:             'mild',
+  gender:                 '',
+  weight_value:           '',
+  weight_unit:            'kg',
+  caffeine_ok:            null,
+  product_preference_mode: 'suggested',
+  preferred_product_ids:  [],
+  email:                  '',
 }
 
 export default function SimpleForm({ onComplete }) {
@@ -106,6 +111,9 @@ export default function SimpleForm({ onComplete }) {
           if (data.gender && f.gender === '') {
             patch.gender = data.gender
           }
+          if (data.caffeine_ok != null && f.caffeine_ok === null) {
+            patch.caffeine_ok = data.caffeine_ok
+          }
 
           return { ...f, ...patch }
         })
@@ -135,8 +143,12 @@ export default function SimpleForm({ onComplete }) {
     const m = goalMinutes % 60
     const goalTimeFormatted = h > 0 ? `${h}:${String(m).padStart(2, '0')}` : `0:${String(m).padStart(2, '0')}`
 
-    const weight_kg = toKg(form.weight_value, form.weight_unit) ?? SIMPLE_DEFAULTS.weight_kg
-    const gender    = form.gender !== '' ? form.gender : SIMPLE_DEFAULTS.gender
+    const weight_kg  = toKg(form.weight_value, form.weight_unit) ?? SIMPLE_DEFAULTS.weight_kg
+    const gender     = form.gender !== '' ? form.gender : SIMPLE_DEFAULTS.gender
+    const caffeine_ok = form.caffeine_ok !== null ? form.caffeine_ok : true
+    const preferred_product_ids = form.product_preference_mode === 'suggested'
+      ? []
+      : form.preferred_product_ids
 
     const engineInputs = {
       race_type:        form.race_type,
@@ -145,7 +157,7 @@ export default function SimpleForm({ onComplete }) {
       gender,
       conditions:       form.conditions,
       effort:           SIMPLE_DEFAULTS.effort,
-      caffeine_ok:      SIMPLE_DEFAULTS.caffeine_ok,
+      caffeine_ok,
       elevation_gain_m: SIMPLE_DEFAULTS.elevation_gain_m,
       distance_km:      SIMPLE_DEFAULTS.distance_km,
       athlete_profile:  SIMPLE_DEFAULTS.athlete_profile,
@@ -155,30 +167,32 @@ export default function SimpleForm({ onComplete }) {
     const targets   = calculateTargets(engineInputs)
     const selection = selectProducts(targets, catalog, {
       fuelling_style:        'gels_only',
-      preferred_product_ids: [],
+      preferred_product_ids,
       want_addons:           false,
       addon_items:           [],
     })
 
     const outForm = {
-      race_name:        form.race_name.trim(),
-      race_date:        form.race_date,
-      race_type:        form.race_type,
-      goal_time:        goalTimeFormatted,
-      goal_time_h:      form.goal_time_h,
-      goal_time_m:      form.goal_time_m,
-      conditions:       form.conditions,
-      gender:           gender,
-      weight_value:     form.weight_value || '70',
-      weight_unit:      form.weight_unit,
-      email:            form.email,
-      athlete_profile:  SIMPLE_DEFAULTS.athlete_profile,
-      caffeine_ok:      SIMPLE_DEFAULTS.caffeine_ok,
-      surface_type:     '',
-      elevation_gain_m: 0,
-      dist_unit:        'km',
-      fuelling_style:   'gels_only',
-      addon_items:      [],
+      race_name:              form.race_name.trim(),
+      race_date:              form.race_date,
+      race_type:              form.race_type,
+      goal_time:              goalTimeFormatted,
+      goal_time_h:            form.goal_time_h,
+      goal_time_m:            form.goal_time_m,
+      conditions:             form.conditions,
+      gender,
+      weight_value:           form.weight_value || '70',
+      weight_unit:            form.weight_unit,
+      email:                  form.email,
+      athlete_profile:        SIMPLE_DEFAULTS.athlete_profile,
+      caffeine_ok,
+      preferred_product_ids,
+      product_preference_mode: form.product_preference_mode,
+      surface_type:           '',
+      elevation_gain_m:       0,
+      dist_unit:              'km',
+      fuelling_style:         'gels_only',
+      addon_items:            [],
     }
 
     onComplete({
@@ -340,7 +354,83 @@ export default function SimpleForm({ onComplete }) {
             </p>
           </div>
 
-          {/* 8. Email (optional) */}
+          {/* 8. Caffeine */}
+          <div className="mb-8">
+            <SectionLabel>Caffeine during racing?</SectionLabel>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Pill
+                  label="Yes please"
+                  selected={form.caffeine_ok === true}
+                  onClick={() => setForm(f => ({ ...f, caffeine_ok: f.caffeine_ok === true ? null : true }))}
+                />
+              </div>
+              <div className="flex-1">
+                <Pill
+                  label="No caffeine"
+                  selected={form.caffeine_ok === false}
+                  onClick={() => setForm(f => ({ ...f, caffeine_ok: f.caffeine_ok === false ? null : false }))}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">Affects which gel flavours appear in your plan.</p>
+          </div>
+
+          {/* 9. Lecka flavour preference */}
+          <div className="mb-8">
+            <SectionLabel>Lecka flavour preference</SectionLabel>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, product_preference_mode: 'suggested' }))}
+                className={[
+                  'w-full px-4 py-3 rounded-xl border-2 text-left transition-colors',
+                  form.product_preference_mode === 'suggested'
+                    ? 'border-[#48C4B0] bg-[#48C4B0]/5'
+                    : 'border-gray-200 bg-white hover:border-[#48C4B0]/50',
+                ].join(' ')}
+              >
+                <p className={`text-sm font-semibold ${form.product_preference_mode === 'suggested' ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
+                  Suggest for me
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">We'll choose a balanced mix based on your plan.</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, product_preference_mode: 'pick' }))}
+                className={[
+                  'w-full px-4 py-3 rounded-xl border-2 text-left transition-colors',
+                  form.product_preference_mode === 'pick'
+                    ? 'border-[#48C4B0] bg-[#48C4B0]/5'
+                    : 'border-gray-200 bg-white hover:border-[#48C4B0]/50',
+                ].join(' ')}
+              >
+                <p className={`text-sm font-semibold ${form.product_preference_mode === 'pick' ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
+                  I'll pick my favourites
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">Choose the flavours you want in your plan.</p>
+              </button>
+            </div>
+            {form.product_preference_mode === 'pick' && (
+              <div className="mt-4">
+                <ProductPreferencePicker
+                  preferredProductIds={form.preferred_product_ids}
+                  onToggle={(id) =>
+                    setForm(f => ({
+                      ...f,
+                      preferred_product_ids: f.preferred_product_ids.includes(id)
+                        ? f.preferred_product_ids.filter(x => x !== id)
+                        : [...f.preferred_product_ids, id],
+                    }))
+                  }
+                  region={getSavedRegion() ?? 'us'}
+                  caffeineOk={form.caffeine_ok !== false}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 10. Email (optional) */}
           <div className="mb-8">
             <p className="text-xs text-gray-400 mb-2">
               Your email — get your plan as a PDF

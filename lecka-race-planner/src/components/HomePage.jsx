@@ -1,6 +1,5 @@
 import React from 'react'
 import Nav from './Nav.jsx'
-import LanguageSwitcher from './LanguageSwitcher.jsx'
 
 function StepIcon() {
   return (
@@ -57,9 +56,7 @@ export default function HomePage() {
           <p className="text-base text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">
             Science-based fueling for ultra runners and cyclists — built around real food.
           </p>
-          <div className="flex justify-center mb-6">
-            <LanguageSwitcher />
-          </div>
+          {/* Language switcher — re-enable when translations complete */}
           <a
             href="/planner"
             className="inline-flex items-center justify-center min-h-[56px] px-10
