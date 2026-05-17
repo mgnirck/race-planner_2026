@@ -380,7 +380,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
   }
 
   const isLoggedIn    = Boolean(localStorage.getItem('lecka_user_id'))
-  const heroTitle     = (form.race_name && form.race_name.trim()) || RACE_LABELS[targets.race_type] ?? targets.race_type
+  const heroTitle     = (form.race_name && form.race_name.trim()) || (RACE_LABELS[targets.race_type] ?? targets.race_type)
   const conditionText = CONDITION_LABELS[targets.conditions] ?? targets.conditions
 
   function formatRaceDate(dateStr) {
