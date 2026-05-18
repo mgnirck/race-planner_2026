@@ -52,6 +52,9 @@
           { "shopify_variant_id": "1125250882", "units_per_pack": 12, "price": 600000 },
           { "shopify_variant_id": "1159957439", "units_per_pack": 1,  "price": 50000  }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -108,6 +111,9 @@
           { "shopify_variant_id": "1150176317", "units_per_pack": 12, "price": 600000 },
           { "shopify_variant_id": "1160327888", "units_per_pack": 1,  "price": 50000  }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -163,6 +169,11 @@
         "variants": [
           { "shopify_variant_id": "1125250887", "units_per_pack": 12, "price": 600000 },
           { "shopify_variant_id": "1160327319", "units_per_pack": 1,  "price": 50000  }
+        ]
+      },
+      "sg": {
+        "variants": [
+          { "shopify_variant_id": "42051166666835", "units_per_pack": 1, "price": 3.21 }
         ]
       }
     }
@@ -220,6 +231,9 @@
           { "shopify_variant_id": "1157493058", "units_per_pack": 12, "price": 600000 },
           { "shopify_variant_id": "1160326580", "units_per_pack": 1,  "price": 50000  }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -275,6 +289,9 @@
         "variants": [
           { "shopify_variant_id": "1157486060", "units_per_pack": 12, "price": 600000 }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -325,6 +342,9 @@
         "gel-banana":        2,
         "gel-lime-ginger":   2,
         "gel-kumquat-honey": 2
+      },
+      "sg": {
+        "gel-banana": 1
       }
     },
     "regions": {
@@ -352,6 +372,9 @@
         "variants": [
           { "shopify_variant_id": "1158896125", "units_per_pack": 12, "price": 600000 }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -388,7 +411,8 @@
         ]
       },
       "ch": { "variants": [] },
-      "vn": { "variants": [] }
+      "vn": { "variants": [] },
+      "sg": { "variants": [] }
     }
   },
   {
@@ -423,7 +447,8 @@
           { "shopify_variant_id": "57767835828488", "units_per_pack": 1, "price": 8.00 }
         ]
       },
-      "vn": { "variants": [] }
+      "vn": { "variants": [] },
+      "sg": { "variants": [] }
     }
   },
   {
@@ -459,7 +484,8 @@
       "de": { "variants": [] },
       "dk": { "variants": [] },
       "ch": { "variants": [] },
-      "vn": { "variants": [] }
+      "vn": { "variants": [] },
+      "sg": { "variants": [] }
     }
   },
   {
@@ -499,6 +525,9 @@
         "variants": [
           { "shopify_variant_id": "1158896932", "units_per_pack": 12, "price": 480000 }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -548,6 +577,9 @@
           { "shopify_variant_id": "1162368754", "units_per_pack": 1,  "price": 40000  },
           { "shopify_variant_id": "1154478003", "units_per_pack": 12, "price": 480000 }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -589,6 +621,9 @@
           { "shopify_variant_id": "1162369093", "units_per_pack": 1,  "price": 40000  },
           { "shopify_variant_id": "1141355435", "units_per_pack": 12, "price": 480000 }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -624,6 +659,9 @@
           { "shopify_variant_id": "1162369016", "units_per_pack": 1,  "price": 40000  },
           { "shopify_variant_id": "1141355329", "units_per_pack": 12, "price": 480000 }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   },
@@ -673,6 +711,9 @@
           { "shopify_variant_id": "1162368673", "units_per_pack": 1,  "price": 40000  },
           { "shopify_variant_id": "1141355224", "units_per_pack": 12, "price": 480000 }
         ]
+      },
+      "sg": {
+        "variants": []
       }
     }
   }
