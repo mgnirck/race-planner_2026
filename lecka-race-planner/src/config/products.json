@@ -55,6 +55,12 @@
       },
       "sg": {
         "variants": []
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "49101082493226", "units_per_pack": 6,  "price": 144.00 },
+          { "shopify_variant_id": "49101082525994", "units_per_pack": 12, "price": 288.00 }
+        ]
       }
     }
   },
@@ -115,6 +121,12 @@
       "sg": {
         "variants": [
           { "shopify_variant_id": "42549244133459", "units_per_pack": 1, "price": 3.21 }
+        ]
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "50051279520042", "units_per_pack": 6,  "price": 144.00 },
+          { "shopify_variant_id": "50051279552810", "units_per_pack": 12, "price": 288.00 }
         ]
       }
     }
@@ -177,6 +189,12 @@
         "variants": [
           { "shopify_variant_id": "42051166666835", "units_per_pack": 1, "price": 3.21 }
         ]
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "49101171032362", "units_per_pack": 6,  "price": 144.00 },
+          { "shopify_variant_id": "49101171097898", "units_per_pack": 12, "price": 288.00 }
+        ]
       }
     }
   },
@@ -238,6 +256,12 @@
         "variants": [
           { "shopify_variant_id": "43073025310803", "units_per_pack": 1, "price": 3.21 }
         ]
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "50622014882090", "units_per_pack": 6,  "price": 144.00 },
+          { "shopify_variant_id": "50622014914858", "units_per_pack": 12, "price": 288.00 }
+        ]
       }
     }
   },
@@ -297,6 +321,12 @@
       "sg": {
         "variants": [
           { "shopify_variant_id": "43073025671251", "units_per_pack": 1, "price": 3.21 }
+        ]
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "50621994303786", "units_per_pack": 6,  "price": 144.00 },
+          { "shopify_variant_id": "50621994336554", "units_per_pack": 12, "price": 288.00 }
         ]
       }
     }
@@ -381,6 +411,9 @@
       },
       "sg": {
         "variants": []
+      },
+      "hk": {
+        "variants": []
       }
     }
   },
@@ -418,7 +451,8 @@
       },
       "ch": { "variants": [] },
       "vn": { "variants": [] },
-      "sg": { "variants": [] }
+      "sg": { "variants": [] },
+      "hk": { "variants": [] }
     }
   },
   {
@@ -454,7 +488,14 @@
         ]
       },
       "vn": { "variants": [] },
-      "sg": { "variants": [] }
+      "sg": { "variants": [] },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "51518552375594", "units_per_pack": 1, "price": 58.00  },
+          { "shopify_variant_id": "51518415438122", "units_per_pack": 3, "price": 145.00 },
+          { "shopify_variant_id": "51518415470890", "units_per_pack": 6, "price": 278.00 }
+        ]
+      }
     }
   },
   {
@@ -491,7 +532,8 @@
       "dk": { "variants": [] },
       "ch": { "variants": [] },
       "vn": { "variants": [] },
-      "sg": { "variants": [] }
+      "sg": { "variants": [] },
+      "hk": { "variants": [] }
     }
   },
   {
@@ -533,6 +575,9 @@
         ]
       },
       "sg": {
+        "variants": []
+      },
+      "hk": {
         "variants": []
       }
     }
@@ -586,6 +631,12 @@
       },
       "sg": {
         "variants": []
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "46364605120810", "units_per_pack": 6,  "price": 180.00 },
+          { "shopify_variant_id": "46364605153578", "units_per_pack": 12, "price": 360.00 }
+        ]
       }
     }
   },
@@ -632,6 +683,12 @@
         "variants": [
           { "shopify_variant_id": "40389468389459", "units_per_pack": 1, "price": 3.21 }
         ]
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "46364390097194", "units_per_pack": 6,  "price": 180.00 },
+          { "shopify_variant_id": "46364390129962", "units_per_pack": 12, "price": 360.00 }
+        ]
       }
     }
   },
@@ -671,6 +728,12 @@
       "sg": {
         "variants": [
           { "shopify_variant_id": "40189107077203", "units_per_pack": 1, "price": 3.21 }
+        ]
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "46363724185898", "units_per_pack": 6,  "price": 180.00 },
+          { "shopify_variant_id": "46363724218666", "units_per_pack": 12, "price": 360.00 }
         ]
       }
     }
@@ -725,6 +788,12 @@
       "sg": {
         "variants": [
           { "shopify_variant_id": "41347780182099", "units_per_pack": 1, "price": 3.21 }
+        ]
+      },
+      "hk": {
+        "variants": [
+          { "shopify_variant_id": "46364666462506", "units_per_pack": 6,  "price": 180.00 },
+          { "shopify_variant_id": "46364666495274", "units_per_pack": 12, "price": 360.00 }
         ]
       }
     }
