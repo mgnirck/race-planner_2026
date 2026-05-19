@@ -55,6 +55,7 @@ export default function PlanViewPage() {
       onBack={isOwner ? () => window.location.replace('/dashboard') : null}
       hideSave={!isOwner}
       isPublicView={!isOwner}
+      planId={isOwner ? planId : null}
     />
   )
 }

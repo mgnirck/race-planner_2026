@@ -1419,7 +1419,7 @@ function CoachNotes({ coachCopy, watchOut, loading }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ResultsPage({ targets, foundationTargets, selection, addonCoverage, resolvedAddonItems = [], form, onBack, region: regionProp, hideSave = false, isPublicView = false }) {
+export default function ResultsPage({ targets, foundationTargets, selection, addonCoverage, resolvedAddonItems = [], form, onBack, region: regionProp, hideSave = false, isPublicView = false, planId: planIdProp = null }) {
   const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
   const [showCartEditor, setShowCartEditor] = useState(false)
@@ -1429,8 +1429,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const [copyPlanState,  setCopyPlanState]  = useState('idle') // idle | copied
   const [proCoachCopy,   setProCoachCopy]   = useState(null)
   const [proWatchOut,    setProWatchOut]    = useState(null)
-  const [proCoachLoading, setProCoachLoading] = useState(true)
-  const [planId,         setPlanId]         = useState(null)
+  const [proCoachLoading, setProCoachLoading] = useState(!isPublicView)
+  const [planId,         setPlanId]         = useState(planIdProp)
   const regionConfig = getRegionConfig(region)
 
   const { products: liveProducts } = useProducts()
@@ -1458,8 +1458,9 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     [selection]
   )
 
-  // Pro coach copy
+  // Pro coach copy — only for live plans, not public/shared views
   useEffect(() => {
+    if (isPublicView) return
     const cacheKey = `lecka_pro_coach_${targets.race_type}_${targets.total_duration_minutes}_${targets.conditions}_${form.athlete_profile ?? ''}`
     const cached = getProCoachFromCache(cacheKey)
     if (cached) {
@@ -1528,8 +1529,9 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Silent plan save for logged-in users — capture planId for checkpoint link
+  // Silent plan save for logged-in users — only for fresh plans, not when viewing a saved plan
   useEffect(() => {
+    if (isPublicView || planIdProp) return
     const userId = localStorage.getItem('lecka_user_id')
     if (!userId) return
     fetch('/api/plans', {

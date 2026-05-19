@@ -6,7 +6,7 @@
  * Mobile: compact pill row + single-column builder.
  */
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -272,37 +272,57 @@ export default function CheckpointPage({ planId }) {
     }
   }, [isLoggedIn])
 
-  // Fetch plan
+  // Fetch plan and restore checkpoint data.
+  // Priority: localStorage (more recent edits) > plan DB (initial load only).
   useEffect(() => {
     if (!planId) return
+
+    // Check localStorage first so we know whether to fall back to DB data
+    let localCheckpoints = null
+    let localSegmentData = null
+    try {
+      const raw = localStorage.getItem(`lecka_checkpoints_${planId}`)
+      if (raw) {
+        const saved = JSON.parse(raw)
+        if (saved.checkpoints?.length) localCheckpoints = saved.checkpoints
+        if (saved.segmentData?.length) localSegmentData  = saved.segmentData
+      }
+    } catch {}
+
+    if (localCheckpoints) {
+      setCheckpoints(localCheckpoints)
+    }
+    if (localSegmentData) {
+      setSegmentData(localSegmentData)
+    }
+
     fetch(`/api/plans?planId=${planId}`, {
       headers: userId ? { Authorization: `Bearer ${userId}` } : {},
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data) setPlan(data)
-        // Restore saved checkpoints from plan inputs
-        if (data?.inputs?.checkpoints) {
+        // Only restore from DB if localStorage had nothing
+        if (!localCheckpoints && data?.inputs?.checkpoints) {
           const saved = data.inputs.checkpoints
-          setCheckpoints(saved.map(cp => ({ ...cp, id: cp.id ?? `cp-${Date.now()}-${Math.random().toString(36).slice(2)}` })))
+          const cps = saved.map(cp => ({
+            id:        cp.id ?? `cp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            name:      cp.name      ?? '',
+            distance:  cp.distance  ?? '',
+            elevation: cp.elevation ?? '',
+            drop_bag:  cp.drop_bag  ?? false,
+          }))
+          const segs = saved.map(cp => ({
+            products: cp.segmentProducts ?? [],
+            note:     cp.segmentNote     ?? '',
+          }))
+          setCheckpoints(cps)
+          setSegmentData(segs)
         }
         setPlanLoading(false)
       })
       .catch(() => setPlanLoading(false))
-  }, [planId, userId])
-
-  // Restore from localStorage
-  useEffect(() => {
-    if (!planId) return
-    try {
-      const raw = localStorage.getItem(`lecka_checkpoints_${planId}`)
-      if (raw) {
-        const saved = JSON.parse(raw)
-        if (saved.checkpoints?.length) setCheckpoints(saved.checkpoints)
-        if (saved.segmentData?.length) setSegmentData(saved.segmentData)
-      }
-    } catch {}
-  }, [planId])
+  }, [planId, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist to localStorage on change
   useEffect(() => {
