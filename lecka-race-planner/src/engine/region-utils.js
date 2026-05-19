@@ -20,13 +20,17 @@ export function getRegionVariants(product, region) {
 }
 
 /**
- * Returns true when the product has at least one variant in the given region.
+ * Returns true when the product has at least one non-placeholder variant in the given region.
+ * Variants whose shopify_variant_id starts with "PLACEHOLDER" are treated as unavailable
+ * regardless of any `available` flag set by the admin toggle.
  * @param {object} product
  * @param {string} region
  * @returns {boolean}
  */
 export function isAvailableInRegion(product, region) {
-  return getRegionVariants(product, region).length > 0
+  return getRegionVariants(product, region).some(
+    v => !String(v.shopify_variant_id).startsWith('PLACEHOLDER')
+  )
 }
 
 /**

@@ -3,6 +3,10 @@ import regionsConfig from './config/regions.json'
 /**
  * src/embed.js — app-side embed utilities
  *
+ * Region detection has been removed. Region is now chosen explicitly by the
+ * athlete via the region picker on the results page and persisted to
+ * localStorage via getSavedRegion / saveRegion.
+ *
  * Detects whether the planner is running inside a Shopify iframe and
  * provides helpers for communicating back to the parent page.
  *
@@ -128,29 +132,25 @@ export function embedCartURL(url) {
   }
 }
 
-// ── Region detection ──────────────────────────────────────────────────────────
+// ── Region persistence ────────────────────────────────────────────────────────
 
 /**
- * Detected region key ('us' | 'de' | 'dk'). Evaluated once at module load.
- * Checks ?region= URL param first, then matches document.referrer hostname
- * against each region's referrer_hosts list. Defaults to 'us'.
+ * Returns the user's saved region preference from localStorage,
+ * or null if none has been chosen yet. Never sniffs referrer or URL params.
  */
-export const detectRegion = (() => {
+export function getSavedRegion() {
   try {
-    const param = new URLSearchParams(window.location.search).get('region')
-    if (param && regionsConfig[param]) return param
-
-    if (document.referrer) {
-      const hostname = new URL(document.referrer).hostname.toLowerCase()
-      for (const [key, config] of Object.entries(regionsConfig)) {
-        if (config.referrer_hosts.includes(hostname)) return key
-      }
-    }
+    return localStorage.getItem('lecka_region') ?? null
   } catch {
-    // ignore parse errors
+    return null
   }
-  return 'us'
-})()
+}
+
+export function saveRegion(region) {
+  try {
+    localStorage.setItem('lecka_region', region)
+  } catch {}
+}
 
 /**
  * Returns the region config object for the given region key.
