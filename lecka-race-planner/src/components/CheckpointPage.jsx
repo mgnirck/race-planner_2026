@@ -311,7 +311,6 @@ export default function CheckpointPage({ planId }) {
   const [planLoading,  setPlanLoading]  = useState(true)
   const [checkpoints,  setCheckpoints]  = useState([])
   const [segmentData,  setSegmentData]  = useState([]) // [{products, note}]
-  const [aiFilling,    setAiFilling]    = useState(false)
   const [aiFillMsg,    setAiFillMsg]    = useState(null) // null | 'success' | 'error'
   const [saveState,    setSaveState]    = useState('idle') // idle | saving | saved | error
   const [editingIndex, setEditingIndex] = useState(null)
@@ -367,12 +366,19 @@ export default function CheckpointPage({ planId }) {
             elevation: cp.elevation ?? '',
             drop_bag:  cp.drop_bag  ?? false,
           }))
-          const segs = saved.map(cp => ({
-            products: cp.segmentProducts ?? [],
-            note:     cp.segmentNote     ?? '',
-          }))
           setCheckpoints(cps)
-          setSegmentData(segs)
+
+          if (data.inputs.segmentData?.length) {
+            // New format: segmentData stored separately (correct segment count)
+            setSegmentData(data.inputs.segmentData)
+          } else {
+            // Legacy format: segmentProducts embedded in checkpoint objects
+            const segs = saved.map(cp => ({
+              products: cp.segmentProducts ?? [],
+              note:     cp.segmentNote     ?? '',
+            }))
+            setSegmentData(segs)
+          }
         }
         setPlanLoading(false)
       })
@@ -487,12 +493,12 @@ export default function CheckpointPage({ planId }) {
   const totalPlanned = useMemo(() => {
     return segmentData.reduce((acc, seg) => {
       const carbsFromProducts = (seg.products ?? []).reduce((s, p) => {
-        const prod = (plan?.selection ?? []).find(i => i.product?.name === p.name)?.product
-        return s + (prod?.carbs_per_unit ?? 0) * p.quantity
+        const detail = productDetailMap[p.name]
+        return s + (detail?.carbs_per_unit ?? 0) * p.quantity
       }, 0)
       return { carbs: acc.carbs + carbsFromProducts }
     }, { carbs: 0 })
-  }, [segmentData, plan])
+  }, [segmentData, productDetailMap])
 
   const targetTotalCarbs = targets.total_carbs ?? 0
 
@@ -527,61 +533,45 @@ export default function CheckpointPage({ planId }) {
     })
   }
 
-  // AI fill
-  async function handleAiFill() {
-    if (segments.length === 0) return
-    setAiFilling(true)
-    setAiFillMsg(null)
-    try {
-      const res = await fetch('/api/coach-copy?action=checkpoint-fill', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          plan: {
-            race_type:       targets.race_type,
-            goal_minutes:    targets.total_duration_minutes,
-            conditions:      targets.conditions,
-            carb_per_hour:   targets.carb_per_hour,
-            sodium_per_hour: targets.sodium_per_hour,
-            caffeine_ok:     targets.caffeine_ok,
-            athlete_profile: inputs.athlete_profile ?? 'intermediate',
-          },
-          segments: segments.map((s, i) => ({
-            name:          s.name,
-            distance_km:   s.distKm,
-            elevation_m:   s.elevM,
-            drop_bag:      s.drop_bag,
-            est_minutes:   s.estMins,
-            carbs_needed:  s.carbs,
-            sodium_needed: s.sodium,
-          })),
-          available_products: availableProductList.map(p => p.name),
-        }),
-      })
-      const data = await res.json()
-      if (data.segments) {
-        setSegmentData(prev => {
-          const next = [...prev]
-          for (const seg of data.segments) {
-            const idx = seg.index
-            if (idx >= 0 && idx < next.length) {
-              next[idx] = {
-                products: seg.products ?? [],
-                note:     seg.note ?? '',
-              }
-            }
-          }
-          return next
-        })
-        setAiFillMsg('success')
-      } else {
-        setAiFillMsg('error')
-      }
-    } catch {
+  // Distribute plan products across segments proportionally by carb target
+  function handleAiFill() {
+    if (segments.length === 0 || !plan?.selection?.length) {
       setAiFillMsg('error')
-    } finally {
-      setAiFilling(false)
+      return
     }
+
+    const totalSegCarbs = segments.reduce((s, seg) => s + seg.carbs, 0)
+    if (totalSegCarbs === 0) { setAiFillMsg('error'); return }
+
+    // Aggregate plan selection by product name
+    const byProduct = {}
+    for (const item of plan.selection) {
+      const name = item.product?.name
+      if (!name) continue
+      byProduct[name] = (byProduct[name] ?? 0) + (item.quantity ?? 0)
+    }
+
+    const fractions = segments.map(seg => seg.carbs / totalSegCarbs)
+
+    // Distribute each product proportionally, using largest-remainder rounding
+    const newSegmentData = segments.map(() => ({ products: [], note: '' }))
+
+    for (const [name, totalQty] of Object.entries(byProduct)) {
+      const rawQtys    = fractions.map(f => f * totalQty)
+      const floored    = rawQtys.map(q => Math.floor(q))
+      const remainder  = totalQty - floored.reduce((s, q) => s + q, 0)
+      const order      = rawQtys
+        .map((q, i) => ({ i, rem: q - floored[i] }))
+        .sort((a, b) => b.rem - a.rem)
+      for (let j = 0; j < remainder; j++) floored[order[j].i]++
+
+      for (let i = 0; i < segments.length; i++) {
+        if (floored[i] > 0) newSegmentData[i].products.push({ name, quantity: floored[i] })
+      }
+    }
+
+    setSegmentData(newSegmentData)
+    setAiFillMsg('success')
   }
 
   // Save checkpoints
@@ -594,11 +584,8 @@ export default function CheckpointPage({ planId }) {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
         body:    JSON.stringify({
           planId,
-          checkpoints: checkpoints.map((cp, i) => ({
-            ...cp,
-            segmentProducts: segmentData[i]?.products ?? [],
-            segmentNote:     segmentData[i]?.note ?? '',
-          })),
+          checkpoints,
+          segmentData,
         }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -943,37 +930,25 @@ export default function CheckpointPage({ planId }) {
               )}
             </section>
 
-            {/* ── AI fill button ────────────────────────────────────────── */}
+            {/* ── Auto-fill button ──────────────────────────────────────── */}
             {hasCheckpoints && (
               <section>
                 <button
                   type="button"
                   onClick={handleAiFill}
-                  disabled={aiFilling}
-                  className={[
-                    'w-full min-h-[52px] rounded-xl text-sm font-semibold transition-colors',
-                    aiFilling
-                      ? 'bg-[#48C4B0]/60 text-white cursor-not-allowed'
-                      : 'bg-[#48C4B0] text-white hover:bg-[#3db09d]',
-                  ].join(' ')}
+                  className="w-full min-h-[52px] rounded-xl text-sm font-semibold transition-colors
+                             bg-[#48C4B0] text-white hover:bg-[#3db09d]"
                 >
-                  {aiFilling ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Filling your plan… this takes a few seconds
-                    </span>
-                  ) : (
-                    'Fill nutrition with AI →'
-                  )}
+                  Fill nutrition from plan →
                 </button>
                 {aiFillMsg === 'success' && (
                   <p className="text-xs text-[#48C4B0] text-center mt-2">
-                    Plan filled — review and adjust as needed.
+                    Products distributed — review and adjust as needed.
                   </p>
                 )}
                 {aiFillMsg === 'error' && (
                   <p className="text-xs text-gray-400 text-center mt-2">
-                    Couldn't auto-fill — add products manually using the edit icon.
+                    No products in plan — add them manually using the edit icon.
                   </p>
                 )}
               </section>

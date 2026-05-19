@@ -93,14 +93,17 @@ export default async function handler(req, res) {
       const user = await getUser(req)
       if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
-      const { planId, race_date, race_name, checkpoints } = req.body ?? {}
+      const { planId, race_date, race_name, checkpoints, segmentData } = req.body ?? {}
       if (!planId) return res.status(400).json({ error: 'planId is required' })
 
       // Checkpoint save action
       if (checkpoints !== undefined) {
         const { rows } = await sql`
           UPDATE plans
-          SET inputs = inputs || jsonb_build_object('checkpoints', ${JSON.stringify(checkpoints)}::jsonb)
+          SET inputs = inputs || jsonb_build_object(
+            'checkpoints', ${JSON.stringify(checkpoints)}::jsonb,
+            'segmentData',  ${JSON.stringify(segmentData ?? [])}::jsonb
+          )
           WHERE id = ${planId} AND user_id = ${user.id}
           RETURNING id
         `
