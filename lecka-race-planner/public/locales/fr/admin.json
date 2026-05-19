@@ -27,6 +27,8 @@
   "region.dk": "Danemark",
   "region.ch": "Suisse",
   "region.vn": "Vietnam",
+  "region.sg": "Singapour",
+  "region.hk": "Hong Kong",
   "region.unknown": "Inconnu",
   "footer": "Aucune donnée personnelle n'est enregistrée — uniquement le type de course, la région et l'horodatage par plan."
 }

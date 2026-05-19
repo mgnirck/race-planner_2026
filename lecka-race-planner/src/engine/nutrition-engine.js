@@ -164,7 +164,7 @@ export function calculateTargets(inputs) {
 
   // Sodium warnings
   if (validationRules.sodium) {
-    if (goal_minutes >= validationRules.sodium.warning_duration_min && conditions in ['hot', 'humid']) {
+    if (goal_minutes >= validationRules.sodium.warning_duration_min && ['hot', 'humid'].includes(conditions)) {
       warnings.push({
         type: 'sodium_loading_recommendation',
         message: validationRules.sodium.warning_hot_humidity,

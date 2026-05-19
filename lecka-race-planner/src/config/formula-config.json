@@ -80,6 +80,11 @@
       "window_start_min": 0,
       "window_end_min":   60,
       "note": "Consume within 60 min of finishing"
+    },
+    "ultra_gel": {
+      "interval_min":     50,
+      "min_interval_min": 45,
+      "note":             "Eat over 10–15 min, not all at once"
     }
   },
 

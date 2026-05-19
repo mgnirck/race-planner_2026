@@ -8,9 +8,22 @@
  */
 
 /**
- * Maximum carb absorption via SGLT1 (glucose transporter) alone.
- * Above this threshold a second transporter (GLUT5, fructose) is required.
- * Source: ISSN 2018, Burke et al. IOC 2019.
+ * 65g carbs/hour — practical ceiling for Lecka gels as real food foundation.
+ *
+ * Lab-verified fructose profiles per flavour (Eurofins, Dec 2025):
+ *   Lime Ginger:     26% of carbs as free fructose (from lime juice)
+ *   Kumquat Honey:   26% of carbs as free fructose (from raw honey)
+ *   Passion Fruit:   14% of carbs as free fructose (from passion fruit)
+ *   Banana:           5% of carbs as free fructose (sucrose-dominant)
+ *   Coffee Cacao:    ~0% of carbs as free fructose (sucrose/maltose-dominant)
+ *
+ * Lime Ginger and Kumquat Honey provide meaningful natural fructose from
+ * whole food ingredients. At moderate intakes these support dual-transporter
+ * absorption. For targets above 65g/hour, adding an engineered dual-
+ * transporter product remains recommended.
+ *
+ * Sources: Eurofins lab reports AR-25-VD-251832, AR-25-VD-251833,
+ *          AR-25-VD-249580, AR-25-VD-249581, AR-25-VD-258719 (Dec 2025)
  */
 export const SINGLE_TRANSPORTER_CEILING = 65 // g carbs/hour
 

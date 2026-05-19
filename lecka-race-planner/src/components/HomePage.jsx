@@ -42,6 +42,7 @@ function BagIcon() {
 
 export default function HomePage() {
   return (
+    <>
     <div className="bg-white min-h-screen">
       <Nav />
 
@@ -52,9 +53,10 @@ export default function HomePage() {
           <h1 className="text-4xl font-bold text-[#1B1B1B] leading-tight mb-4">
             Build your race<br />nutrition plan
           </h1>
-          <p className="text-base text-gray-500 mb-10 max-w-sm mx-auto leading-relaxed">
+          <p className="text-base text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">
             Science-based fueling for ultra runners and cyclists — built around real food.
           </p>
+          {/* Language switcher — re-enable when translations complete */}
           <a
             href="/planner"
             className="inline-flex items-center justify-center min-h-[56px] px-10
@@ -63,6 +65,12 @@ export default function HomePage() {
           >
             Build my plan →
           </a>
+          <p className="text-xs text-gray-400 mt-4">
+            Already used the planner?{' '}
+            <a href="/auth/login" className="text-[#48C4B0] hover:underline">
+              Log in to access your plans and the Pro planner →
+            </a>
+          </p>
         </div>
 
         {/* ── Three-step explainer ───────────────────────────────────────────── */}
@@ -101,11 +109,81 @@ export default function HomePage() {
         </div>
 
         {/* ── Social proof ──────────────────────────────────────────────────── */}
-        <p className="text-xs text-center text-gray-400 pb-16">
-          Trusted by athletes in Vietnam, US, Germany, Denmark and Switzerland
+        <p className="text-xs text-center text-gray-400 pb-4">
+          Trusted by athletes who fuel with real food worldwide.
         </p>
 
       </div>
     </div>
+
+    <footer className="border-t border-gray-100 mt-8 pb-12">
+      <div className="max-w-lg mx-auto px-5 pt-8 space-y-6">
+
+        <div className="text-center space-y-1">
+          <p className="text-xs text-gray-400">
+            Trusted by athletes who fuel with real food worldwide.
+          </p>
+          <p className="text-xs text-gray-400">
+            Provided by{' '}
+            <a
+              href="https://www.getlecka.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#48C4B0] hover:underline"
+            >
+              www.getlecka.com
+            </a>
+          </p>
+        </div>
+
+        <div className="text-center space-y-1">
+          <p className="text-xs text-gray-400">
+            Questions?{' '}
+            <a
+              href="mailto:info@getlecka.com"
+              className="text-[#48C4B0] hover:underline"
+            >
+              info@getlecka.com
+            </a>
+            {' '}·{' '}
+            <a
+              href="https://www.instagram.com/leckanutrition"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#48C4B0] hover:underline"
+            >
+              @leckanutrition
+            </a>
+          </p>
+        </div>
+
+        <div className="text-center">
+          <p className="text-xs text-gray-400 mb-2">Find Lecka near you</p>
+          <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+            {[
+              { label: 'US',          href: 'https://www.getlecka.com' },
+              { label: 'Vietnam',     href: 'https://www.getlecka.vn' },
+              { label: 'Germany',     href: 'https://www.getlecka.de' },
+              { label: 'Denmark',     href: 'https://www.getlecka.dk' },
+              { label: 'Switzerland', href: 'https://www.getlecka.ch' },
+              { label: 'Singapore',   href: 'https://www.rdrc.sg/collections/lecka' },
+              { label: 'Hong Kong',   href: 'https://foodisdom.is/collections/lecka' },
+            ].map(({ label, href }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-400 hover:text-[#48C4B0] transition-colors"
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </footer>
+    </>
   )
 }

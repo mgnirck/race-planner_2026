@@ -15,14 +15,17 @@ import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import { buildCartURLFromAggregated }                  from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice, isAvailableInRegion } from '../engine/region-utils.js'
-import { isEmbedded, notifyEmailCapture, embedCartURL, detectRegion, getRegionConfig } from '../embed.js'
+import { isEmbedded, notifyEmailCapture, embedCartURL, getSavedRegion, saveRegion, getRegionConfig } from '../embed.js'
 import Nav from './Nav.jsx'
 import regionsConfig from '../config/regions.json'
-import allProductsCatalog from '../config/products.json'
+import FALLBACK_PRODUCTS from '../config/products.json'
 import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
+import { useProducts } from '../hooks/useProducts.js'
 import LanguageSwitcher from './LanguageSwitcher.jsx'
 import i18n from '../i18n.js'
 import { getRaceLabel, getEffortLabel, getConditionLabel } from '../i18n-utils.js'
+import { formatAddonSummary } from '../engine/kit-calculator.js'
+import ShareModal from './ShareModal.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -73,12 +76,14 @@ function timingPhase(minutes, totalDuration) {
 function buildTimeline(selection, totalDuration) {
   const events = []
   for (const item of selection) {
+    if (!item.timing_minutes) continue
     for (const t of item.timing_minutes) {
       events.push({
         time:    t,
         product: item.product,
         note:    item.note,
         phase:   timingPhase(t, totalDuration),
+        isAddon: item.isAddon ?? false,
       })
     }
   }
@@ -86,7 +91,24 @@ function buildTimeline(selection, totalDuration) {
   return events
 }
 
-function aggregateByProduct(selection, region = 'us', manualQty = null) {
+// Distribute addon quantities evenly across the race window (first at 20 min).
+function buildAddonTimelineItems(resolvedAddonItems, totalDurationMinutes) {
+  return resolvedAddonItems.map(({ product, quantity }) => {
+    const firstIntake = 20
+    let slots
+    if (quantity <= 1) {
+      slots = [firstIntake]
+    } else {
+      const lastSlot = totalDurationMinutes - 1
+      slots = Array.from({ length: quantity }, (_, i) =>
+        Math.round(firstIntake + (i * (lastSlot - firstIntake)) / (quantity - 1))
+      )
+    }
+    return { product, quantity, timing_minutes: slots, note: 'Add-on — buy separately', isAddon: true }
+  })
+}
+
+function aggregateByProduct(selection, region = 'us', manualQty = null, catalog = FALLBACK_PRODUCTS) {
   const map = {}
   for (const item of selection) {
     const id = item.product.id
@@ -101,7 +123,7 @@ function aggregateByProduct(selection, region = 'us', manualQty = null) {
       } else if (map[id]) {
         map[id].totalUnits = units
       } else {
-        const product = allProductsCatalog.find(p => p.id === id && (p.type === 'gel' || p.type === 'bar'))
+        const product = catalog.find(p => p.id === id && (p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar'))
         if (product) map[id] = { product, totalUnits: units }
       }
     }
@@ -121,7 +143,7 @@ function computeTrainingInfo(aggregated) {
   let gelRaceUnits = 0, gelCartUnits = 0
   let barRaceUnits = 0, barCartUnits = 0
   for (const row of aggregated) {
-    if (row.product.type === 'gel' || row.product.type === 'variety_pack') {
+    if (row.product.type === 'gel' || row.product.type === 'ultra_gel' || row.product.type === 'variety_pack') {
       gelRaceUnits += row.totalUnits
       gelCartUnits += row.cartUnits
     } else if (row.product.type === 'bar') {
@@ -138,7 +160,7 @@ function computeTrainingInfo(aggregated) {
   }
 }
 
-function computeProvidedNutrition(selection, manualQty, totalDurationMinutes) {
+function computeProvidedNutrition(selection, manualQty, totalDurationMinutes, catalog = FALLBACK_PRODUCTS) {
   const qtyMap = {}
   const productById = {}
 
@@ -155,7 +177,7 @@ function computeProvidedNutrition(selection, manualQty, totalDurationMinutes) {
       } else {
         qtyMap[id] = qty
         if (!productById[id]) {
-          const p = allProductsCatalog.find(p => p.id === id)
+          const p = catalog.find(p => p.id === id)
           if (p) productById[id] = p
         }
       }
@@ -188,11 +210,11 @@ function buildDuringGroups(duringEvents, t) {
   const byProduct = {}
   for (const ev of duringEvents) {
     const id = ev.product.id
-    if (!byProduct[id]) byProduct[id] = { product: ev.product, note: ev.note, times: [] }
+    if (!byProduct[id]) byProduct[id] = { product: ev.product, note: ev.note, times: [], isAddon: ev.isAddon ?? false }
     byProduct[id].times.push(ev.time)
   }
 
-  return Object.values(byProduct).map(({ product, note, times }) => {
+  return Object.values(byProduct).map(({ product, note, times, isAddon }) => {
     let scheduleText
     if (times.length === 1) {
       scheduleText = t('results:timeline.atTime', { time: formatTimingLabel(times[0], Infinity, t) })
@@ -208,7 +230,7 @@ function buildDuringGroups(duringEvents, t) {
           : t('results:timeline.atTime', { time: labels.join(', ') })
       }
     }
-    return { product, note, count: times.length, scheduleText }
+    return { product, note, count: times.length, scheduleText, isAddon }
   })
 }
 
@@ -280,7 +302,7 @@ function adjustTimelineSelection(selection, manualQty, totalDuration, allProduct
     if (!product) continue
 
     const timings = []
-    if (product.type === 'gel') {
+    if (product.type === 'gel' || product.type === 'ultra_gel') {
       for (let i = 0; i < qty; i++) timings.push(Math.min(20 + i * 30, totalDuration - 1))
     } else if (product.type === 'bar') {
       const beforeQty = Math.ceil(qty / 2)
@@ -366,7 +388,7 @@ function nutritionStatusLabel(provided, target, t) {
   return t('nutrition.status.over')
 }
 
-function NutritionSummary({ targets, provided }) {
+function NutritionSummary({ targets, provided, foundationTargets, addonCoverage }) {
   const { t } = useTranslation('results')
   const showProvided = provided.carbs_per_hour_provided > 0 || provided.sodium_per_hour_provided > 0
 
@@ -409,6 +431,26 @@ function NutritionSummary({ targets, provided }) {
             </div>
           </div>
         </div>
+
+        {/* Foundation / addon split row */}
+        {addonCoverage && addonCoverage.items?.length > 0 && foundationTargets && (() => {
+          const total = targets.carb_per_hour
+          const foundationPct = total > 0 ? Math.round((foundationTargets.carb_per_hour / total) * 100) : 100
+          const addonPct = 100 - foundationPct
+          return (
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">How it's covered</p>
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-[#48C4B0] font-medium">🌱 Lecka foundation: {foundationTargets.carb_per_hour}g carbs/hour</span>
+                <span className="text-gray-400">+ Add-ons: {Math.round(addonCoverage.carbs_per_hour)}g/hour</span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden flex">
+                <div className="h-full bg-[#48C4B0] transition-all" style={{ width: `${foundationPct}%` }} />
+                <div className="h-full bg-[#48C4B0]/40 transition-all" style={{ width: `${addonPct}%` }} />
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Provided row */}
         {showProvided && (
@@ -629,16 +671,21 @@ const PHASE_BADGE = {
 
 function TimelineRow({ event, totalDuration, isLast }) {
   const { t } = useTranslation('results')
+  const badgeClass = event.isAddon ? 'bg-gray-100 text-gray-500' : PHASE_BADGE[event.phase]
   return (
     <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="w-24 flex-shrink-0 pt-0.5">
         <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
-                          whitespace-nowrap ${PHASE_BADGE[event.phase]}`}>
+                          whitespace-nowrap ${badgeClass}`}>
           {formatTimingLabel(event.time, totalDuration, t)}
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{event.product.name}</p>
+        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">
+          {event.isAddon
+            ? (event.product.display_name ?? event.product.name)
+            : event.product.name}
+        </p>
         <p className="text-xs text-gray-400 mt-0.5 leading-snug">{event.note}</p>
       </div>
     </div>
@@ -647,19 +694,27 @@ function TimelineRow({ event, totalDuration, isLast }) {
 
 function DuringGroupRow({ group, isLast }) {
   const { t } = useTranslation('results')
+  const badgeClass = group.isAddon ? 'bg-gray-100 text-gray-500' : PHASE_BADGE.during
   return (
     <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
       <div className="w-24 flex-shrink-0 pt-0.5">
         <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
-                          whitespace-nowrap ${PHASE_BADGE.during}`}>
+                          whitespace-nowrap ${badgeClass}`}>
           ×{group.count}
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{group.product.name}</p>
+        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">
+          {group.isAddon
+            ? (group.product.display_name ?? group.product.name)
+            : group.product.name}
+        </p>
         <p className="text-xs text-gray-400 mt-0.5">{group.scheduleText}</p>
-        {group.product.caffeine && (
+        {!group.isAddon && group.product.caffeine && (
           <span className="text-xs font-medium text-[#48C4B0]">+ {t('hero.caffeineTag').toLowerCase()}</span>
+        )}
+        {group.isAddon && (
+          <span className="text-xs text-gray-400 italic">Add-on — buy separately</span>
         )}
       </div>
     </div>
@@ -763,7 +818,7 @@ function RaceTimeline({ events, totalDuration }) {
 
 // ── PlanDeliveryCard ──────────────────────────────────────────────────────────
 
-function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false }) {
+function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false, resolvedAddonItems = [], planId: savedPlanId = null }) {
   const { t } = useTranslation('results')
   const [email,      setEmail]      = useState('')
   const [emailState, setEmailState] = useState('idle') // idle | sending | success | error
@@ -772,6 +827,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
 
   const userId     = localStorage.getItem('lecka_user_id')
   const isLoggedIn = Boolean(userId)
+  const alreadySaved = Boolean(savedPlanId)
 
   const isValid   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const showError = touched && email !== '' && !isValid
@@ -786,7 +842,10 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
         fetch('/api/send-plan', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language }),
+          body:    JSON.stringify({
+            email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language,
+            addon_items_summary: formatAddonSummary(resolvedAddonItems),
+          }),
         }),
       ]
       if (!isLoggedIn && !hideSave) {
@@ -815,10 +874,13 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
   async function handleSave() {
     setSaveState('saving')
     try {
-      const res = await fetch('/api/plans/save', {
+      const res = await fetch('/api/plans', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
-        body:    JSON.stringify({ inputs: form, targets, selection, region, lang: i18n.language }),
+        body:    JSON.stringify({
+          inputs: { ...form, addon_items: form.addon_items ?? [] },
+          targets, selection, region, lang: i18n.language,
+        }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setSaveState('saved')
@@ -895,10 +957,13 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
         {/* Logged-in: inline save section */}
         {isLoggedIn && !hideSave && (
           <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-4 flex-wrap">
-            {saveState === 'saved' ? (
+            {(saveState === 'saved' || alreadySaved) ? (
               <>
                 <p className="text-sm font-semibold text-[#48C4B0]">✓ Plan saved to your account</p>
-                <a href="/dashboard" className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap">
+                <a
+                  href={savedPlanId ? `/plan/${savedPlanId}` : '/dashboard'}
+                  className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap"
+                >
                   View in My Plans →
                 </a>
               </>
@@ -1090,12 +1155,17 @@ function ResearchModal({ onClose }) {
 
 // ── CartEditorModal ───────────────────────────────────────────────────────────
 
-function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig, provided, targets }) {
+function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig, provided, targets, catalog }) {
   const { t } = useTranslation(['results', 'form'])
-  const availableProducts = useMemo(() =>
-    allProductsCatalog.filter(p => (p.type === 'gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
-    [region]
-  )
+  const availableProducts = useMemo(() => {
+    const all = catalog ?? FALLBACK_PRODUCTS
+    return all.filter(p =>
+      p.type === 'gel'       ? isAvailableInRegion(p, region) :
+      p.type === 'ultra_gel' ? true :   // always show ultra gels regardless of region data
+      p.type === 'bar'       ? isAvailableInRegion(p, region) :
+      false
+    )
+  }, [catalog, region])
 
   function getCurrentQty(productId) {
     if (manualQty !== null && productId in manualQty) return manualQty[productId]
@@ -1118,8 +1188,9 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
     }
   }, [onClose])
 
-  const gels = availableProducts.filter(p => p.type === 'gel')
-  const bars = availableProducts.filter(p => p.type === 'bar')
+  const gels      = availableProducts.filter(p => p.type === 'gel')
+  const ultraGels = availableProducts.filter(p => p.type === 'ultra_gel')
+  const bars      = availableProducts.filter(p => p.type === 'bar')
 
   function ProductRow({ product }) {
     const qty = getCurrentQty(product.id)
@@ -1184,6 +1255,14 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
               <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.gels')}</p>
               <div className="space-y-1">
                 {gels.map(p => <ProductRow key={p.id} product={p} />)}
+              </div>
+            </div>
+          )}
+          {ultraGels.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.ultra_gels')}</p>
+              <div className="space-y-1">
+                {ultraGels.map(p => <ProductRow key={p.id} product={p} />)}
               </div>
             </div>
           )}
@@ -1253,29 +1332,248 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
   )
 }
 
+// ── CoachNotes (Pro) ──────────────────────────────────────────────────────────
+
+const PRO_COACH_TTL_MS = 24 * 60 * 60 * 1000
+
+function getProCoachFromCache(key) {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const { data, timestamp } = JSON.parse(raw)
+    if (Date.now() - timestamp > PRO_COACH_TTL_MS) {
+      localStorage.removeItem(key)
+      return null
+    }
+    return data
+  } catch {
+    return null
+  }
+}
+
+function setProCoachCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }))
+  } catch {}
+}
+
+function CoachNotes({ coachCopy, watchOut, loading }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (loading) {
+    return (
+      <section className="border-2 border-gray-100 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+          <div className="w-4 h-4 bg-gray-100 rounded animate-pulse" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-4/5" />
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-3/5" />
+        </div>
+        <div className="mt-4 h-14 bg-amber-50 rounded-xl animate-pulse" />
+      </section>
+    )
+  }
+
+  if (!coachCopy) return null
+
+  const firstSentence = coachCopy.replace(/\n/g, ' ').split(/(?<=\.)\s/)[0] ?? ''
+  const teaser = firstSentence.length > 120
+    ? firstSentence.slice(0, 120) + '…'
+    : firstSentence
+
+  const paragraphs = coachCopy.split(/\n\n+/).filter(Boolean)
+
+  return (
+    <section className="border-2 border-gray-100 rounded-2xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
+      >
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+        <svg
+          className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          viewBox="0 0 20 20" fill="currentColor"
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {!expanded && (
+        <p className="px-5 pb-4 text-sm text-gray-400 italic leading-snug">{teaser}</p>
+      )}
+      {expanded && (
+        <div className="px-5 pb-5 space-y-4">
+          {paragraphs.map((p, i) => (
+            <p
+              key={i}
+              className="border-l-2 border-[#48C4B0] pl-3 mb-4 text-sm text-gray-700 leading-relaxed"
+            >
+              {p}
+            </p>
+          ))}
+          {watchOut && (
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-xl">
+              <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 mb-1">
+                Watch out for
+              </p>
+              <p className="text-sm text-amber-900">{watchOut}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ResultsPage({ targets, selection, form, onBack, region: regionProp, hideSave = false, isPublicView = false }) {
+export default function ResultsPage({ targets, foundationTargets, selection, addonCoverage, resolvedAddonItems = [], form, onBack, region: regionProp, hideSave = false, isPublicView = false, planId: planIdProp = null }) {
   const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
   const [showCartEditor, setShowCartEditor] = useState(false)
-  const [region,         setRegion]         = useState(regionProp ?? detectRegion)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [region,         setRegion]         = useState(regionProp ?? getSavedRegion())
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
   const [copyPlanState,  setCopyPlanState]  = useState('idle') // idle | copied
+  const [proCoachCopy,   setProCoachCopy]   = useState(null)
+  const [proWatchOut,    setProWatchOut]    = useState(null)
+  const [proCoachLoading, setProCoachLoading] = useState(!isPublicView)
+  const [planId,         setPlanId]         = useState(planIdProp)
   const regionConfig = getRegionConfig(region)
+  const regionType   = regionsConfig[region]?.type ?? null
+
+  const { products: liveProducts } = useProducts()
+  const allProductsCatalog = liveProducts ?? FALLBACK_PRODUCTS
 
   // Reset manual overrides when plan inputs change
   useEffect(() => { setManualQty(null) }, [selection, region])
 
+  // Strip non-Lecka placeholder items before any cart/aggregation logic
+  const leckaSelection = useMemo(
+    () => selection.filter(item => item.product?.type !== 'powder_placeholder'),
+    [selection]
+  )
+  const powderPlaceholder = useMemo(
+    () => selection.find(item => item.product?.type === 'powder_placeholder') ?? null,
+    [selection]
+  )
+
+  const hasAddons = resolvedAddonItems.length > 0
+
+  const totalGelCount = useMemo(
+    () => selection
+      .filter(i => i.product?.type === 'gel' || i.product?.type === 'ultra_gel')
+      .reduce((sum, i) => sum + i.quantity, 0),
+    [selection]
+  )
+
+  // Pro coach copy — only for live plans, not public/shared views
+  useEffect(() => {
+    if (isPublicView) return
+    const cacheKey = `lecka_pro_coach_${targets.race_type}_${targets.total_duration_minutes}_${targets.conditions}_${form.athlete_profile ?? ''}`
+    const cached = getProCoachFromCache(cacheKey)
+    if (cached) {
+      setProCoachCopy(cached.copy ?? null)
+      setProWatchOut(cached.watch_out ?? null)
+      setProCoachLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timeout    = setTimeout(() => controller.abort(), 8000)
+
+    const weight_kg = (() => {
+      if (!form.weight_value) return null
+      const n = parseFloat(form.weight_value)
+      if (!isFinite(n)) return null
+      return form.weight_unit === 'lb' ? n / 2.20462 : n
+    })()
+
+    fetch('/api/coach-copy', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal:  controller.signal,
+      body:    JSON.stringify({
+        mode:              'pro',
+        race_type:         targets.race_type,
+        goal_minutes:      targets.total_duration_minutes,
+        conditions:        targets.conditions,
+        effort:            targets.effort,
+        carb_per_hour:     targets.carb_per_hour,
+        sodium_per_hour:   targets.sodium_per_hour,
+        fluid_ml_per_hour: targets.fluid_ml_per_hour,
+        total_carbs:       targets.total_carbs,
+        total_sodium:      targets.total_sodium,
+        gel_count:         totalGelCount,
+        elevation_tier:    targets.elevation_tier,
+        elevation_gain_m:  targets.elevation_gain_m,
+        athlete_profile:   targets.athlete_profile,
+        gender:            form.gender,
+        weight_kg,
+        caffeine_ok:       targets.caffeine_ok,
+        has_addons:        resolvedAddonItems.length > 0,
+        addon_carbs_ph:    form.addon_carbs_per_hour ?? 0,
+        fuelling_style:    form.fuelling_style,
+        selected_products: effectiveSelection.map(s => s.product.name),
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        clearTimeout(timeout)
+        if (data?.copy) {
+          setProCoachCopy(data.copy)
+          setProWatchOut(data.watch_out ?? null)
+          setProCoachCache(cacheKey, { copy: data.copy, watch_out: data.watch_out ?? null })
+        }
+        setProCoachLoading(false)
+      })
+      .catch(() => {
+        clearTimeout(timeout)
+        setProCoachLoading(false)
+      })
+
+    return () => {
+      clearTimeout(timeout)
+      controller.abort()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Silent plan save for logged-in users — only for fresh plans, not when viewing a saved plan
+  useEffect(() => {
+    if (isPublicView || planIdProp) return
+    const userId = localStorage.getItem('lecka_user_id')
+    if (!userId) {
+      localStorage.setItem('lecka_plan_needs_save', 'true')
+      return
+    }
+    fetch('/api/plans', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+      body:    JSON.stringify({
+        inputs:    { ...form, addon_items: form.addon_items ?? [], mode: 'pro' },
+        targets,
+        selection,
+        region:    regionProp ?? getSavedRegion() ?? 'us',
+        lang:      'en',
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.planId) setPlanId(data.planId) })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const aggregated   = useMemo(
-    () => aggregateByProduct(selection, region, manualQty),
-    [selection, region, manualQty]
+    () => aggregateByProduct(leckaSelection, region, manualQty, allProductsCatalog),
+    [leckaSelection, region, manualQty, allProductsCatalog]
   )
   const trainingInfo = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
   const provided     = useMemo(
-    () => computeProvidedNutrition(selection, manualQty, targets.total_duration_minutes),
-    [selection, manualQty, targets.total_duration_minutes]
+    () => computeProvidedNutrition(leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog),
+    [leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog]
   )
 
   // Variety pack CTA — always just 1× gel variety pack + 1× bar variety pack, nothing else
@@ -1311,20 +1609,39 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
       }
     }
 
-    return embedCartURL(buildCartURLFromAggregated(vpItems, 'NUTRIPLAN10', '', region))
-  }, [region])
+    return embedCartURL(buildCartURLFromAggregated(vpItems, region === 'us' ? 'NUTRIPLAN10' : '', '', region))
+  }, [region, allProductsCatalog])
 
   // manualQty overrides must be reflected in anything sent off-device (email, saved
   // plan) — the raw selection prop still has the engine's original quantities.
   const effectiveSelection = useMemo(
-    () => adjustTimelineSelection(selection, manualQty, targets.total_duration_minutes, allProductsCatalog),
-    [selection, manualQty, targets]
+    () => adjustTimelineSelection(leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog),
+    [leckaSelection, manualQty, targets, allProductsCatalog]
+  )
+
+  const addonTimelineItems = useMemo(
+    () => buildAddonTimelineItems(resolvedAddonItems, targets.total_duration_minutes),
+    [resolvedAddonItems, targets.total_duration_minutes]
   )
 
   const timeline = useMemo(
-    () => buildTimeline(effectiveSelection, targets.total_duration_minutes),
-    [effectiveSelection, targets.total_duration_minutes]
+    () => buildTimeline([...effectiveSelection, ...addonTimelineItems], targets.total_duration_minutes),
+    [effectiveSelection, addonTimelineItems, targets.total_duration_minutes]
   )
+
+  const gapSelection = useMemo(() => {
+    if (regionType === 'international') {
+      return effectiveSelection.map(item => ({
+        product: item.product,
+        quantity: item.quantity,
+        note: item.note ?? '',
+      }))
+    }
+    return aggregated.map(row => {
+      const selItem = effectiveSelection.find(s => s.product.id === row.product.id)
+      return { product: row.product, quantity: row.totalUnits, note: selItem?.note ?? '' }
+    })
+  }, [aggregated, effectiveSelection, regionType])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
@@ -1333,9 +1650,25 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
 
   // Cart URL built from the already-optimised aggregated rows (may use variety pack)
   const cartURL = useMemo(
-    () => embedCartURL(buildCartURLFromAggregated(aggregated, 'NUTRIPLAN10', '', region)),
+    () => embedCartURL(buildCartURLFromAggregated(aggregated, region === 'us' ? 'NUTRIPLAN10' : '', '', region)),
     [aggregated, region]
   )
+
+  function handleRegionChange(newRegion) {
+    setRegion(newRegion)
+    saveRegion(newRegion)
+    const userId = localStorage.getItem('lecka_user_id')
+    if (userId) {
+      fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userId}`,
+        },
+        body: JSON.stringify({ preferred_region: newRegion }),
+      }).catch(() => {})
+    }
+  }
 
   // VN region: open Zalo or Facebook chat and copy order summary to clipboard
   function copyToClipboard(text) {
@@ -1402,6 +1735,22 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
     setTimeout(() => setCopyPlanState('idle'), 2000)
   }
 
+  function formatRaceDate(dateStr) {
+    if (!dateStr) return null
+    const d = new Date(dateStr + 'T00:00:00')
+    return d.toLocaleDateString('en-US', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    })
+  }
+
+  function daysUntilRace(dateStr) {
+    if (!dateStr) return null
+    const race  = new Date(dateStr + 'T00:00:00')
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return Math.round((race - today) / (1000 * 60 * 60 * 24))
+  }
+
   // Prefer athlete's race name → triathlon type label (if triathlon) → distance typed → race_type label
   const heroTitle      = form.race_name ||
     (form.sport === 'triathlon' ? getRaceLabel(t, targets.race_type) : null) ||
@@ -1430,6 +1779,28 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
           regionConfig={regionConfig}
           provided={provided}
           targets={targets}
+          catalog={allProductsCatalog}
+        />
+      )}
+
+      {/* ── Share modal ─────────────────────────────────────────────────────── */}
+      {showShareModal && (
+        <ShareModal
+          onClose={() => setShowShareModal(false)}
+          planUrl={planId ? `plan.getlecka.com/plan/${planId}` : 'plan.getlecka.com'}
+          planProps={{
+            raceName:     heroTitle,
+            duration:     formatDuration(targets.total_duration_minutes),
+            conditions:   conditionLabel,
+            effort:       effortLabel,
+            carbsPerHour: targets.carb_per_hour,
+            sodiumPerHour: targets.sodium_per_hour,
+            fluidPerHour:  targets.fluid_ml_per_hour,
+            totalCarbs:   targets.total_carbs,
+            totalSodium:  targets.total_sodium,
+            products:     gapSelection.map(i => ({ name: i.product.name, quantity: i.quantity, type: i.product.type })),
+            region,
+          }}
         />
       )}
 
@@ -1446,7 +1817,7 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
               {t('common:nav.back')}
             </button>
             <img src="/logo.svg" alt="Lecka" className="h-6" />
-            <LanguageSwitcher region={region} />
+            <LanguageSwitcher compact />
           </div>
         </div>
       ) : (
@@ -1479,13 +1850,60 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
                 .join(' ')}
             </span>
           )}
+          {form.race_date && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-gray-500">
+                📅 {formatRaceDate(form.race_date)}
+              </span>
+              {daysUntilRace(form.race_date) > 0 && (
+                <span className="text-xs font-semibold text-white bg-[#48C4B0]
+                                 px-2.5 py-0.5 rounded-full">
+                  {daysUntilRace(form.race_date)} days to go
+                </span>
+              )}
+              {daysUntilRace(form.race_date) === 0 && (
+                <span className="text-xs font-semibold text-white bg-[#F64866]
+                                 px-2.5 py-0.5 rounded-full">
+                  Race day! 🎉
+                </span>
+              )}
+            </div>
+          )}
+          <p className="text-xs text-[#48C4B0] font-medium mt-2 italic">
+            {hasAddons
+              ? 'Real food foundation + add-ons — your complete race plan.'
+              : 'Lecka is your real food foundation. Everything else is optional.'}
+          </p>
+          {form.training_mode === true && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1
+                            bg-amber-50 border border-amber-200 rounded-full">
+              <span className="text-xs font-semibold text-amber-700">
+                Training mode — carb targets reduced for gut adaptation
+              </span>
+            </div>
+          )}
+          {form.fuelling_style && form.fuelling_style !== 'flexible' && (() => {
+            const labels = {
+              gels_only:      'Gel-based fuelling',
+              gels_and_bars:  'Gels + bars fuelling',
+              drink_mix_base: 'Drink mix + gels fuelling',
+            }
+            const label = labels[form.fuelling_style]
+            if (!label) return null
+            return (
+              <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full
+                               bg-[#48C4B0]/10 text-[#48C4B0] text-xs font-semibold">
+                {label}
+              </span>
+            )
+          })()}
         </div>
 
         {/* ── Warnings ────────────────────────────────────────────────────── */}
         <WarningBox warnings={targets.warnings} />
 
         {/* ── Nutrition targets ───────────────────────────────────────────── */}
-        <NutritionSummary targets={targets} provided={provided} />
+        <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} />
         <button
           type="button"
           onClick={() => setShowResearch(true)}
@@ -1495,50 +1913,464 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
           {t('results:research.learnMore')}
         </button>
 
-        {/* ── Product cards ───────────────────────────────────────────────── */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('results:section.whatToTake')}</p>
-            {aggregated.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowCartEditor(true)}
-                className="text-xs text-[#48C4B0] font-semibold hover:underline"
-              >
-                {t('results:cta.adjustPlan')}
-              </button>
-            )}
+        {/* ── Pro coach notes ──────────────────────────────────────────────── */}
+        {!isPublicView && (
+          <CoachNotes
+            coachCopy={proCoachCopy}
+            watchOut={proWatchOut}
+            loading={proCoachLoading}
+          />
+        )}
+
+        {/* ── Pre-race sodium loading callout ─────────────────────────────── */}
+        {['hot', 'humid'].includes(targets.conditions) && targets.total_duration_minutes >= 240 && (
+          <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
+            <p className="font-semibold text-amber-800 mb-1">Pre-race sodium loading recommended</p>
+            <p className="text-amber-900">
+              2–4 hours before your start, mix ~2 teaspoons of salt (~10g) into 1L of water or electrolyte drink.
+              Sip steadily — don&apos;t chug. This boosts blood sodium and plasma volume, helping you perform in the heat.
+            </p>
+            <p className="text-xs text-amber-700 mt-2">This guidance also appears in your PDF plan.</p>
           </div>
-          {aggregated.length === 0 ? (
+        )}
+
+        {/* ── Act 1: What to take ──────────────────────────────────────────── */}
+        <section>
+          <SectionLabel>
+            {form.fuelling_style === 'gels_only'      ? 'Your gels'
+             : form.fuelling_style === 'gels_and_bars' ? 'Your gels and bars'
+             : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
+             : 'What to take'}
+          </SectionLabel>
+          {form.fuelling_style === 'drink_mix_base' && (
+            <p className="text-sm text-gray-500 -mt-2 mb-3">
+              Your plan uses gels as your primary fuel. The Lecka carb + hydration powder will
+              replace some of these gel slots when it launches —{' '}
+              <a href="https://www.getlecka.com" className="text-[#48C4B0] underline hover:text-[#3db09d]">
+                join the waitlist
+              </a>{' '}
+              to be notified.
+            </p>
+          )}
+          {regionType !== 'international' && aggregated.length === 0 ? (
             <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
               We couldn&apos;t find products available in your region for this plan.
-              Try switching your region above, or contact us at{' '}
+              Try switching your region below, or contact us at{' '}
               <a href="mailto:info@getlecka.com" className="text-[#48C4B0] underline">
                 info@getlecka.com
               </a>.
             </div>
           ) : (
-            <div className="space-y-3">
-              {aggregated.map(row => (
-                <ProductCard
-                  key={row.product.id}
-                  {...row}
-                  currencySymbol={regionConfig.currency_symbol}
-                  decimals={regionConfig.decimals ?? 2}
-                  cartUnits={row.cartUnits}
-                  savedAmount={row.savedAmount ?? 0}
-                  region={region}
-                />
-              ))}
-            </div>
+            <>
+              <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
+                {gapSelection.map((item, i) => (
+                  <div
+                    key={item.product.id + i}
+                    className={`flex items-center gap-4 px-5 py-3
+                                ${i < gapSelection.length - 1 ? 'border-b border-gray-100' : ''}`}
+                  >
+                    <ProductIcon product={item.product} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#1B1B1B]">{item.product.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{item.note}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-[#1B1B1B]">×{item.quantity}</p>
+                      <p className="text-xs text-gray-400">
+                        {item.product.type === 'gel' || item.product.type === 'ultra_gel'
+                          ? 'gels'
+                          : item.product.type === 'bar'
+                          ? 'bars'
+                          : 'units'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {powderPlaceholder && (
+                <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 bg-gray-50 flex items-center gap-3 mt-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-500">
+                      🔜 Lecka Carb + Hydration Powder — coming soon
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      <a
+                        href="mailto:info@getlecka.com?subject=Powder waitlist"
+                        className="text-[#48C4B0] underline"
+                      >
+                        Join the waitlist →
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowCartEditor(true)}
+                className="text-xs text-[#48C4B0] font-semibold hover:underline mt-3 block"
+              >
+                {t('results:cta.adjustPlan')}
+              </button>
+            </>
           )}
         </section>
 
-        {/* ── Training preparation (shown when buying more than needed for race) */}
+        {/* ── Act 1: Add-ons ───────────────────────────────────────────────── */}
+        {hasAddons && (
+          <section>
+            <SectionLabel>Add-ons — your complete race fuel</SectionLabel>
+            <p className="text-xs text-gray-400 mb-3">
+              These products supplement your Lecka foundation. Buy them separately from your usual supplier.
+            </p>
+            <div className="border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden">
+              {resolvedAddonItems.map((item, i) => (
+                <div
+                  key={item.product.id}
+                  className={`flex items-center gap-4 px-5 py-3
+                              ${i < resolvedAddonItems.length - 1
+                                ? 'border-b border-dashed border-gray-200' : ''}`}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center
+                                  justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-gray-400">
+                      {item.product.brand?.slice(0,3).toUpperCase() ?? 'ADD'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#1B1B1B]">
+                      {item.product.display_name}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {item.product.carbs_per_unit * item.quantity}g carbs total
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-[#1B1B1B]">×{item.quantity}</p>
+                    <p className="text-xs text-gray-400 italic">buy separately</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Race timeline ─────────────────────────────────────────────────── */}
+        <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
+
+        {/* ── Checkpoint planner CTA ────────────────────────────────────────── */}
+        {(() => {
+          const isLongRace = targets.total_duration_minutes >= 180
+          const userId = localStorage.getItem('lecka_user_id')
+          const isLoggedIn = Boolean(userId)
+          if (!isLongRace || isPublicView) return null
+          if (!isLoggedIn) {
+            return (
+              <a
+                href="/auth/login"
+                className="flex items-center justify-center w-full min-h-[48px]
+                           bg-white border-2 border-[#48C4B0] text-[#48C4B0]
+                           font-semibold rounded-xl hover:bg-[#48C4B0]/5 transition-colors text-sm"
+              >
+                Log in to plan your checkpoints →
+              </a>
+            )
+          }
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                if (planId) {
+                  window.location.href = `/plan/${planId}/checkpoints`
+                } else {
+                  window.location.href = '/dashboard'
+                }
+              }}
+              className="flex items-center justify-center w-full min-h-[48px]
+                         bg-white border-2 border-[#48C4B0] text-[#48C4B0]
+                         font-semibold rounded-xl hover:bg-[#48C4B0]/5 transition-colors text-sm"
+            >
+              Plan your checkpoints →
+            </button>
+          )
+        })()}
+
+        {/* ── Copy plan to clipboard ────────────────────────────────────────── */}
+        <button
+          type="button"
+          onClick={handleCopyPlan}
+          className="text-sm text-gray-500 border border-gray-200 rounded-xl px-4 py-2
+                     hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors w-full"
+        >
+          {copyPlanState === 'copied' ? '✓ Copied!' : `📋 ${t('cta.copyPlan')}`}
+        </button>
+
+        {/* ── Email + save plan ─────────────────────────────────────────────── */}
+        <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} resolvedAddonItems={resolvedAddonItems} planId={planId} />
+
+        {/* ── Share my plan ─────────────────────────────────────────────────── */}
+        <button
+          type="button"
+          onClick={() => setShowShareModal(true)}
+          className="flex items-center justify-center gap-2 w-full min-h-[48px]
+                     border-2 border-gray-200 rounded-2xl text-sm font-semibold
+                     text-[#1B1B1B] hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share my plan
+        </button>
+
+        {/* ── Visual break ──────────────────────────────────────────────────── */}
+        <div className="my-8">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex-1 h-px bg-gray-200" />
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#48C4B0]/10 flex items-center
+                              justify-center">
+                <svg className="w-4 h-4 text-[#48C4B0]" viewBox="0 0 24 24"
+                     fill="none" stroke="currentColor" strokeWidth="2"
+                     strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <path d="M16 10a4 4 0 01-8 0"/>
+                </svg>
+              </div>
+            </div>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+          <div className="text-center">
+            <p className="text-base font-bold text-[#1B1B1B]">Ready to stock up?</p>
+            <p className="text-sm text-gray-400 mt-1">Here&apos;s how to get your Lecka products.</p>
+          </div>
+        </div>
+
+        {/* ── Act 2: Region picker ──────────────────────────────────────────── */}
+        <section>
+          <SectionLabel>Where do you want to order?</SectionLabel>
+          <div className="flex gap-2 flex-wrap">
+            {Object.entries(regionsConfig).map(([key, cfg]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleRegionChange(key)}
+                className={[
+                  'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                  region === key
+                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                    : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                ].join(' ')}
+              >
+                {cfg.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Act 2: Get your products ──────────────────────────────────────── */}
+        <section>
+          <SectionLabel>Get your products</SectionLabel>
+          {region == null ? (
+            <div className="border-2 border-gray-100 rounded-2xl p-6 text-center text-sm text-gray-500">
+              <p className="font-semibold text-[#1B1B1B] mb-1">Select your region above</p>
+              <p>to see local pricing and order.</p>
+            </div>
+          ) : regionType === 'international' ? (
+            /* International — no cart, just helpful links */
+            <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-4">
+              <p className="text-sm text-[#1B1B1B] leading-relaxed">
+                Lecka isn&apos;t available in your country yet — use this plan with any real food gel matching the targets above.
+              </p>
+              <a
+                href="https://www.getlecka.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm font-semibold text-[#48C4B0] hover:underline"
+              >
+                Find Lecka near you → getlecka.com
+              </a>
+              {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'distributor') && (
+                <div className="border-t border-gray-100 pt-3">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+                    Available via distributor
+                  </p>
+                  <div className="space-y-1">
+                    {Object.entries(regionsConfig)
+                      .filter(([, cfg]) => cfg.type === 'distributor')
+                      .map(([key, cfg]) => (
+                        <a
+                          key={key}
+                          href={cfg.store_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-sm text-[#48C4B0] hover:underline"
+                        >
+                          {cfg.label} →
+                        </a>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : aggregated.length === 0 ? (
+            <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
+              We couldn&apos;t find products available in your region. Try switching region above.
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3 mb-5">
+                {aggregated.map(row => (
+                  <ProductCard
+                    key={row.product.id}
+                    {...row}
+                    currencySymbol={regionConfig.currency_symbol}
+                    decimals={regionConfig.decimals ?? 2}
+                    cartUnits={row.cartUnits}
+                    savedAmount={row.savedAmount ?? 0}
+                    region={region}
+                  />
+                ))}
+              </div>
+
+              {/* Haravan (VN) — Zalo / Facebook ordering */}
+              {regionType === 'haravan' && (
+                <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
+                  {hasAddons && (
+                    <p className="text-xs text-gray-400 text-center mb-3">
+                      Cart includes Lecka products only — add-on products are sourced separately.
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm text-gray-500">
+                      {t('results:cta.packs', { count: totalPacks })}
+                    </span>
+                    <span className="text-xl font-bold text-[#1B1B1B]">
+                      {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => handleChatClick(regionConfig.zalo_url)}
+                      className="flex items-center justify-center w-full min-h-[52px]
+                                 bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl
+                                 text-base font-bold transition-colors"
+                    >
+                      {t('results:cta.chat.zalo')}
+                    </button>
+                    <button
+                      onClick={() => handleChatClick(regionConfig.facebook_url)}
+                      className="flex items-center justify-center w-full min-h-[52px]
+                                 bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl
+                                 text-base font-bold transition-colors"
+                    >
+                      {t('results:cta.chat.facebook')}
+                    </button>
+                    <p className="text-xs text-gray-400 text-center mt-1">
+                      {t('results:cta.chat.hint')}
+                    </p>
+                    {chatSummary && (
+                      <div className="mt-3 bg-gray-50 rounded-xl p-3">
+                        <p className="text-xs font-semibold text-gray-500 mb-1.5">
+                          {t('results:cta.chat.summaryLabel')}
+                        </p>
+                        <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans select-all cursor-text leading-relaxed">
+                          {chatSummary}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Shopify (US, DE, DK, CH) — cart URL, discount only for US */}
+              {regionType === 'shopify' && (
+                <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
+                  {hasAddons && (
+                    <p className="text-xs text-gray-400 text-center mb-3">
+                      Cart includes Lecka products only — add-on products are sourced separately.
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm text-gray-500">
+                      {t('results:cta.packs', { count: totalPacks })}
+                    </span>
+                    <span className="text-xl font-bold text-[#1B1B1B]">
+                      {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
+                    </span>
+                  </div>
+                  <a
+                    href={cartURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-full min-h-[52px]
+                               bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
+                               text-base font-bold transition-colors"
+                  >
+                    {t('results:cta.buyPlan')}
+                  </a>
+                  {region === 'us' && (
+                    <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
+                      {t('results:cta.discount')}
+                    </p>
+                  )}
+                  {region === 'us' && (
+                    <p className="text-xs text-gray-400 text-center mt-1">
+                      {t('results:cta.shipping.us')}
+                    </p>
+                  )}
+                  {hasAddons && (
+                    <p className="text-xs text-gray-400 text-center mt-1">
+                      Cart includes Lecka products only. Purchase add-ons separately.
+                    </p>
+                  )}
+                  {region === 'us' && vpCartURL && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <a
+                        href={vpCartURL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center w-full min-h-[48px]
+                                   border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl
+                                   text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors"
+                      >
+                        {t('results:cta.varietyPack')}
+                      </a>
+                      <p className="text-xs text-gray-400 text-center mt-1.5">
+                        {t('results:cta.varietyPack.hint')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Distributor (SG, HK, and future regions) — link to partner store */}
+              {regionType === 'distributor' && (
+                <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
+                  <a
+                    href={regionConfig.store_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-full min-h-[52px]
+                               bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
+                               text-base font-bold transition-colors"
+                  >
+                    Shop at {regionConfig.label} →
+                  </a>
+                  <p className="text-xs text-gray-400 text-center mt-2">
+                    Sold via our partner store — pricing in local currency
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* ── Act 2: What you'll have left for training ─────────────────────── */}
         {trainingInfo.hasOverage && (
           <section className="border-2 border-[#48C4B0]/30 rounded-2xl p-5 bg-[#48C4B0]/5">
             <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-2">
-              {t('results:training.title')}
+              What you&apos;ll have left for training
             </p>
             <p className="text-sm text-[#1B1B1B] mb-4">
               {trainingInfo.gelOverage > 0 && (
@@ -1582,147 +2414,108 @@ export default function ResultsPage({ targets, selection, form, onBack, region: 
           </section>
         )}
 
-        {/* ── Region picker ────────────────────────────────────────────────── */}
-        {!isEmbedded && (
-          <section>
-            <SectionLabel>{t('results:section.shippingTo')}</SectionLabel>
-            <div className="flex gap-2">
-              {Object.entries(regionsConfig).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setRegion(key)}
-                  className={[
-                    'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
-                    region === key
-                      ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                      : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                  ].join(' ')}
-                >
-                  {cfg.label}
-                </button>
+        {/* ── Act 2: Add-ons reminder ───────────────────────────────────────── */}
+        {hasAddons && (
+          <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+            <p className="text-xs font-semibold uppercase tracking-widest
+                          text-gray-400 mb-2">
+              Don&apos;t forget your add-ons
+            </p>
+            <p className="text-sm text-gray-500 mb-3">
+              These products are part of your plan but sold separately
+              from Lecka. Pick them up from your usual sports nutrition supplier.
+            </p>
+            <div className="space-y-1">
+              {resolvedAddonItems.map(item => (
+                <p key={item.product.id} className="text-sm text-[#1B1B1B]">
+                  ×{item.quantity} {item.product.display_name}
+                  <span className="text-gray-400 ml-1">
+                    — {item.product.carbs_per_unit * item.quantity}g carbs
+                  </span>
+                </p>
               ))}
             </div>
-          </section>
+          </div>
         )}
 
-        {/* ── Shop CTA — hidden when no products are available in the region ── */}
-        {aggregated.length > 0 && <section className="border-2 border-[#48C4B0]/20 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-gray-500">
-              {t('results:cta.packs', { count: totalPacks })}
-            </span>
-            <span className="text-xl font-bold text-[#1B1B1B]">
-              {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
-            </span>
+        {/* ── Footer ────────────────────────────────────────────────────────── */}
+        <div className="pb-12 space-y-6 border-t border-gray-100 pt-8">
+
+          <div className="text-center">
+            {isPublicView ? (
+              <a
+                href="/planner"
+                className="text-sm font-semibold text-[#48C4B0] hover:underline transition-colors"
+              >
+                Build your own plan →
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={onBack}
+                className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
+              >
+                {t('common:nav.startOver')}
+              </button>
+            )}
           </div>
-          {region === 'vn' ? (
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => handleChatClick(regionConfig.zalo_url)}
-                className="flex items-center justify-center w-full min-h-[52px]
-                           bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl
-                           text-base font-bold transition-colors"
-              >
-                {t('results:cta.chat.zalo')}
-              </button>
-              <button
-                onClick={() => handleChatClick(regionConfig.facebook_url)}
-                className="flex items-center justify-center w-full min-h-[52px]
-                           bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl
-                           text-base font-bold transition-colors"
-              >
-                {t('results:cta.chat.facebook')}
-              </button>
-              <p className="text-xs text-gray-400 text-center mt-1">
-                {t('results:cta.chat.hint')}
-              </p>
-              {chatSummary && (
-                <div className="mt-3 bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-gray-500 mb-1.5">
-                    {t('results:cta.chat.summaryLabel')}
-                  </p>
-                  <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans select-all cursor-text leading-relaxed">
-                    {chatSummary}
-                  </pre>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
+
+          <div className="text-center space-y-1">
+            <p className="text-xs text-gray-400">
+              Provided by{' '}
               <a
-                href={cartURL}
+                href="https://www.getlecka.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center w-full min-h-[52px]
-                           bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
-                           text-base font-bold transition-colors"
+                className="text-[#48C4B0] hover:underline"
               >
-                {t('results:cta.buyPlan')}
+                www.getlecka.com
               </a>
-              <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
-                {t('results:cta.discount')}
-              </p>
-              <p className="text-xs text-gray-400 text-center mt-1">
-                {region === 'us'
-                  ? t('results:cta.shipping.us')
-                  : t('results:cta.shipping.other', { label: regionConfig.label, url: regionConfig.store_url })}
-              </p>
-            </>
-          )}
-          {vpCartURL && region !== 'vn' && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            </p>
+            <p className="text-xs text-gray-400">
               <a
-                href={vpCartURL}
+                href="mailto:info@getlecka.com"
+                className="text-[#48C4B0] hover:underline"
+              >
+                info@getlecka.com
+              </a>
+              {' '}·{' '}
+              <a
+                href="https://www.instagram.com/leckanutrition"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center w-full min-h-[48px]
-                           border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl
-                           text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors"
+                className="text-[#48C4B0] hover:underline"
               >
-                {t('results:cta.varietyPack')}
+                @leckanutrition
               </a>
-              <p className="text-xs text-gray-400 text-center mt-1.5">
-                {t('results:cta.varietyPack.hint')}
-              </p>
+            </p>
+          </div>
+
+          <div className="text-center">
+            <p className="text-xs text-gray-400 mb-2">Find Lecka near you</p>
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+              {[
+                { label: 'US',          href: 'https://www.getlecka.com' },
+                { label: 'Vietnam',     href: 'https://www.getlecka.vn' },
+                { label: 'Germany',     href: 'https://www.getlecka.de' },
+                { label: 'Denmark',     href: 'https://www.getlecka.dk' },
+                { label: 'Switzerland', href: 'https://www.getlecka.ch' },
+                { label: 'Singapore',   href: 'https://www.rdrc.sg/collections/lecka' },
+                { label: 'Hong Kong',   href: 'https://foodisdom.is/collections/lecka' },
+              ].map(({ label, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-400 hover:text-[#48C4B0] transition-colors"
+                >
+                  {label}
+                </a>
+              ))}
             </div>
-          )}
-        </section>}
+          </div>
 
-        {/* ── Race timeline ────────────────────────────────────────────────── */}
-        <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
-
-        {/* ── Copy plan to clipboard ───────────────────────────────────────── */}
-        <button
-          type="button"
-          onClick={handleCopyPlan}
-          className="text-sm text-gray-500 border border-gray-200 rounded-xl px-4 py-2
-                     hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors w-full"
-        >
-          {copyPlanState === 'copied' ? '✓ Copied!' : `📋 ${t('cta.copyPlan')}`}
-        </button>
-
-        {/* ── Email + save plan ────────────────────────────────────────────── */}
-        <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} />
-
-        {/* ── Footer ──────────────────────────────────────────────────────── */}
-        <div className="pb-10 text-center">
-          {isPublicView ? (
-            <a
-              href="/planner"
-              className="text-sm font-semibold text-[#48C4B0] hover:underline transition-colors"
-            >
-              Build your own plan →
-            </a>
-          ) : (
-            <button
-              type="button"
-              onClick={onBack}
-              className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
-            >
-              {t('common:nav.startOver')}
-            </button>
-          )}
         </div>
 
       </div>
