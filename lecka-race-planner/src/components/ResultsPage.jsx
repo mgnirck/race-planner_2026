@@ -1359,8 +1359,8 @@ function setProCoachCache(key, data) {
   } catch {}
 }
 
-function CoachNotes({ coachCopy, watchOut, loading }) {
-  const [expanded, setExpanded] = useState(false)
+function CoachNotes({ coachCopy, watchOut, loading, startExpanded = false }) {
+  const [expanded, setExpanded] = useState(startExpanded)
 
   if (loading) {
     return (
@@ -1484,27 +1484,211 @@ function TrainingAccordion({ trainingInfo, t }) {
 
 // ── CheckpointsTab ────────────────────────────────────────────────────────────
 
-function CheckpointsTab({ planId, isLoggedIn }) {
-  if (!isLoggedIn) {
-    return (
-      <div className="text-sm text-gray-500 space-y-3">
-        <p>Log in to access the checkpoint planner.</p>
-        <a href="/auth/login" className="inline-block px-4 py-2 border-2 border-[#48C4B0] text-[#48C4B0] rounded-xl text-sm font-semibold hover:bg-[#48C4B0]/5">
-          Log in →
-        </a>
-      </div>
-    )
+const RACE_DISTANCE_KM = {
+  '5k': 5, '10k': 10, 'half_marathon': 21.1, 'marathon': 42.2,
+  'ultra_50k': 50, 'ultra_100k': 100,
+  'triathlon_70_3': 113, 'triathlon_140_6': 226,
+}
+
+function newCp() {
+  return { id: `cp-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', distance: '', elevation: '' }
+}
+
+function cpEstTime(segKm, segElevM, totalKm, totalMins) {
+  if (!segKm || !totalKm || !totalMins) return null
+  const pace = totalMins / totalKm
+  const penalty = (segElevM ?? 0) / 10
+  return Math.round(segKm * pace + penalty)
+}
+
+function cpSegNutrition(estMins, targets) {
+  if (!estMins || !targets) return null
+  const h = estMins / 60
+  return {
+    carbs:  Math.round(targets.carb_per_hour  * h),
+    sodium: Math.round(targets.sodium_per_hour * h),
+    fluid:  Math.round(targets.fluid_ml_per_hour * h),
   }
-  if (!planId) {
-    return <p className="text-sm text-gray-500">Save your plan first to use the checkpoint planner.</p>
-  }
+}
+
+function CheckpointsTab({ planId, isLoggedIn, targets, form }) {
+  const storageKey = planId ? `lecka_checkpoints_${planId}` : null
+  const [checkpoints, setCheckpoints] = useState(() => {
+    try {
+      if (storageKey) {
+        const raw = localStorage.getItem(storageKey)
+        if (raw) return JSON.parse(raw).checkpoints ?? []
+      }
+    } catch {}
+    return []
+  })
+
+  const totalKm   = form?.custom_race_km > 0 ? form.custom_race_km : (RACE_DISTANCE_KM[targets?.race_type] ?? 0)
+  const totalMins = targets?.total_duration_minutes ?? 0
+
+  useEffect(() => {
+    if (!storageKey) return
+    try { localStorage.setItem(storageKey, JSON.stringify({ checkpoints })) } catch {}
+  }, [checkpoints, storageKey])
+
+  function addCp() { setCheckpoints(prev => [...prev, newCp()]) }
+  function removeCp(id) { setCheckpoints(prev => prev.filter(c => c.id !== id)) }
+  function updateCp(id, patch) { setCheckpoints(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c)) }
+
+  // Build segments: [start, ...checkpoints, finish]
+  const points = [
+    { id: '__start', name: 'Start', distance: 0, elevation: 0, _fixed: true },
+    ...checkpoints,
+    { id: '__finish', name: 'Finish', distance: totalKm > 0 ? totalKm : null, elevation: 0, _fixed: true },
+  ]
+
+  const segments = points.slice(0, -1).map((from, i) => {
+    const to = points[i + 1]
+    const fromKm = parseFloat(from.distance) || 0
+    const toKm   = parseFloat(to.distance)   || 0
+    const segKm  = toKm - fromKm
+    const segElev = parseFloat(to.elevation) || 0
+    const estMins = cpEstTime(segKm, segElev, totalKm, totalMins)
+    const nutrition = cpSegNutrition(estMins, targets)
+    return { from, to, segKm: segKm > 0 ? segKm : null, segElev, estMins, nutrition }
+  })
+
   return (
-    <a
-      href={`/plan/${planId}/checkpoints`}
-      className="inline-flex items-center px-4 py-2 border-2 border-[#48C4B0] text-[#48C4B0] rounded-xl text-sm font-semibold hover:bg-[#48C4B0]/5"
-    >
-      Open checkpoint planner →
-    </a>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-[#1B1B1B]">Checkpoint planner</p>
+          {totalKm > 0 && (
+            <p className="text-xs text-gray-400">{totalKm} km · {checkpoints.length} checkpoint{checkpoints.length !== 1 ? 's' : ''}</p>
+          )}
+        </div>
+        <button type="button" onClick={addCp}
+          className="px-4 py-2 rounded-xl border-2 border-[#48C4B0] text-[#48C4B0] text-sm font-semibold
+                     hover:bg-[#48C4B0]/5 transition-colors">
+          + Add checkpoint
+        </button>
+      </div>
+
+      {!storageKey && (
+        <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
+          {isLoggedIn ? 'Save your plan to persist checkpoints across sessions.' : 'Log in and save your plan to keep checkpoints.'}
+        </div>
+      )}
+
+      {/* Segment list */}
+      <div className="space-y-2">
+        {segments.map((seg, i) => {
+          const isLast = i === segments.length - 1
+          const cp = checkpoints[i] // undefined for start→first and last→finish
+          const isFirstSeg = i === 0
+          const isLastSeg = isLast
+
+          return (
+            <div key={`${seg.from.id}-${seg.to.id}`}>
+              {/* Checkpoint row (editable) — for each non-fixed waypoint */}
+              {!seg.from._fixed && (
+                <div className="rounded-xl border-2 border-[#48C4B0] bg-[#48C4B0]/5 px-4 py-3 mb-2">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Checkpoint name"
+                        value={seg.from.name}
+                        onChange={e => updateCp(seg.from.id, { name: e.target.value })}
+                        className="w-full border-b border-[#48C4B0]/30 bg-transparent text-sm font-medium
+                                   text-[#1B1B1B] placeholder-gray-300 focus:outline-none focus:border-[#48C4B0]"
+                      />
+                      <div className="flex gap-3">
+                        <label className="flex-1">
+                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">km mark</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max={totalKm || 999}
+                            step="0.1"
+                            placeholder="—"
+                            value={seg.from.distance}
+                            onChange={e => updateCp(seg.from.id, { distance: e.target.value })}
+                            className="w-full mt-0.5 border-b border-gray-200 bg-transparent text-sm
+                                       focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
+                          />
+                        </label>
+                        <label className="flex-1">
+                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">elev gain (m)</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="10"
+                            placeholder="—"
+                            value={seg.from.elevation}
+                            onChange={e => updateCp(seg.from.id, { elevation: e.target.value })}
+                            className="w-full mt-0.5 border-b border-gray-200 bg-transparent text-sm
+                                       focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => removeCp(seg.from.id)}
+                      className="w-7 h-7 flex items-center justify-center rounded-full bg-white border-2
+                                 border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-400
+                                 transition-colors text-sm leading-none flex-shrink-0">
+                      ×
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Segment info */}
+              <div className="flex items-center gap-3 px-1">
+                <div className="flex flex-col items-center gap-1">
+                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${seg.from._fixed ? 'bg-gray-400' : 'bg-[#48C4B0]'}`} />
+                  {!isLastSeg && <div className="w-px flex-1 bg-gray-200" style={{ minHeight: '24px' }} />}
+                </div>
+                <div className="flex-1 pb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-gray-500">
+                      {seg.from._fixed ? seg.from.name : (seg.from.name || 'Checkpoint')}
+                    </span>
+                    {seg.segKm !== null && seg.segKm > 0 && (
+                      <span className="text-xs text-gray-400">{seg.segKm.toFixed(1)} km</span>
+                    )}
+                    {seg.estMins && (
+                      <span className="text-xs text-gray-400">~{seg.estMins >= 60 ? `${Math.floor(seg.estMins/60)}h${seg.estMins%60 ? `${seg.estMins%60}m` : ''}` : `${seg.estMins}m`}</span>
+                    )}
+                  </div>
+                  {seg.nutrition && (
+                    <div className="flex gap-3 mt-1">
+                      <span className="text-xs font-medium text-[#48C4B0]">{seg.nutrition.carbs}g carbs</span>
+                      <span className="text-xs text-gray-400">{seg.nutrition.sodium}mg sodium</span>
+                      <span className="text-xs text-gray-400">{seg.nutrition.fluid}ml fluid</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Finish marker */}
+        <div className="flex items-center gap-3 px-1">
+          <div className="w-2.5 h-2.5 rounded-full bg-gray-800 flex-shrink-0" />
+          <span className="text-xs font-medium text-gray-500">Finish{totalKm > 0 ? ` (${totalKm} km)` : ''}</span>
+        </div>
+      </div>
+
+      {checkpoints.length === 0 && (
+        <p className="text-xs text-gray-400 text-center py-4">
+          Add checkpoints to see segment nutrition breakdowns.
+        </p>
+      )}
+
+      {planId && (
+        <a href={`/plan/${planId}/checkpoints`} className="flex items-center gap-1.5 text-xs text-[#48C4B0] hover:underline">
+          Open full planner with product assignment →
+        </a>
+      )}
+    </div>
   )
 }
 
@@ -1591,7 +1775,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         gel_count:         totalGelCount,
         elevation_tier:    targets.elevation_tier,
         elevation_gain_m:  targets.elevation_gain_m,
-        athlete_profile:   targets.athlete_profile,
+        athlete_profile:   form.athlete_profile,
         gender:            form.gender,
         weight_kg,
         caffeine_ok:       targets.caffeine_ok,
@@ -1842,7 +2026,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     ? (form.surface_type.charAt(0).toUpperCase() + form.surface_type.slice(1))
     : null
 
-  const [mobileTab, setMobileTab] = useState('timeline')
+  const [mobileTab, setMobileTab] = useState('products')
   const htmlContent = useMemo(() => markdownToHtml(researchMarkdown), [])
 
   // Shared JSX fragments used in both mobile and desktop layouts
@@ -2071,6 +2255,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         <CheckpointsTab
           planId={planId}
           isLoggedIn={Boolean(localStorage.getItem('lecka_user_id'))}
+          targets={targets}
+          form={form}
         />
       )}
     </div>
@@ -2079,7 +2265,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const coachTabContent = (
     <div className="space-y-6">
       {!isPublicView && (
-        <CoachNotes coachCopy={proCoachCopy} watchOut={proWatchOut} loading={proCoachLoading} />
+        <CoachNotes coachCopy={proCoachCopy} watchOut={proWatchOut} loading={proCoachLoading} startExpanded />
       )}
       <PlanDeliveryCard
         targets={targets}
@@ -2137,8 +2323,16 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         />
       )}
 
-      {/* ── Desktop sticky top bar (≥1024px) ────────────────────────────────── */}
-      <div className="hidden lg:flex sticky top-0 z-20 bg-white border-b border-gray-100 h-14 px-6 items-center justify-between">
+      {/* ── Desktop Nav bar ─────────────────────────────────────────────────── */}
+      <div className="hidden lg:block">
+        {isEmbedded
+          ? null
+          : <Nav backHref="/planner" backLabel="Back to planner" />
+        }
+      </div>
+
+      {/* ── Desktop sticky breadcrumb bar (≥1024px) ─────────────────────────── */}
+      <div className="hidden lg:flex sticky top-0 z-20 bg-white border-b border-gray-100 h-12 px-6 items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-bold text-[#1B1B1B] text-sm">lecka</span>
           <span className="text-gray-300">/</span>
@@ -2254,8 +2448,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         {/* Mobile tabs */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 flex">
           {[
-            { key: 'timeline', label: 'Timeline' },
             { key: 'products', label: 'Products' },
+            { key: 'timeline', label: 'Timeline' },
             { key: 'coach',    label: 'Coach' },
             { key: 'order',    label: 'Order' },
           ].map(tab => (
@@ -2454,6 +2648,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 <CheckpointsTab
                   planId={planId}
                   isLoggedIn={Boolean(localStorage.getItem('lecka_user_id'))}
+                  targets={targets}
+                  form={form}
                 />
               ),
             },

@@ -253,6 +253,8 @@ function OverviewTab({ data }) {
   const effort = data.by_effort
   const addon = data.addon_usage
   const caffeine = data.caffeine_usage
+  const byTemperature = data.by_temperature
+  const byHumidity = data.by_humidity
 
   return (
     <div className="space-y-8">
@@ -315,7 +317,7 @@ function OverviewTab({ data }) {
       {/* Row 4 — Conditions + Effort */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <section>
-          <SectionLabel>Race conditions</SectionLabel>
+          <SectionLabel>Race conditions (derived)</SectionLabel>
           {conditions ? (
             conditions.map(r => (
               <BarRow
@@ -349,7 +351,46 @@ function OverviewTab({ data }) {
         </section>
       </div>
 
-      {/* Row 5 — Add-on usage */}
+      {/* Row 5 — Temperature + Humidity */}
+      {(byTemperature || byHumidity) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <section>
+            <SectionLabel>Temperature</SectionLabel>
+            {byTemperature ? (
+              byTemperature.map(r => (
+                <BarRow
+                  key={r.key}
+                  label={r.key ? r.key.charAt(0).toUpperCase() + r.key.slice(1) : '—'}
+                  count={r.count}
+                  pct={r.pct}
+                  color={CONDITION_COLORS[r.key] ?? 'teal'}
+                />
+              ))
+            ) : (
+              <DataUnavailable />
+            )}
+          </section>
+
+          <section>
+            <SectionLabel>Humidity</SectionLabel>
+            {byHumidity ? (
+              byHumidity.map(r => (
+                <BarRow
+                  key={r.key}
+                  label={r.key ? r.key.charAt(0).toUpperCase() + r.key.slice(1) : '—'}
+                  count={r.count}
+                  pct={r.pct}
+                  color="teal"
+                />
+              ))
+            ) : (
+              <DataUnavailable />
+            )}
+          </section>
+        </div>
+      )}
+
+      {/* Row 6 — Add-on usage */}
       <section>
         <SectionLabel>Competitor add-on usage</SectionLabel>
         {addon ? (

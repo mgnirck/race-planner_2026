@@ -177,7 +177,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
   const [emailState,   setEmailState]   = useState('idle') // idle | sending | success | error
   const [planSent,     setPlanSent]     = useState(false)
   const [chatSummary,  setChatSummary]  = useState(null)
-  const [mobileTab,    setMobileTab]    = useState('timeline')
+  const [mobileTab,    setMobileTab]    = useState('products')
   const [showShareModal, setShowShareModal] = useState(false)
   const htmlContent = useMemo(
     () => researchMarkdown.split('\n\n').filter(Boolean).map(p =>
@@ -405,6 +405,8 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
       goal_time_h:            form.goal_time_h ?? '',
       goal_time_m:            form.goal_time_m ?? '',
       conditions:             form.conditions ?? 'mild',
+      temperature:            form.temperature ?? 'mild',
+      humidity:               form.humidity ?? 'dry',
       surface_type:           form.surface_type ?? '',
       dist_unit:              form.dist_unit ?? 'km',
       weight_value:           form.weight_value ?? '',
@@ -787,8 +789,8 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
         {/* Mobile tabs */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 flex">
           {[
-            { key: 'timeline', label: 'Timeline' },
             { key: 'products', label: 'Products' },
+            { key: 'timeline', label: 'Timeline' },
             { key: 'try_pro',  label: 'Try Pro' },
             { key: 'order',    label: 'Order' },
           ].map(tab => (
@@ -890,6 +892,12 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
             <SectionLabel>Get your products</SectionLabel>
             {orderSectionContent}
           </section>
+
+          {/* Build Pro plan CTA */}
+          <button type="button" onClick={handleBuildProPlan} disabled={navigating}
+            className="flex items-center justify-center w-full min-h-[48px] bg-[#48C4B0] hover:bg-[#3db09d] text-white rounded-2xl text-sm font-bold transition-colors disabled:opacity-60">
+            {navigating ? 'Opening Pro planner…' : 'Build my Pro plan →'}
+          </button>
 
           {/* Share */}
           <button type="button" onClick={() => setShowShareModal(true)}

@@ -19,15 +19,37 @@ const RACE_OPTIONS = [
   { key: 'ultra_100k',      label: 'Ultra 100 km+' },
   { key: 'triathlon_70_3',  label: '70.3 Triathlon' },
   { key: 'triathlon_140_6', label: 'Ironman 140.6' },
+  { key: 'custom',          label: 'Other / Custom' },
 ]
 
-const CONDITION_OPTIONS = [
-  { key: 'cool',  emoji: '❄️',  label: 'Cool' },
-  { key: 'mild',  emoji: '🌤',  label: 'Mild' },
-  { key: 'warm',  emoji: '☀️',  label: 'Warm' },
-  { key: 'hot',   emoji: '🔥',  label: 'Hot' },
-  { key: 'humid', emoji: '💧', label: 'Humid' },
+const TEMPERATURE_OPTIONS = [
+  { key: 'cool', emoji: '❄️', label: 'Cool', range: '< 10 °C' },
+  { key: 'mild', emoji: '🌤', label: 'Mild', range: '10–20 °C' },
+  { key: 'warm', emoji: '☀️', label: 'Warm', range: '20–28 °C' },
+  { key: 'hot',  emoji: '🔥', label: 'Hot',  range: '> 28 °C' },
 ]
+
+const HUMIDITY_OPTIONS = [
+  { key: 'dry',   label: 'Dry',   range: '< 60 %' },
+  { key: 'humid', label: 'Humid', range: '≥ 60 %' },
+]
+
+function deriveConditions(temperature, humidity) {
+  if (temperature === 'cool') return 'cool'
+  if (temperature === 'mild') return humidity === 'humid' ? 'warm' : 'mild'
+  if (temperature === 'warm') return humidity === 'humid' ? 'humid' : 'warm'
+  // hot
+  return 'hot'
+}
+
+function mapCustomDistToRaceType(km) {
+  if (km < 7.5)  return '5k'
+  if (km < 12.5) return '10k'
+  if (km < 22.5) return 'half_marathon'
+  if (km < 40)   return 'marathon'
+  if (km < 75)   return 'ultra_50k'
+  return 'ultra_100k'
+}
 
 const SIMPLE_DEFAULTS = {
   weight_kg:        70,
@@ -70,9 +92,12 @@ const DEFAULT_FORM = {
   race_name:              '',
   race_date:              '',
   race_type:              '',
+  custom_race_km:         '',
+  custom_race_unit:       'km',
   goal_time_h:            '',
   goal_time_m:            '',
-  conditions:             'mild',
+  temperature:            'mild',
+  humidity:               'dry',
   gender:                 '',
   weight_value:           '',
   weight_unit:            'kg',
@@ -130,7 +155,19 @@ export default function SimpleForm({ onComplete }) {
 
   const goalMinutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
   const goalValid   = goalMinutes !== null
-  const canSubmit   = form.race_type !== '' && goalValid && !submitting
+  const conditions  = deriveConditions(form.temperature, form.humidity)
+
+  const customKm = form.race_type === 'custom'
+    ? (form.custom_race_unit === 'mi'
+        ? parseFloat(form.custom_race_km) * 1.60934
+        : parseFloat(form.custom_race_km))
+    : null
+  const resolvedRaceType = form.race_type === 'custom'
+    ? (customKm > 0 ? mapCustomDistToRaceType(customKm) : '')
+    : form.race_type
+
+  const canSubmit = resolvedRaceType !== '' && goalValid && !submitting &&
+    (form.race_type !== 'custom' || (parseFloat(form.custom_race_km) > 0))
 
   function buildGoalLabel() {
     if (!goalValid) return null
@@ -158,15 +195,15 @@ export default function SimpleForm({ onComplete }) {
       : form.preferred_product_ids
 
     const engineInputs = {
-      race_type:        form.race_type,
+      race_type:        resolvedRaceType,
       goal_minutes:     goalMinutes,
       weight_kg,
       gender,
-      conditions:       form.conditions,
+      conditions,
       effort:           SIMPLE_DEFAULTS.effort,
       caffeine_ok,
       elevation_gain_m: SIMPLE_DEFAULTS.elevation_gain_m,
-      distance_km:      SIMPLE_DEFAULTS.distance_km,
+      distance_km:      customKm ?? SIMPLE_DEFAULTS.distance_km,
       athlete_profile:  SIMPLE_DEFAULTS.athlete_profile,
       training_mode:    SIMPLE_DEFAULTS.training_mode,
     }
@@ -182,11 +219,14 @@ export default function SimpleForm({ onComplete }) {
     const outForm = {
       race_name:              form.race_name.trim(),
       race_date:              form.race_date,
-      race_type:              form.race_type,
+      race_type:              resolvedRaceType,
+      custom_race_km:         customKm ?? 0,
       goal_time:              goalTimeFormatted,
       goal_time_h:            form.goal_time_h,
       goal_time_m:            form.goal_time_m,
-      conditions:             form.conditions,
+      conditions,
+      temperature:            form.temperature,
+      humidity:               form.humidity,
       gender,
       weight_value:           form.weight_value || '70',
       weight_unit:            form.weight_unit,
@@ -227,58 +267,26 @@ export default function SimpleForm({ onComplete }) {
             <SectionLabel>Where are you based?</SectionLabel>
             <p className="text-xs text-gray-400 mb-3">We use this to show you available products and local pricing.</p>
 
-            {/* Direct stores */}
-            {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'shopify' || cfg.type === 'haravan') && (
-              <div className="mb-3">
-                <p className="text-xs font-medium text-gray-400 mb-2">Direct stores</p>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(regionsConfig)
-                    .filter(([, cfg]) => cfg.type === 'shopify' || cfg.type === 'haravan')
-                    .map(([key, cfg]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => handleRegionSelect(key)}
-                        className={[
-                          'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
-                          region === key
-                            ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                            : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                        ].join(' ')}
-                      >
-                        {cfg.label}
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Distributor partners */}
-            {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'distributor') && (
-              <div className="mb-3">
-                <p className="text-xs font-medium text-gray-400 mb-2">Distributor partners</p>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(regionsConfig)
-                    .filter(([, cfg]) => cfg.type === 'distributor')
-                    .map(([key, cfg]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => handleRegionSelect(key)}
-                        className={[
-                          'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors flex flex-col items-center',
-                          region === key
-                            ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                            : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                        ].join(' ')}
-                      >
-                        <span>{cfg.label}</span>
-                        <span className={`text-xs ${region === key ? 'text-white/75' : 'text-gray-400'}`}>via distributor</span>
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
+            {/* All non-international countries */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {Object.entries(regionsConfig)
+                .filter(([, cfg]) => cfg.type !== 'international')
+                .map(([key, cfg]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleRegionSelect(key)}
+                    className={[
+                      'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                      region === key
+                        ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                        : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                    ].join(' ')}
+                  >
+                    {cfg.label}
+                  </button>
+                ))}
+            </div>
 
             {/* International */}
             {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'international') && (
@@ -293,14 +301,13 @@ export default function SimpleForm({ onComplete }) {
                         type="button"
                         onClick={() => handleRegionSelect(key)}
                         className={[
-                          'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors flex flex-col items-center',
+                          'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
                           region === key
                             ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
                             : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
                         ].join(' ')}
                       >
-                        <span>{cfg.label} 🌍</span>
-                        <span className={`text-xs ${region === key ? 'text-white/75' : 'text-gray-400'}`}>Shows full product range</span>
+                        {cfg.label}
                       </button>
                     ))}
                 </div>
@@ -349,6 +356,41 @@ export default function SimpleForm({ onComplete }) {
                 />
               ))}
             </div>
+
+            {/* Custom distance input */}
+            {form.race_type === 'custom' && (
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  placeholder="Distance"
+                  value={form.custom_race_km}
+                  onChange={e => setForm(f => ({ ...f, custom_race_km: e.target.value }))}
+                  className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-center
+                             text-lg font-semibold focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
+                />
+                <div className="flex rounded-xl border-2 border-gray-200 overflow-hidden">
+                  {['km', 'mi'].map(u => (
+                    <button key={u} type="button"
+                      onClick={() => setForm(f => ({ ...f, custom_race_unit: u }))}
+                      className={[
+                        'px-4 py-3 text-sm font-medium transition-colors',
+                        form.custom_race_unit === u
+                          ? 'bg-[#48C4B0] text-white'
+                          : 'bg-white text-gray-500 hover:bg-gray-50',
+                      ].join(' ')}>
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {form.race_type === 'custom' && parseFloat(form.custom_race_km) > 0 && (
+              <p className="text-xs text-[#48C4B0] mt-1.5 font-medium">
+                Mapped to {resolvedRaceType.replace(/_/g, ' ')} nutrition targets
+              </p>
+            )}
           </div>
 
           {/* 4. Goal time */}
@@ -395,22 +437,48 @@ export default function SimpleForm({ onComplete }) {
           {/* 5. Race conditions */}
           <div className="mb-8">
             <SectionLabel>Expected conditions on race day</SectionLabel>
-            <div className="flex gap-2">
-              {CONDITION_OPTIONS.map(opt => (
+
+            {/* Temperature */}
+            <p className="text-xs text-gray-400 mb-2">Temperature</p>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {TEMPERATURE_OPTIONS.map(opt => (
                 <button
                   key={opt.key}
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, conditions: opt.key }))}
+                  onClick={() => setForm(f => ({ ...f, temperature: opt.key }))}
                   className={[
-                    'flex-1 flex flex-col items-center justify-center gap-1',
-                    'min-h-[64px] rounded-xl border-2 transition-colors',
-                    form.conditions === opt.key
+                    'flex flex-col items-center justify-center gap-0.5',
+                    'min-h-[64px] rounded-xl border-2 transition-colors px-1',
+                    form.temperature === opt.key
                       ? 'border-[#48C4B0] bg-[#48C4B0]/10'
                       : 'border-gray-200 bg-white',
                   ].join(' ')}
                 >
-                  <span className="text-2xl">{opt.emoji}</span>
-                  <span className="text-xs text-gray-500">{opt.label}</span>
+                  <span className="text-xl">{opt.emoji}</span>
+                  <span className="text-xs font-medium text-gray-700">{opt.label}</span>
+                  <span className="text-[10px] text-gray-400">{opt.range}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Humidity */}
+            <p className="text-xs text-gray-400 mb-2">Humidity</p>
+            <div className="flex gap-2">
+              {HUMIDITY_OPTIONS.map(opt => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, humidity: opt.key }))}
+                  className={[
+                    'flex-1 flex flex-col items-center justify-center gap-0.5',
+                    'min-h-[52px] rounded-xl border-2 transition-colors',
+                    form.humidity === opt.key
+                      ? 'border-[#48C4B0] bg-[#48C4B0]/10'
+                      : 'border-gray-200 bg-white',
+                  ].join(' ')}
+                >
+                  <span className="text-sm font-medium text-gray-700">{opt.label}</span>
+                  <span className="text-[10px] text-gray-400">{opt.range}</span>
                 </button>
               ))}
             </div>
