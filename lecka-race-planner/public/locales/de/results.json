@@ -117,5 +117,9 @@
   "cta.noDiscount": "",
   "tryPro.title": "Präziseren Plan erhalten",
   "tryPro.body": "Der Pro-Planer personalisiert jede Zahl nach deinem genauen Gewicht, Fitnesslevel und den Bedingungen. Er ergänzt außerdem Höhendaten, Darmtraining-Modus, eine detaillierte Renn-Timeline und Checkpoint-Planung.",
-  "tryPro.cta": "Meinen Pro-Plan erstellen →"
+  "tryPro.cta": "Meinen Pro-Plan erstellen →",
+  "quick.caveat": "Geschätzt für einen 70 kg schweren Freizeitathlet im Renntempo. Deine tatsächlichen Ziele können je nach Gewicht, Fitness und Belastung um 20–40% abweichen.",
+  "quick.upsellTitle": "Genaue Ziele für deinen Körper",
+  "quick.upsellBody": "Der Pro-Plan verwendet dein tatsächliches Gewicht, Fitnesslevel, Höhenprofil und Tempo, um jeden Wert zu personalisieren. Außerdem freischalten: Darmtraining-Modus, Checkpoint-Planung, Trainer-Notizen und Unterstützung für andere Marken neben Lecka.",
+  "quick.preciseCta": "Meinen genauen Plan erstellen — dauert 3 Minuten →"
 }

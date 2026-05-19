@@ -117,5 +117,9 @@
   "cta.noDiscount": "",
   "tryPro.title": "Få en mere præcis plan",
   "tryPro.body": "Pro-planeren personaliserer hvert tal til din nøjagtige vægt, fitnessniveau og vilkår. Det tilføjer også højdedata, mavetræningstilstand, en detaljeret race-tidslinje og checkpoint-planlægning.",
-  "tryPro.cta": "Byg min Pro-plan →"
+  "tryPro.cta": "Byg min Pro-plan →",
+  "quick.caveat": "Estimeret for en 70 kg mellemavanceret atlet ved løbstempo. Dine faktiske mål kan variere med 20–40% afhængigt af din vægt, form og indsatsniveau.",
+  "quick.upsellTitle": "Få præcise mål til din krop",
+  "quick.upsellBody": "Pro-planen bruger din faktiske vægt, fitnessniveau, højdeprofil og indsats til at personalisere hvert tal. Låser også op for: mavetræning, checkpoint-planlægning, trænernotes og support til andre ernæringsmærker ved siden af Lecka.",
+  "quick.preciseCta": "Få min præcise plan — tager 3 minutter →"
 }

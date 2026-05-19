@@ -117,5 +117,9 @@
   "cta.noDiscount": "",
   "tryPro.title": "Obtenir un plan plus précis",
   "tryPro.body": "Le planificateur Pro personnalise chaque chiffre en fonction de votre poids exact, de votre niveau de forme et des conditions. Il ajoute également des données d'altitude, le mode d'entraînement intestinal, une chronologie détaillée de la course et la planification des points de contrôle.",
-  "tryPro.cta": "Créer mon plan Pro →"
+  "tryPro.cta": "Créer mon plan Pro →",
+  "quick.caveat": "Estimé pour un athlète intermédiaire de 70 kg au rythme de course. Vos objectifs réels peuvent varier de 20 à 40 % selon votre poids, votre forme et votre niveau d'effort.",
+  "quick.upsellTitle": "Obtenez des objectifs précis pour votre corps",
+  "quick.upsellBody": "Le plan Pro utilise votre poids réel, votre niveau de forme, le dénivelé et l'intensité pour personnaliser chaque chiffre. Débloque également : mode entraînement intestinal, planification des ravitaillements, notes du coach et support pour d'autres marques de nutrition aux côtés de Lecka.",
+  "quick.preciseCta": "Obtenir mon plan précis — 3 minutes suffisent →"
 }
