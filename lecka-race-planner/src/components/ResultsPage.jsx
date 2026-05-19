@@ -25,16 +25,9 @@ import LanguageSwitcher from './LanguageSwitcher.jsx'
 import i18n from '../i18n.js'
 import { getRaceLabel, getEffortLabel, getConditionLabel } from '../i18n-utils.js'
 import { formatAddonSummary } from '../engine/kit-calculator.js'
+import ShareModal from './ShareModal.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const STORE_LINKS = {
-  de: { label: 'Germany',      url: 'https://www.getlecka.de' },
-  dk: { label: 'Denmark',      url: 'https://www.getlecka.dk' },
-  ch: { label: 'Switzerland',  url: 'https://www.getlecka.ch' },
-  sg: { label: 'Singapore',    url: 'https://www.rdrc.sg/collections/lecka' },
-  hk: { label: 'Hong Kong',    url: 'https://foodisdom.is/collections/lecka' },
-}
 
 const ELEVATION_MODIFIER_PCT = {
   rolling:    5,
@@ -1441,6 +1434,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
   const [showCartEditor, setShowCartEditor] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const [region,         setRegion]         = useState(regionProp ?? getSavedRegion())
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
@@ -1450,6 +1444,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const [proCoachLoading, setProCoachLoading] = useState(!isPublicView)
   const [planId,         setPlanId]         = useState(planIdProp)
   const regionConfig = getRegionConfig(region)
+  const regionType   = regionsConfig[region]?.type ?? null
 
   const { products: liveProducts } = useProducts()
   const allProductsCatalog = liveProducts ?? FALLBACK_PRODUCTS
@@ -1614,7 +1609,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       }
     }
 
-    return embedCartURL(buildCartURLFromAggregated(vpItems, 'NUTRIPLAN10', '', region))
+    return embedCartURL(buildCartURLFromAggregated(vpItems, region === 'us' ? 'NUTRIPLAN10' : '', '', region))
   }, [region, allProductsCatalog])
 
   // manualQty overrides must be reflected in anything sent off-device (email, saved
@@ -1634,13 +1629,19 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     [effectiveSelection, addonTimelineItems, targets.total_duration_minutes]
   )
 
-  const gapSelection = useMemo(() =>
-    aggregated.map(row => {
+  const gapSelection = useMemo(() => {
+    if (regionType === 'international') {
+      return effectiveSelection.map(item => ({
+        product: item.product,
+        quantity: item.quantity,
+        note: item.note ?? '',
+      }))
+    }
+    return aggregated.map(row => {
       const selItem = effectiveSelection.find(s => s.product.id === row.product.id)
       return { product: row.product, quantity: row.totalUnits, note: selItem?.note ?? '' }
-    }),
-    [aggregated, effectiveSelection]
-  )
+    })
+  }, [aggregated, effectiveSelection, regionType])
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
   const totalPacks = aggregated.reduce(
@@ -1649,7 +1650,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
   // Cart URL built from the already-optimised aggregated rows (may use variety pack)
   const cartURL = useMemo(
-    () => embedCartURL(buildCartURLFromAggregated(aggregated, 'NUTRIPLAN10', '', region)),
+    () => embedCartURL(buildCartURLFromAggregated(aggregated, region === 'us' ? 'NUTRIPLAN10' : '', '', region)),
     [aggregated, region]
   )
 
@@ -1779,6 +1780,27 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           provided={provided}
           targets={targets}
           catalog={allProductsCatalog}
+        />
+      )}
+
+      {/* ── Share modal ─────────────────────────────────────────────────────── */}
+      {showShareModal && (
+        <ShareModal
+          onClose={() => setShowShareModal(false)}
+          planUrl={planId ? `plan.getlecka.com/plan/${planId}` : 'plan.getlecka.com'}
+          planProps={{
+            raceName:     heroTitle,
+            duration:     formatDuration(targets.total_duration_minutes),
+            conditions:   conditionLabel,
+            effort:       effortLabel,
+            carbsPerHour: targets.carb_per_hour,
+            sodiumPerHour: targets.sodium_per_hour,
+            fluidPerHour:  targets.fluid_ml_per_hour,
+            totalCarbs:   targets.total_carbs,
+            totalSodium:  targets.total_sodium,
+            products:     gapSelection.map(i => ({ name: i.product.name, quantity: i.quantity, type: i.product.type })),
+            region,
+          }}
         />
       )}
 
@@ -1930,7 +1952,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               to be notified.
             </p>
           )}
-          {aggregated.length === 0 ? (
+          {regionType !== 'international' && aggregated.length === 0 ? (
             <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
               We couldn&apos;t find products available in your region for this plan.
               Try switching your region below, or contact us at{' '}
@@ -2085,6 +2107,21 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         {/* ── Email + save plan ─────────────────────────────────────────────── */}
         <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} resolvedAddonItems={resolvedAddonItems} planId={planId} />
 
+        {/* ── Share my plan ─────────────────────────────────────────────────── */}
+        <button
+          type="button"
+          onClick={() => setShowShareModal(true)}
+          className="flex items-center justify-center gap-2 w-full min-h-[48px]
+                     border-2 border-gray-200 rounded-2xl text-sm font-semibold
+                     text-[#1B1B1B] hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share my plan
+        </button>
+
         {/* ── Visual break ──────────────────────────────────────────────────── */}
         <div className="my-8">
           <div className="flex items-center gap-4 mb-6">
@@ -2139,6 +2176,43 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               <p className="font-semibold text-[#1B1B1B] mb-1">Select your region above</p>
               <p>to see local pricing and order.</p>
             </div>
+          ) : regionType === 'international' ? (
+            /* International — no cart, just helpful links */
+            <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-4">
+              <p className="text-sm text-[#1B1B1B] leading-relaxed">
+                Lecka isn&apos;t available in your country yet — use this plan with any real food gel matching the targets above.
+              </p>
+              <a
+                href="https://www.getlecka.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm font-semibold text-[#48C4B0] hover:underline"
+              >
+                Find Lecka near you → getlecka.com
+              </a>
+              {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'distributor') && (
+                <div className="border-t border-gray-100 pt-3">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+                    Available via distributor
+                  </p>
+                  <div className="space-y-1">
+                    {Object.entries(regionsConfig)
+                      .filter(([, cfg]) => cfg.type === 'distributor')
+                      .map(([key, cfg]) => (
+                        <a
+                          key={key}
+                          href={cfg.store_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-sm text-[#48C4B0] hover:underline"
+                        >
+                          {cfg.label} →
+                        </a>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ) : aggregated.length === 0 ? (
             <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
               We couldn&apos;t find products available in your region. Try switching region above.
@@ -2159,7 +2233,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 ))}
               </div>
 
-              {region === 'vn' && (
+              {/* Haravan (VN) — Zalo / Facebook ordering */}
+              {regionType === 'haravan' && (
                 <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
                   {hasAddons && (
                     <p className="text-xs text-gray-400 text-center mb-3">
@@ -2208,7 +2283,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 </div>
               )}
 
-              {region === 'us' && (
+              {/* Shopify (US, DE, DK, CH) — cart URL, discount only for US */}
+              {regionType === 'shopify' && (
                 <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
                   {hasAddons && (
                     <p className="text-xs text-gray-400 text-center mb-3">
@@ -2233,18 +2309,22 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                   >
                     {t('results:cta.buyPlan')}
                   </a>
-                  <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
-                    {t('results:cta.discount')}
-                  </p>
-                  <p className="text-xs text-gray-400 text-center mt-1">
-                    {t('results:cta.shipping.us')}
-                  </p>
+                  {region === 'us' && (
+                    <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
+                      {t('results:cta.discount')}
+                    </p>
+                  )}
+                  {region === 'us' && (
+                    <p className="text-xs text-gray-400 text-center mt-1">
+                      {t('results:cta.shipping.us')}
+                    </p>
+                  )}
                   {hasAddons && (
                     <p className="text-xs text-gray-400 text-center mt-1">
                       Cart includes Lecka products only. Purchase add-ons separately.
                     </p>
                   )}
-                  {vpCartURL && (
+                  {region === 'us' && vpCartURL && (
                     <div className="mt-4 pt-4 border-t border-gray-100">
                       <a
                         href={vpCartURL}
@@ -2264,38 +2344,21 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 </div>
               )}
 
-              {STORE_LINKS[region] && (
+              {/* Distributor (SG, HK, and future regions) — link to partner store */}
+              {regionType === 'distributor' && (
                 <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
                   <a
-                    href={STORE_LINKS[region].url}
+                    href={regionConfig.store_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center w-full min-h-[52px]
                                bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
                                text-base font-bold transition-colors"
                   >
-                    Shop Lecka — {STORE_LINKS[region].label}
+                    Shop at {regionConfig.label} →
                   </a>
                   <p className="text-xs text-gray-400 text-center mt-2">
-                    Use the product list from your plan when ordering.
-                  </p>
-                </div>
-              )}
-
-              {!STORE_LINKS[region] && region !== 'vn' && region !== 'us' && (
-                <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
-                  <a
-                    href="https://www.getlecka.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center w-full min-h-[52px]
-                               bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
-                               text-base font-bold transition-colors"
-                  >
-                    Shop Lecka
-                  </a>
-                  <p className="text-xs text-gray-400 text-center mt-2">
-                    Visit getlecka.com to find your nearest store.
+                    Sold via our partner store — pricing in local currency
                   </p>
                 </div>
               )}

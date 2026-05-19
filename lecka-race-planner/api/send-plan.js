@@ -166,8 +166,9 @@ const REGION_STORE_URLS = {
 const ZALO_ORDER_URL = 'https://zalo.me/0988440434'
 
 /** Builds an optimised Shopify cart URL, using variety packs when cheaper.
- *  For VN, returns the Zalo order URL directly (Haravan store, no /cart/ path). */
-function buildCartURL(selectedProducts, region = 'us', discountCode = 'NUTRIPLAN10') {
+ *  For VN, returns the Zalo order URL directly (Haravan store, no /cart/ path).
+ *  Discount code is only applied for the US region. */
+function buildCartURL(selectedProducts, region = 'us', discountCode = region === 'us' ? 'NUTRIPLAN10' : '') {
   if (region === 'vn') return ZALO_ORDER_URL
   const storeUrl = REGION_STORE_URLS[region] ?? REGION_STORE_URLS.us
   if (!selectedProducts?.length) return storeUrl

@@ -2,58 +2,44 @@
   "steps.race": "Dit løb",
   "steps.body": "Din krop & præferencer",
   "steps.products": "Din ernæringsstil",
-
   "field.raceName": "Løbs- eller løbenavn",
   "field.raceName.placeholder": "f.eks. Copenhagen Marathon 2026",
   "field.raceName.hint": "Valgfrit — vises på din plan",
-
   "field.raceDate": "Løbsdato",
   "field.raceDate.hint": "Valgfrit — hjælper os med at følge din nedtælling",
-
   "field.sport": "Sport",
   "field.sport.running": "Løb",
   "field.sport.triathlon": "Triatlon",
-
   "field.triathlonType": "Triatlon-disciplin",
-
   "field.gpx": "Upload GPX-fil (valgfrit)",
   "field.gpx.drop": "Slip din GPX-fil her, eller klik for at gennemse",
   "field.gpx.hint": "Udfylder automatisk distance, højdemeter & underlag",
   "field.gpx.loaded": "GPX indlæst: {{km}} km · {{elevation}} m stigning · {{label}}",
   "field.gpx.error": "Kunne ikke læse GPX-fil — prøv venligst en anden",
-
   "field.distance": "Løbsdistance",
   "field.distance.hint": "{{value}} {{unit}} — personlig ernæringsplan",
-
   "field.elevation": "Højdemeter",
   "field.elevation.hintDefault": "Valgfrit — forbedrer beregningen for kuperede ruter. Standard er 0 (fladt).",
   "field.elevation.hintGpx": "Udfyldt fra GPX · {{label}}",
-
   "field.surface": "Underlag",
-
   "field.goalTime": "Måltid",
   "field.goalTime.hours": "timer",
   "field.goalTime.minutes": "min",
   "field.goalTime.hint": "Angiv timer og minutter for dit forventede sluttid",
   "field.goalTime.parsed": "{{hours}}t {{mins}}min",
   "field.goalTime.error": "Ugyldig tid — timer 0–200, minutter 0–59, totaltid > 0",
-
   "field.weight": "Kropsvægt",
   "field.weight.error": "Indtast en vægt mellem {{min}}–{{max}} {{unit}}",
-
   "field.gender": "Køn",
-
   "field.conditions": "Løbsforhold",
   "field.conditions.cool.sub": "under 15°C",
   "field.conditions.mild.sub": "15–20°C",
   "field.conditions.warm.sub": "20–26°C",
   "field.conditions.hot.sub": "over 26°C",
-
   "field.effort": "Intensitetsniveau",
   "field.effort.easy.desc": "Behageligt, samtaletempo",
   "field.effort.race_pace.desc": "Måltempo — kontrolleret men krævende",
   "field.effort.hard.desc": "Tærskel eller derover — det gør ondt",
-
   "field.training": "Din træningsstatus",
   "field.training.untrained": "Utrænet",
   "field.training.untrained.desc": "Ny inden for udholdenhedssport, lavere svedhastighed",
@@ -63,16 +49,20 @@
   "field.training.trained.desc": "Regelmæssig udholdenhedsatlet, højere svedhastighed",
   "field.training.elite": "Elite",
   "field.training.elite.desc": "Professionel eller konkurrenceatlet",
-
   "field.caffeine": "Koffeinprodukter",
   "field.caffeine.yes": "Ja, inkluder koffein",
   "field.caffeine.no": "Intet koffein",
-
   "field.products.intro": "Vælg dine yndlingssmage — din plan bruger disse. Ved længere løb blander vi dem for variation. Ingen præference? Vi vælger en afbalanceret blanding til dig.",
   "field.gels": "Energigeler",
   "field.bars": "Energibarer",
-
   "product.carbs": "{{value}}g kulhydrater",
   "product.sodium": "{{value}}mg natrium",
-  "product.caffeine": "{{value}}mg koffein"
+  "product.caffeine": "{{value}}mg koffein",
+  "steps.region": "Hvor er du baseret?",
+  "field.region.hint": "Vi bruger dette til at vise dig tilgængelige produkter og lokale priser.",
+  "field.region.directStore": "Direkte butikker",
+  "field.region.distributor": "Distributørpartnere",
+  "field.region.other": "Andre",
+  "field.region.distributorNote": "via distributør",
+  "field.region.internationalNote": "Viser hele sortimentet"
 }

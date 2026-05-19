@@ -177,6 +177,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
   const { products: liveProducts } = useProducts()
   const catalog = liveProducts ?? FALLBACK_PRODUCTS
   const regionConfig = getRegionConfig(region)
+  const regionType   = regionsConfig[region]?.type ?? null
 
   const leckaSelection = useMemo(
     () => selection.filter(item => item.product?.type !== 'powder_placeholder'),
@@ -184,8 +185,8 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
   )
 
   const aggregated = useMemo(
-    () => region ? aggregateByProduct(leckaSelection, region, catalog) : [],
-    [leckaSelection, region, catalog]
+    () => (region && regionType !== 'international') ? aggregateByProduct(leckaSelection, region, catalog) : [],
+    [leckaSelection, region, regionType, catalog]
   )
 
   const subtotal   = aggregated.reduce((sum, row) => sum + row.linePrice, 0)
@@ -194,7 +195,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
   )
 
   const cartURL = useMemo(
-    () => region ? embedCartURL(buildCartURLFromAggregated(aggregated, 'NUTRIPLAN10', '', region)) : null,
+    () => (region && regionType === 'shopify') ? embedCartURL(buildCartURLFromAggregated(aggregated, region === 'us' ? 'NUTRIPLAN10' : '', '', region)) : null,
     [aggregated, region]
   )
 
@@ -350,7 +351,6 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
       'My Lecka race nutrition plan:',
       lines,
       `Total: ${formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}`,
-      'Code NUTRIPLAN10 applied',
     ].join('\n')
     setChatSummary(summary)
     copyToClipboard(summary)
@@ -629,6 +629,43 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               <p className="font-semibold text-[#1B1B1B] mb-1">Select your region above</p>
               <p>to see local pricing and order.</p>
             </div>
+          ) : regionType === 'international' ? (
+            /* International — no cart, just helpful links */
+            <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-4">
+              <p className="text-sm text-[#1B1B1B] leading-relaxed">
+                Lecka isn&apos;t available in your country yet — use this plan with any real food gel matching the targets above.
+              </p>
+              <a
+                href="https://www.getlecka.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm font-semibold text-[#48C4B0] hover:underline"
+              >
+                Find Lecka near you → getlecka.com
+              </a>
+              {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'distributor') && (
+                <div className="border-t border-gray-100 pt-3">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
+                    Available via distributor
+                  </p>
+                  <div className="space-y-1">
+                    {Object.entries(regionsConfig)
+                      .filter(([, cfg]) => cfg.type === 'distributor')
+                      .map(([key, cfg]) => (
+                        <a
+                          key={key}
+                          href={cfg.store_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-sm text-[#48C4B0] hover:underline"
+                        >
+                          {cfg.label} →
+                        </a>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
           ) : aggregated.length === 0 ? (
             <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B]">
               We couldn&apos;t find products available in your region. Try switching region above.
@@ -646,7 +683,8 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                 ))}
               </div>
 
-              {region === 'vn' && (
+              {/* Haravan (VN) — Zalo / Facebook ordering */}
+              {regionType === 'haravan' && (
                 <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-500">{totalPacks} pack{totalPacks !== 1 ? 's' : ''}</span>
@@ -686,7 +724,8 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                 </div>
               )}
 
-              {region !== 'vn' && cartURL && (
+              {/* Shopify (US, DE, DK, CH) — cart URL, discount only for US */}
+              {regionType === 'shopify' && cartURL && (
                 <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-500">{totalPacks} pack{totalPacks !== 1 ? 's' : ''}</span>
@@ -704,8 +743,29 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                   >
                     Get your products →
                   </a>
-                  <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
-                    Discount code NUTRIPLAN10 applied automatically
+                  {region === 'us' && (
+                    <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
+                      Discount code NUTRIPLAN10 applied automatically
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Distributor (SG, HK, and future regions) — link to partner store */}
+              {regionType === 'distributor' && (
+                <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
+                  <a
+                    href={regionConfig.store_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-full min-h-[52px]
+                               bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
+                               text-base font-bold transition-colors"
+                  >
+                    Shop at {regionConfig.label} →
+                  </a>
+                  <p className="text-xs text-gray-400 text-center mt-2">
+                    Sold via our partner store — pricing in local currency
                   </p>
                 </div>
               )}

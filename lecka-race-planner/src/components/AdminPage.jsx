@@ -10,6 +10,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import allProducts from '../config/products.json'
 import competitorProducts from '../config/competitor-products.json'
+import regionsConfig from '../config/regions.json'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -30,15 +31,9 @@ const RACE_TYPE_LABELS = {
   triathlon_140_6: 'Ironman 140.6',
 }
 
-const REGION_LABELS = {
-  us: 'United States',
-  de: 'Germany',
-  dk: 'Denmark',
-  ch: 'Switzerland',
-  vn: 'Vietnam',
-  sg: 'Singapore',
-  hk: 'Hong Kong',
-}
+const REGION_LABELS = Object.fromEntries(
+  Object.entries(regionsConfig).map(([k, v]) => [k, v.label])
+)
 
 const CATALOG_REGIONS      = ['us', 'de', 'dk', 'ch', 'vn']
 const CATALOG_REGION_CODES = { us: 'US', de: 'DE', dk: 'DK', ch: 'CH', vn: 'VN' }

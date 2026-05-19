@@ -24,6 +24,7 @@ import { getSavedRegion, saveRegion } from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
 import WeightInput, { toKg } from './shared/WeightInput.jsx'
 import ProductPreferencePicker from './shared/ProductPreferencePicker.jsx'
+import regionsConfig from '../config/regions.json'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,92 @@ function FieldLabel({ children }) {
     <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
       {children}
     </p>
+  )
+}
+
+// ── Step 0: Region ────────────────────────────────────────────────────────────
+
+function StepRegion({ region, onSelect }) {
+  return (
+    <div className="space-y-5">
+      <p className="text-xs text-gray-400">We use this to show you available products and local pricing.</p>
+
+      {/* Direct stores */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Direct stores</p>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(regionsConfig)
+            .filter(([, cfg]) => cfg.type === 'shopify' || cfg.type === 'haravan')
+            .map(([key, cfg]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onSelect(key)}
+                className={[
+                  'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                  region === key
+                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                    : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                ].join(' ')}
+              >
+                {cfg.label}
+              </button>
+            ))}
+        </div>
+      </div>
+
+      {/* Distributor partners */}
+      {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'distributor') && (
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Distributor partners</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(regionsConfig)
+              .filter(([, cfg]) => cfg.type === 'distributor')
+              .map(([key, cfg]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onSelect(key)}
+                  className={[
+                    'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                    region === key
+                      ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                      : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                  ].join(' ')}
+                >
+                  <span>{cfg.label}</span>
+                  <span className={`ml-1.5 text-xs ${region === key ? 'text-white/75' : 'text-gray-400'}`}>via distributor</span>
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* International */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Other</p>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(regionsConfig)
+            .filter(([, cfg]) => cfg.type === 'international')
+            .map(([key, cfg]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => onSelect(key)}
+                className={[
+                  'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                  region === key
+                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                    : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                ].join(' ')}
+              >
+                <span>{cfg.label} 🌍</span>
+                <span className={`ml-1.5 text-xs ${region === key ? 'text-white/75' : 'text-gray-400'}`}>Shows full product range</span>
+              </button>
+            ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1343,7 +1430,8 @@ export default function StepForm({ onComplete }) {
   const { t } = useTranslation(['form', 'common'])
   const { products: liveProducts } = useProducts()
   const allProducts = liveProducts ?? FALLBACK_PRODUCTS
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(0)
+  const [region, setRegion] = useState(() => getSavedRegion() ?? null)
   const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
   const [fromSimple, setFromSimple] = useState(() => loadDraft()?._from_simple === true)
   const [fromSimpleDismissed, setFromSimpleDismissed] = useState(false)
@@ -1351,7 +1439,13 @@ export default function StepForm({ onComplete }) {
   const [prefillDismissed, setPrefillDismissed] = useState(false)
   const [previewTargets, setPreviewTargets] = useState(null)
 
-  const totalSteps = previewTargets && needsDualTransporter(previewTargets) ? 4 : 3
+  // Step 0 = region, Steps 1-3 (or 1-4 with addons) = existing steps
+  const totalSteps = previewTargets && needsDualTransporter(previewTargets) ? 5 : 4
+
+  function handleRegionSelect(key) {
+    setRegion(key)
+    saveRegion(key)
+  }
 
   // Persist form to sessionStorage on every change so a refresh or accidental
   // navigation away doesn't wipe the user's progress.
@@ -1393,6 +1487,7 @@ export default function StepForm({ onComplete }) {
 
         if (profile.preferred_region) {
           saveRegion(profile.preferred_region)
+          setRegion(profile.preferred_region)
         }
 
         if (profile.preferred_lang && profile.preferred_lang !== i18n.language) {
@@ -1406,12 +1501,12 @@ export default function StepForm({ onComplete }) {
     return () => controller.abort()
   }, [])
 
-  const stepValid = { 1: isStep1Valid(form), 2: isStep2Valid(form), 3: isStep3Valid(form), 4: true }
-  const canAdvance = stepValid[step]
+  const stepValid = { 0: region != null, 1: isStep1Valid(form), 2: isStep2Valid(form), 3: isStep3Valid(form), 4: true }
+  const canAdvance = stepValid[step] ?? true
 
   function handleNext() {
     if (step === 2) {
-      // Compute preview targets so we know whether Step 4 is needed
+      // Compute preview targets so we know whether Step 4 (addons) is needed
       try {
         const weight_kg    = toKg(form.weight_value, form.weight_unit)
         const goal_minutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
@@ -1435,7 +1530,8 @@ export default function StepForm({ onComplete }) {
       return
     }
 
-    if (step < totalSteps) {
+    // totalSteps = 4 (no addons: 0→1→2→3 then build) or 5 (addons: 0→1→2→3→4 then build)
+    if (step < totalSteps - 1) {
       setStep(s => s + 1)
       return
     }
@@ -1513,20 +1609,23 @@ export default function StepForm({ onComplete }) {
           {/* Language switcher — re-enable when translations complete */}
         </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-          {t('common:step.ofTotal', { step, total: totalSteps })}
+          {t('common:step.ofTotal', { step: step + 1, total: totalSteps })}
         </p>
         <h1 className="text-2xl font-bold text-[#1B1B1B] mt-1">
-          {[
-            t('form:steps.race'),
-            t('form:steps.body'),
-            t('form:steps.products'),
-            'Performance add-ons',
-          ][step - 1]}
+          {step === 0
+            ? 'Where are you based?'
+            : [
+                t('form:steps.race'),
+                t('form:steps.body'),
+                t('form:steps.products'),
+                'Performance add-ons',
+              ][step - 1]}
         </h1>
       </div>
 
       {/* ── Step content ── */}
       <div className="max-w-md mx-auto w-full px-5 pb-4">
+        {step === 0 && <StepRegion region={region} onSelect={handleRegionSelect} />}
         {step === 1 && <StepOne form={form} setForm={setForm} />}
         {step === 2 && (
           <StepTwo
@@ -1555,7 +1654,7 @@ export default function StepForm({ onComplete }) {
 
       {/* ── Navigation — follows content naturally, no flex-1 stretch ── */}
       <div className="max-w-md mx-auto w-full px-5 py-5 flex items-center gap-3 border-t border-gray-100">
-        {step > 1 && (
+        {step > 0 && (
           <button
             type="button"
             onClick={() => setStep(s => s - 1)}

@@ -7,7 +7,8 @@ import WeightInput, { toKg } from './shared/WeightInput.jsx'
 import ProductPreferencePicker from './shared/ProductPreferencePicker.jsx'
 import FALLBACK_PRODUCTS from '../config/products.json'
 import { useProducts }   from '../hooks/useProducts.js'
-import { getSavedRegion } from '../embed.js'
+import { getSavedRegion, saveRegion } from '../embed.js'
+import regionsConfig from '../config/regions.json'
 
 const RACE_OPTIONS = [
   { key: '5k',              label: '5 km' },
@@ -84,6 +85,12 @@ const DEFAULT_FORM = {
 export default function SimpleForm({ onComplete }) {
   const [form,       setForm]       = useState(DEFAULT_FORM)
   const [submitting, setSubmitting] = useState(false)
+  const [region,     setRegion]     = useState(() => getSavedRegion() ?? null)
+
+  function handleRegionSelect(key) {
+    setRegion(key)
+    saveRegion(key)
+  }
 
   const { products: liveProducts } = useProducts()
   const catalog = liveProducts ?? FALLBACK_PRODUCTS
@@ -214,6 +221,92 @@ export default function SimpleForm({ onComplete }) {
 
       <div className="max-w-lg mx-auto px-6 pt-8 pb-16">
         <form onSubmit={handleSubmit} noValidate>
+
+          {/* 0. Region */}
+          <div className="mb-8">
+            <SectionLabel>Where are you based?</SectionLabel>
+            <p className="text-xs text-gray-400 mb-3">We use this to show you available products and local pricing.</p>
+
+            {/* Direct stores */}
+            {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'shopify' || cfg.type === 'haravan') && (
+              <div className="mb-3">
+                <p className="text-xs font-medium text-gray-400 mb-2">Direct stores</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(regionsConfig)
+                    .filter(([, cfg]) => cfg.type === 'shopify' || cfg.type === 'haravan')
+                    .map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleRegionSelect(key)}
+                        className={[
+                          'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                          region === key
+                            ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                            : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                        ].join(' ')}
+                      >
+                        {cfg.label}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Distributor partners */}
+            {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'distributor') && (
+              <div className="mb-3">
+                <p className="text-xs font-medium text-gray-400 mb-2">Distributor partners</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(regionsConfig)
+                    .filter(([, cfg]) => cfg.type === 'distributor')
+                    .map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleRegionSelect(key)}
+                        className={[
+                          'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors flex flex-col items-center',
+                          region === key
+                            ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                            : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                        ].join(' ')}
+                      >
+                        <span>{cfg.label}</span>
+                        <span className={`text-xs ${region === key ? 'text-white/75' : 'text-gray-400'}`}>via distributor</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* International */}
+            {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'international') && (
+              <div>
+                <p className="text-xs font-medium text-gray-400 mb-2">Other</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(regionsConfig)
+                    .filter(([, cfg]) => cfg.type === 'international')
+                    .map(([key, cfg]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleRegionSelect(key)}
+                        className={[
+                          'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors flex flex-col items-center',
+                          region === key
+                            ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                            : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+                        ].join(' ')}
+                      >
+                        <span>{cfg.label} 🌍</span>
+                        <span className={`text-xs ${region === key ? 'text-white/75' : 'text-gray-400'}`}>Shows full product range</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* 1. Race name */}
           <div className="mb-8">
@@ -423,7 +516,7 @@ export default function SimpleForm({ onComplete }) {
                         : [...f.preferred_product_ids, id],
                     }))
                   }
-                  region={getSavedRegion() ?? 'us'}
+                  region={region ?? 'us'}
                   caffeineOk={form.caffeine_ok !== false}
                 />
               </div>

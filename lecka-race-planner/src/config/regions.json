@@ -3,25 +3,29 @@
     "store_url": "https://www.getlecka.com",
     "currency": "USD",
     "currency_symbol": "$",
-    "label": "United States"
+    "label": "United States",
+    "type": "shopify"
   },
   "de": {
     "store_url": "https://www.getlecka.de",
     "currency": "EUR",
     "currency_symbol": "€",
-    "label": "Germany"
+    "label": "Germany",
+    "type": "shopify"
   },
   "dk": {
     "store_url": "https://www.getlecka.dk",
     "currency": "DKK",
     "currency_symbol": "kr",
-    "label": "Denmark"
+    "label": "Denmark",
+    "type": "shopify"
   },
   "ch": {
     "store_url": "https://www.getlecka.ch",
     "currency": "CHF",
     "currency_symbol": "CHF",
-    "label": "Switzerland"
+    "label": "Switzerland",
+    "type": "shopify"
   },
   "vn": {
     "store_url": "https://www.getlecka.vn",
@@ -30,18 +34,28 @@
     "label": "Vietnam",
     "decimals": 0,
     "zalo_url": "https://zalo.me/0988440434",
-    "facebook_url": "https://m.me/lecka.eco"
+    "facebook_url": "https://m.me/lecka.eco",
+    "type": "haravan"
   },
   "sg": {
     "store_url": "https://www.rdrc.sg/collections/lecka",
     "currency": "SGD",
     "currency_symbol": "S$",
-    "label": "Singapore"
+    "label": "Singapore",
+    "type": "distributor"
   },
   "hk": {
     "store_url": "https://foodisdom.is/collections/lecka",
     "currency": "HKD",
     "currency_symbol": "HK$",
-    "label": "Hong Kong"
+    "label": "Hong Kong",
+    "type": "distributor"
+  },
+  "international": {
+    "store_url": "https://www.getlecka.com",
+    "currency": null,
+    "currency_symbol": null,
+    "label": "International",
+    "type": "international"
   }
 }
