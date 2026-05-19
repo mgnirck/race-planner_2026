@@ -244,7 +244,10 @@ Respond ONLY with valid JSON. No prose before or after. No markdown.`,
 
     const data = await response.json()
     try {
-      const json = JSON.parse(data.content[0].text)
+      let text = (data.content[0].text ?? '').trim()
+      const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+      if (fenceMatch) text = fenceMatch[1].trim()
+      const json = JSON.parse(text)
       return res.status(200).json({ segments: json.segments })
     } catch {
       return res.status(200).json({ segments: null, error: 'Could not parse AI response' })

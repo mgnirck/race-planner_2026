@@ -1533,7 +1533,10 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   useEffect(() => {
     if (isPublicView || planIdProp) return
     const userId = localStorage.getItem('lecka_user_id')
-    if (!userId) return
+    if (!userId) {
+      localStorage.setItem('lecka_plan_needs_save', 'true')
+      return
+    }
     fetch('/api/plans', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },

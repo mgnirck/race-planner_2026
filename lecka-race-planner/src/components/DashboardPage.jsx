@@ -198,6 +198,37 @@ export default function DashboardPage() {
   const userId = localStorage.getItem('lecka_user_id')
   const email  = localStorage.getItem('lecka_user_email')
 
+  // Auto-save a plan that was created before the user was logged in
+  useEffect(() => {
+    const needsSave = localStorage.getItem('lecka_plan_needs_save')
+    if (!needsSave || !userId) return
+    localStorage.removeItem('lecka_plan_needs_save')
+    try {
+      const raw = localStorage.getItem('lecka_current_plan')
+      if (!raw) return
+      const result = JSON.parse(raw)
+      if (!result?.targets || !result?.selection) return
+      fetch('/api/plans', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body: JSON.stringify({
+          inputs:    result.form ?? {},
+          targets:   result.targets,
+          selection: result.selection,
+          region:    result.form?.region ?? 'us',
+          lang:      'en',
+        }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.planId) {
+            setPlans(prev => prev ? [{ id: data.planId, ...result.targets, race_name: result.form?.race_name ?? null, race_date: result.form?.race_date ?? null, created_at: new Date().toISOString() }, ...prev] : prev)
+          }
+        })
+        .catch(() => {})
+    } catch {}
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!userId) {
       window.location.replace('/auth/login')

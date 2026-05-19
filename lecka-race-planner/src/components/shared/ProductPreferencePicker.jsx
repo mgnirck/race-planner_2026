@@ -60,7 +60,7 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
   const { t } = useTranslation(['form', 'common'])
   const { products: liveProducts } = useProducts()
   const products = liveProducts ?? FALLBACK_PRODUCTS
-  const ultraGels = products.filter(p => p.type === 'ultra_gel' && isAvailableInRegion(p, region))
+  const ultraGels = products.filter(p => p.type === 'ultra_gel')
   const gels      = products.filter(p => p.type === 'gel'       && isAvailableInRegion(p, region))
   const bars      = products.filter(p => p.type === 'bar'       && isAvailableInRegion(p, region))
 

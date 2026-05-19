@@ -7,6 +7,8 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { useProducts } from '../hooks/useProducts.js'
+import FALLBACK_PRODUCTS from '../config/products.json'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -115,6 +117,8 @@ function PlanSummaryPanel({ plan }) {
     || targets.race_type
     || '—'
 
+  const panelRaceTotalKm = inputs.custom_km ? parseFloat(inputs.custom_km) : (RACE_DISTANCE_KM[targets.race_type] ?? 0)
+
   return (
     <div className="h-full bg-gray-50 border-r border-gray-200 p-5 overflow-y-auto text-xs">
       <div className="space-y-5">
@@ -125,6 +129,17 @@ function PlanSummaryPanel({ plan }) {
             {formatGoalTime(targets.total_duration_minutes)}
             {targets.conditions ? ` · ${CONDITION_LABELS[targets.conditions] ?? targets.conditions}` : ''}
           </p>
+          <div className="space-y-0.5 mt-2">
+            {inputs.race_date && (
+              <p className="text-gray-500">{new Date(inputs.race_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            )}
+            {panelRaceTotalKm > 0 && (
+              <p className="text-gray-500">{panelRaceTotalKm} km total</p>
+            )}
+            {(inputs.elevation_gain_m ?? 0) > 0 && (
+              <p className="text-gray-500">+{inputs.elevation_gain_m}m elevation</p>
+            )}
+          </div>
         </div>
 
         <div className="border-t border-gray-200 pt-4">
@@ -172,7 +187,7 @@ function PlanSummaryPanel({ plan }) {
 
 // ── Segment edit popover ──────────────────────────────────────────────────────
 
-function SegmentEditPopover({ seg, products, onChange, onClose }) {
+function SegmentEditPopover({ seg, segTarget, products, segmentDataAll, editingIndex, onChange, onClose }) {
   const [localProducts, setLocalProducts] = useState(seg.products ?? [])
   const [localNote,     setLocalNote]     = useState(seg.note ?? '')
 
@@ -187,40 +202,80 @@ function SegmentEditPopover({ seg, products, onChange, onClose }) {
     })
   }
 
+  function getTotalUsedElsewhere(name) {
+    return (segmentDataAll ?? []).reduce((sum, sd, i) => {
+      if (i === editingIndex) return sum
+      const item = (sd.products ?? []).find(p => p.name === name)
+      return sum + (item?.quantity ?? 0)
+    }, 0)
+  }
+
   function handleDone() {
     onChange({ products: localProducts, note: localNote })
     onClose()
   }
+
+  const segCarbTarget = segTarget?.carbs ?? 0
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
          style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
          onClick={e => { if (e.target === e.currentTarget) { handleDone() } }}>
       <div className="bg-white w-full sm:max-w-sm sm:mx-4 sm:rounded-2xl rounded-t-2xl
-                      overflow-hidden flex flex-col" style={{ maxHeight: '70vh' }}>
+                      overflow-hidden flex flex-col" style={{ maxHeight: '80vh' }}>
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-          <p className="text-sm font-bold text-[#1B1B1B]">Edit segment nutrition</p>
+          <div>
+            <p className="text-sm font-bold text-[#1B1B1B]">Edit segment nutrition</p>
+            {segTarget && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                Target: {segTarget.carbs}g carbs · {segTarget.sodium}mg sodium · ~{formatDuration(segTarget.estMins)}
+              </p>
+            )}
+          </div>
           <button type="button" onClick={handleDone}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100
                        text-gray-500 hover:bg-gray-200 text-lg leading-none">×</button>
         </div>
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
-          {products.map(name => {
-            const qty = getQty(name)
+          {products.map(product => {
+            const qty = getQty(product.name)
+            const usedElsewhere = getTotalUsedElsewhere(product.name)
+            const totalUsed = usedElsewhere + qty
+            const planTotal = product.planTotal ?? 0
+            const recommended = segCarbTarget > 0 && product.carbs_per_unit > 0
+              ? Math.max(1, Math.round(segCarbTarget / product.carbs_per_unit))
+              : null
             return (
-              <div key={name} className="flex items-center gap-3">
-                <p className="flex-1 text-sm text-[#1B1B1B] leading-snug">{name}</p>
-                <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => setQty(name, Math.max(0, qty - 1))}
-                    disabled={qty === 0}
-                    className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center
-                               justify-center text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0]
-                               transition-colors disabled:opacity-30 text-lg leading-none">−</button>
-                  <span className="w-6 text-center text-sm font-bold">{qty}</span>
-                  <button type="button" onClick={() => setQty(name, qty + 1)}
-                    className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center
-                               justify-center text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0]
-                               transition-colors text-lg leading-none">+</button>
+              <div key={product.name} className={`rounded-xl border-2 p-3 transition-colors ${qty > 0 ? 'border-[#48C4B0] bg-[#48C4B0]/5' : 'border-gray-100'}`}>
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold leading-snug ${qty > 0 ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>{product.name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {product.carbs_per_unit}g carbs · {product.sodium_per_unit}mg sodium per serving
+                    </p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {recommended !== null && (
+                        <span className="text-xs text-[#48C4B0] font-medium">Rec: {recommended}</span>
+                      )}
+                      {planTotal > 0 && (
+                        <span className={`text-xs font-medium ${totalUsed > planTotal ? 'text-amber-600' : 'text-gray-400'}`}>
+                          {totalUsed}/{planTotal} used
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button type="button" onClick={() => setQty(product.name, Math.max(0, qty - 1))}
+                      disabled={qty === 0}
+                      className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center
+                                 justify-center text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0]
+                                 transition-colors disabled:opacity-30 text-lg leading-none">−</button>
+                    <span className="w-6 text-center text-sm font-bold">{qty}</span>
+                    <button type="button" onClick={() => setQty(product.name, qty + 1)}
+                      className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center
+                                 justify-center text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0]
+                                 transition-colors text-lg leading-none">+</button>
+                  </div>
                 </div>
               </div>
             )
@@ -343,8 +398,11 @@ export default function CheckpointPage({ planId }) {
 
   const paceMinsPerKm = useMemo(() => {
     if (!targets.total_duration_minutes || !raceTotalKm) return 6
-    return targets.total_duration_minutes / raceTotalKm
-  }, [targets.total_duration_minutes, raceTotalKm])
+    const totalElevM = inputs.elevation_gain_m ?? 0
+    const elevPenalty = totalElevM / 10
+    const netMinutes = Math.max(targets.total_duration_minutes - elevPenalty, targets.total_duration_minutes * 0.7)
+    return netMinutes / raceTotalKm
+  }, [targets.total_duration_minutes, raceTotalKm, inputs.elevation_gain_m])
 
   const validCheckpoints = checkpoints.filter(cp => cp.distance !== '' && !isNaN(parseFloat(cp.distance)))
 
@@ -400,11 +458,29 @@ export default function CheckpointPage({ planId }) {
     })
   }, [segments.length])
 
-  const availableProductNames = useMemo(() => {
-    const sel = plan?.selection ?? []
-    const names = [...new Set(sel.map(i => i.product?.name).filter(Boolean))]
-    return names
-  }, [plan])
+  const { products: liveProducts } = useProducts()
+  const allLeckaProducts = useMemo(() => {
+    const catalog = liveProducts ?? FALLBACK_PRODUCTS
+    return catalog.filter(p => p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar')
+  }, [liveProducts])
+
+  const productDetailMap = useMemo(() => {
+    const map = {}
+    for (const p of allLeckaProducts) {
+      map[p.name] = { id: p.id, name: p.name, carbs_per_unit: p.carbs_per_unit ?? 0, sodium_per_unit: p.sodium_per_unit ?? 0, planTotal: 0 }
+    }
+    for (const item of (plan?.selection ?? [])) {
+      const p = item.product
+      if (!p) continue
+      if (!map[p.name]) {
+        map[p.name] = { id: p.id, name: p.name, carbs_per_unit: p.carbs_per_unit ?? 0, sodium_per_unit: p.sodium_per_unit ?? 0, planTotal: 0 }
+      }
+      map[p.name].planTotal = (map[p.name].planTotal ?? 0) + (item.quantity ?? 0)
+    }
+    return map
+  }, [allLeckaProducts, plan])
+
+  const availableProductList = useMemo(() => Object.values(productDetailMap), [productDetailMap])
 
   // Totals
   const totalPlanned = useMemo(() => {
@@ -478,7 +554,7 @@ export default function CheckpointPage({ planId }) {
             carbs_needed:  s.carbs,
             sodium_needed: s.sodium,
           })),
-          available_products: availableProductNames,
+          available_products: availableProductList.map(p => p.name),
         }),
       })
       const data = await res.json()
@@ -569,8 +645,9 @@ export default function CheckpointPage({ planId }) {
       doc.setFontSize(9)
       doc.setTextColor(100, 100, 100)
       const summaryRows = [
-        [`Race: ${raceName}`, `Conditions: ${CONDITION_LABELS[targets.conditions] ?? '—'}`],
-        [`Goal time: ${goalTime}`, `Date: ${inputs.race_date ?? '—'}`],
+        [`Race: ${raceName}`, `Date: ${inputs.race_date ?? '—'}`],
+        [`Distance: ${raceTotalKm > 0 ? `${raceTotalKm} km` : '—'}`, `Elevation: ${(inputs.elevation_gain_m ?? 0) > 0 ? `+${inputs.elevation_gain_m}m` : '—'}`],
+        [`Goal time: ${goalTime}`, `Conditions: ${CONDITION_LABELS[targets.conditions] ?? '—'}`],
         [`Carbs/h: ${targets.carb_per_hour ?? '—'}g`, `Sodium/h: ${targets.sodium_per_hour ?? '—'}mg`],
       ]
       for (const row of summaryRows) {
@@ -774,7 +851,7 @@ export default function CheckpointPage({ planId }) {
                           value={cp.distance}
                           onChange={e => updateCheckpoint(cp.id, 'distance', e.target.value)}
                           onBlur={sortCheckpoints}
-                          placeholder="km"
+                          placeholder="e.g. 25"
                           className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs
                                      focus:outline-none focus:border-[#48C4B0]"
                         />
@@ -830,11 +907,14 @@ export default function CheckpointPage({ planId }) {
                 <div className="grid grid-cols-12 gap-2 mt-1 px-3">
                   <div className="col-span-1" />
                   <div className="col-span-4 text-xs text-gray-400">Name</div>
-                  <div className="col-span-2 text-xs text-gray-400">Dist (km)</div>
+                  <div className="col-span-2 text-xs text-gray-400">At km</div>
                   <div className="col-span-2 text-xs text-gray-400">Elev gain (m)</div>
                   <div className="col-span-2 text-xs text-gray-400">Drop bag</div>
                   <div className="col-span-1" />
                 </div>
+              )}
+              {checkpoints.length > 0 && (
+                <p className="text-xs text-gray-400 mt-1.5 px-1">Tip: "At km" = where on the course this checkpoint is located (e.g. km 25 of a 50 km race)</p>
               )}
 
               <button
@@ -846,6 +926,20 @@ export default function CheckpointPage({ planId }) {
               >
                 + Add checkpoint
               </button>
+              {hasSegments && (
+                <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                  <span>Elevation entered:</span>
+                  <span className="font-semibold text-[#1B1B1B]">
+                    {segments.reduce((s, seg) => s + seg.elevM, 0).toLocaleString()}m
+                  </span>
+                  {(inputs.elevation_gain_m ?? 0) > 0 && (
+                    <>
+                      <span className="text-gray-300">/</span>
+                      <span>{(inputs.elevation_gain_m).toLocaleString()}m race total</span>
+                    </>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* ── AI fill button ────────────────────────────────────────── */}
@@ -890,11 +984,12 @@ export default function CheckpointPage({ planId }) {
                 <SectionLabel>Nutrition per segment</SectionLabel>
                 <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
                   {/* Header row */}
-                  <div className="grid grid-cols-8 gap-1 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500">
+                  <div className="grid grid-cols-9 gap-1 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500">
                     <div className="col-span-2">Segment</div>
                     <div>Dist</div>
                     <div>Time</div>
-                    <div>Carbs</div>
+                    <div>Plan</div>
+                    <div>Actual</div>
                     <div>Sodium</div>
                     <div className="col-span-2">Products</div>
                   </div>
@@ -906,9 +1001,14 @@ export default function CheckpointPage({ planId }) {
                       .map(p => `${p.quantity}× ${p.name.split(' ').slice(-2).join(' ')}`)
                       .join(' · ')
 
+                    const actualCarbs = (sd.products ?? []).reduce((sum, p) => {
+                      const detail = productDetailMap[p.name]
+                      return sum + (detail?.carbs_per_unit ?? 0) * p.quantity
+                    }, 0)
+
                     return (
                       <div key={i}
-                           className={`grid grid-cols-8 gap-1 px-3 py-3 text-xs border-t border-gray-100
+                           className={`grid grid-cols-9 gap-1 px-3 py-3 text-xs border-t border-gray-100
                                        ${seg.drop_bag ? 'bg-[#48C4B0]/5' : ''}`}>
                         <div className="col-span-2">
                           <p className="font-semibold text-[#1B1B1B] leading-snug">{seg.name}</p>
@@ -922,6 +1022,9 @@ export default function CheckpointPage({ planId }) {
                         <div className="text-gray-500 pt-0.5">{seg.distKm.toFixed(1)}km</div>
                         <div className="text-gray-500 pt-0.5">~{formatDuration(seg.estMins)}</div>
                         <div className="font-semibold text-[#1B1B1B] pt-0.5">{seg.carbs}g</div>
+                        <div className={`pt-0.5 font-semibold ${actualCarbs === 0 ? 'text-gray-300' : actualCarbs >= seg.carbs * 0.85 && actualCarbs <= seg.carbs * 1.15 ? 'text-green-600' : actualCarbs < seg.carbs * 0.85 ? 'text-amber-600' : 'text-blue-500'}`}>
+                          {actualCarbs > 0 ? `${actualCarbs}g` : '—'}
+                        </div>
                         <div className="text-gray-500 pt-0.5">{seg.sodium}mg</div>
                         <div className="col-span-1 text-gray-500 pt-0.5 leading-relaxed">
                           {productChips || '—'}
@@ -948,16 +1051,30 @@ export default function CheckpointPage({ planId }) {
                   })}
 
                   {/* Totals row */}
-                  <div className="grid grid-cols-8 gap-1 px-3 py-3 text-xs border-t-2 border-gray-200 bg-gray-50">
-                    <div className="col-span-2 font-bold text-[#1B1B1B]">TOTAL</div>
+                  <div className="grid grid-cols-9 gap-1 px-3 py-3 text-xs border-t-2 border-gray-200 bg-gray-50">
+                    <div className="col-span-2">
+                      <span className="font-bold text-[#1B1B1B]">TOTAL</span>
+                      <div className="mt-0.5">
+                        <span className="text-gray-500">Est. time: </span>
+                        <span className={`font-semibold ${Math.abs(segments.reduce((s, seg) => s + seg.estMins, 0) - (targets.total_duration_minutes ?? 0)) < 15 ? 'text-green-600' : 'text-amber-600'}`}>
+                          {formatDuration(segments.reduce((s, seg) => s + seg.estMins, 0))}
+                        </span>
+                        <span className="text-gray-400"> / {formatGoalTime(targets.total_duration_minutes)}</span>
+                      </div>
+                    </div>
                     <div />
                     <div />
+                    <div>
+                      <span className="font-bold text-[#1B1B1B]">
+                        {segments.reduce((s, seg) => s + seg.carbs, 0)}g
+                      </span>
+                    </div>
                     <div>
                       <span className={`font-bold ${carbStatusClass(totalPlanned.carbs, targetTotalCarbs)}`}>
                         {totalPlanned.carbs}g
                       </span>
                       {targetTotalCarbs > 0 && (
-                        <span className="text-gray-400 ml-1">/ {targetTotalCarbs}g</span>
+                        <span className="text-gray-400 ml-0.5">/{targetTotalCarbs}g</span>
                       )}
                     </div>
                     <div className="text-gray-500 font-semibold">
@@ -977,7 +1094,10 @@ export default function CheckpointPage({ planId }) {
       {editingIndex !== null && (
         <SegmentEditPopover
           seg={segmentData[editingIndex] ?? { products: [], note: '' }}
-          products={availableProductNames}
+          segTarget={segments[editingIndex]}
+          products={availableProductList}
+          segmentDataAll={segmentData}
+          editingIndex={editingIndex}
           onChange={data => {
             setSegmentData(prev => {
               const next = [...prev]
