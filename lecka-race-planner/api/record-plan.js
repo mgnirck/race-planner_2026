@@ -44,6 +44,8 @@ async function handleAnalytics(req, res) {
     training_mode_usage,
     addon_product_breakdown,
     by_month,
+    by_temperature,
+    by_humidity,
   ] = await Promise.all([
     safe(async () => {
       const { rows } = await sql`
@@ -228,6 +230,24 @@ async function handleAnalytics(req, res) {
       `
       return rows
     }),
+    safe(async () => {
+      const { rows } = await sql`
+        SELECT inputs->>'temperature' AS key, COUNT(*)::int AS count,
+          ROUND(COUNT(*)::numeric / SUM(COUNT(*)) OVER () * 100, 1) AS pct
+        FROM plans WHERE inputs->>'temperature' IS NOT NULL
+        GROUP BY inputs->>'temperature' ORDER BY count DESC
+      `
+      return rows
+    }),
+    safe(async () => {
+      const { rows } = await sql`
+        SELECT inputs->>'humidity' AS key, COUNT(*)::int AS count,
+          ROUND(COUNT(*)::numeric / SUM(COUNT(*)) OVER () * 100, 1) AS pct
+        FROM plans WHERE inputs->>'humidity' IS NOT NULL
+        GROUP BY inputs->>'humidity' ORDER BY count DESC
+      `
+      return rows
+    }),
   ])
 
   return res.status(200).json({
@@ -235,6 +255,7 @@ async function handleAnalytics(req, res) {
     by_conditions, by_effort, by_fuelling_style, avg_goal_time_by_race_type,
     preferred_products, addon_usage, plans_over_time, elevation_usage,
     caffeine_usage, training_mode_usage, addon_product_breakdown, by_month,
+    by_temperature, by_humidity,
   })
 }
 

@@ -13,6 +13,7 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import i18n from '../i18n.js'
+import Nav from './Nav.jsx'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { needsDualTransporter, computeAddonCoverage, computeFoundationTargets } from '../engine/kit-calculator.js'
 import { selectProducts }   from '../engine/product-selector'
@@ -98,7 +99,8 @@ const DEFAULT_FORM = {
   weight_value:    '70',
   weight_unit:     'kg',
   gender:          '',
-  conditions:      '',
+  temperature:     '',
+  humidity:        'dry',
   effort:          '',
   athlete_profile: '',
   caffeine_ok:     null,
@@ -186,37 +188,34 @@ function StepRegion({ region, onSelect }) {
     <div className="space-y-5">
       <p className="text-xs text-gray-400">We use this to show you available products and local pricing.</p>
 
-      {/* Direct stores */}
-      <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Direct stores</p>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(regionsConfig)
-            .filter(([, cfg]) => cfg.type === 'shopify' || cfg.type === 'haravan')
-            .map(([key, cfg]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onSelect(key)}
-                className={[
-                  'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
-                  region === key
-                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                    : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                ].join(' ')}
-              >
-                {cfg.label}
-              </button>
-            ))}
-        </div>
+      {/* All non-international countries */}
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(regionsConfig)
+          .filter(([, cfg]) => cfg.type !== 'international')
+          .map(([key, cfg]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onSelect(key)}
+              className={[
+                'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
+                region === key
+                  ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                  : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+              ].join(' ')}
+            >
+              {cfg.label}
+            </button>
+          ))}
       </div>
 
-      {/* Distributor partners */}
-      {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'distributor') && (
+      {/* International */}
+      {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'international') && (
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Distributor partners</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Other</p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(regionsConfig)
-              .filter(([, cfg]) => cfg.type === 'distributor')
+              .filter(([, cfg]) => cfg.type === 'international')
               .map(([key, cfg]) => (
                 <button
                   key={key}
@@ -229,38 +228,12 @@ function StepRegion({ region, onSelect }) {
                       : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
                   ].join(' ')}
                 >
-                  <span>{cfg.label}</span>
-                  <span className={`ml-1.5 text-xs ${region === key ? 'text-white/75' : 'text-gray-400'}`}>via distributor</span>
+                  {cfg.label}
                 </button>
               ))}
           </div>
         </div>
       )}
-
-      {/* International */}
-      <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Other</p>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(regionsConfig)
-            .filter(([, cfg]) => cfg.type === 'international')
-            .map(([key, cfg]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onSelect(key)}
-                className={[
-                  'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
-                  region === key
-                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                    : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                ].join(' ')}
-              >
-                <span>{cfg.label} 🌍</span>
-                <span className={`ml-1.5 text-xs ${region === key ? 'text-white/75' : 'text-gray-400'}`}>Shows full product range</span>
-              </button>
-            ))}
-        </div>
-      </div>
     </div>
   )
 }
@@ -758,20 +731,55 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
       {/* Race conditions */}
       <div>
         <FieldLabel>{t('form:field.conditions')}</FieldLabel>
-        <div className="flex flex-wrap gap-2">
+
+        <p className="text-xs text-gray-400 mb-2">Temperature</p>
+        <div className="grid grid-cols-4 gap-2 mb-4">
           {[
-            { label: t('common:conditions.cool'), sublabel: t('form:field.conditions.cool.sub'), key: 'cool' },
-            { label: t('common:conditions.mild'), sublabel: t('form:field.conditions.mild.sub'), key: 'mild' },
-            { label: t('common:conditions.warm'), sublabel: t('form:field.conditions.warm.sub'), key: 'warm' },
-            { label: t('common:conditions.hot'),  sublabel: t('form:field.conditions.hot.sub'),  key: 'hot'  },
+            { key: 'cool', emoji: '❄️', label: 'Cool', range: '< 10 °C' },
+            { key: 'mild', emoji: '🌤', label: 'Mild', range: '10–20 °C' },
+            { key: 'warm', emoji: '☀️', label: 'Warm', range: '20–28 °C' },
+            { key: 'hot',  emoji: '🔥', label: 'Hot',  range: '> 28 °C' },
           ].map(c => (
-            <Pill
+            <button
               key={c.key}
-              label={c.label}
-              sublabel={c.sublabel}
-              selected={form.conditions === c.key}
-              onClick={() => setForm(f => ({ ...f, conditions: c.key }))}
-            />
+              type="button"
+              onClick={() => setForm(f => ({ ...f, temperature: c.key }))}
+              className={[
+                'flex flex-col items-center justify-center gap-0.5',
+                'min-h-[64px] rounded-xl border-2 transition-colors px-1',
+                form.temperature === c.key
+                  ? 'border-[#48C4B0] bg-[#48C4B0]/10'
+                  : 'border-gray-200 bg-white',
+              ].join(' ')}
+            >
+              <span className="text-xl">{c.emoji}</span>
+              <span className="text-xs font-medium text-gray-700">{c.label}</span>
+              <span className="text-[10px] text-gray-400">{c.range}</span>
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs text-gray-400 mb-2">Humidity</p>
+        <div className="flex gap-2">
+          {[
+            { key: 'dry',   label: 'Dry',   range: '< 60 %' },
+            { key: 'humid', label: 'Humid', range: '≥ 60 %' },
+          ].map(h => (
+            <button
+              key={h.key}
+              type="button"
+              onClick={() => setForm(f => ({ ...f, humidity: h.key }))}
+              className={[
+                'flex-1 flex flex-col items-center justify-center gap-0.5',
+                'min-h-[52px] rounded-xl border-2 transition-colors',
+                form.humidity === h.key
+                  ? 'border-[#48C4B0] bg-[#48C4B0]/10'
+                  : 'border-gray-200 bg-white',
+              ].join(' ')}
+            >
+              <span className="text-sm font-medium text-gray-700">{h.label}</span>
+              <span className="text-[10px] text-gray-400">{h.range}</span>
+            </button>
           ))}
         </div>
       </div>
@@ -1058,7 +1066,7 @@ function StepFour({ form, setForm, previewTargets }) {
   const electrolytes = competitorProducts.filter(p => p.category === 'electrolyte')
   const realFood     = competitorProducts.filter(p => p.category === 'real_food_extra')
 
-  const isHotConditions = form.conditions === 'hot' || form.conditions === 'humid'
+  const isHotConditions = form.temperature === 'hot' || (form.temperature === 'warm' && form.humidity === 'humid')
   const extraCarbs = previewTargets
     ? Math.max(0, previewTargets.carb_per_hour - 65)
     : 0
@@ -1409,11 +1417,21 @@ function isStep1Valid(form) {
   )
 }
 
+function deriveConditionsFromForm(form) {
+  const temp = form.temperature
+  const humid = form.humidity
+  if (temp === 'cool') return 'cool'
+  if (temp === 'mild') return humid === 'humid' ? 'warm' : 'mild'
+  if (temp === 'warm') return humid === 'humid' ? 'humid' : 'warm'
+  if (temp === 'hot')  return 'hot'
+  return 'mild'
+}
+
 function isStep2Valid(form) {
   return (
     toKg(form.weight_value, form.weight_unit) !== null &&
     form.gender          !== '' &&
-    form.conditions      !== '' &&
+    form.temperature     !== '' &&
     form.effort          !== '' &&
     form.athlete_profile !== '' &&
     form.caffeine_ok     !== null
@@ -1515,7 +1533,7 @@ export default function StepForm({ onComplete }) {
           goal_minutes,
           weight_kg,
           gender:           form.gender,
-          conditions:       form.conditions,
+          conditions:       deriveConditionsFromForm(form),
           effort:           form.effort,
           caffeine_ok:      form.caffeine_ok,
           athlete_profile:  form.athlete_profile,
@@ -1543,12 +1561,13 @@ export default function StepForm({ onComplete }) {
     const m = goal_minutes % 60
     const goal_time = `${h}:${String(m).padStart(2, '0')}`
 
+    const conditions = deriveConditionsFromForm(form)
     const targets = calculateTargets({
       race_type:        form.race_type,
       goal_minutes,
       weight_kg,
       gender:           form.gender,
-      conditions:       form.conditions,
+      conditions,
       effort:           form.effort,
       caffeine_ok:      form.caffeine_ok,
       athlete_profile:  form.athlete_profile,
@@ -1583,6 +1602,7 @@ export default function StepForm({ onComplete }) {
       resolvedAddonItems,
       form: {
         ...form,
+        conditions,
         goal_time,
         addon_carbs_per_hour:      Math.round(addonCoverage.carbs_per_hour ?? 0),
         foundation_carbs_per_hour: foundationTargets.carb_per_hour,
@@ -1593,6 +1613,9 @@ export default function StepForm({ onComplete }) {
 
   return (
     <div className="bg-white">
+
+      {/* ── Nav bar ── */}
+      <Nav />
 
       {/* ── Progress bar ── */}
       <div className="w-full h-1 bg-gray-100" aria-hidden="true">
