@@ -84,13 +84,25 @@ export default async function handler(req, res) {
       return res.status(201).json({ planId: rows[0].id })
     }
 
-    // ── PATCH — update plan metadata (requires auth + ownership) ──────────────
+    // ── PATCH — update plan metadata or checkpoints (requires auth + ownership) ─
     if (req.method === 'PATCH') {
       const user = await getUser(req)
       if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
-      const { planId, race_date } = req.body ?? {}
+      const { planId, race_date, checkpoints } = req.body ?? {}
       if (!planId) return res.status(400).json({ error: 'planId is required' })
+
+      // Checkpoint save action
+      if (checkpoints !== undefined) {
+        const { rows } = await sql`
+          UPDATE plans
+          SET inputs = inputs || jsonb_build_object('checkpoints', ${JSON.stringify(checkpoints)}::jsonb)
+          WHERE id = ${planId} AND user_id = ${user.id}
+          RETURNING id
+        `
+        if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
+        return res.status(200).json({ ok: true, planId: rows[0].id })
+      }
 
       const { rows } = await sql`
         UPDATE plans

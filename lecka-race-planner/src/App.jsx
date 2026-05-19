@@ -10,6 +10,7 @@ import FeedbackPage     from './components/FeedbackPage'
 import HomePage         from './components/HomePage'
 import LoginPage        from './components/LoginPage'
 import PlanViewPage     from './components/PlanViewPage'
+import CheckpointPage   from './components/CheckpointPage'
 import { isEmbedded, getSavedRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
@@ -77,6 +78,10 @@ export default function App() {
   if (PATH === '/dashboard')    return <DashboardPage />
   if (PATH.startsWith('/feedback/')) {
     return <FeedbackPage planId={PATH.split('/')[2]} />
+  }
+  if (PATH.startsWith('/plan/') && PATH.endsWith('/checkpoints')) {
+    const planId = PATH.split('/')[2]
+    return <CheckpointPage planId={planId} />
   }
   if (PATH.startsWith('/plan/')) {
     return <PlanViewPage />

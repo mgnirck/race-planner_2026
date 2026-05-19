@@ -1321,6 +1321,102 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
   )
 }
 
+// ── CoachNotes (Pro) ──────────────────────────────────────────────────────────
+
+const PRO_COACH_TTL_MS = 24 * 60 * 60 * 1000
+
+function getProCoachFromCache(key) {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return null
+    const { data, timestamp } = JSON.parse(raw)
+    if (Date.now() - timestamp > PRO_COACH_TTL_MS) {
+      localStorage.removeItem(key)
+      return null
+    }
+    return data
+  } catch {
+    return null
+  }
+}
+
+function setProCoachCache(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }))
+  } catch {}
+}
+
+function CoachNotes({ coachCopy, watchOut, loading }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (loading) {
+    return (
+      <section className="border-2 border-gray-100 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+          <div className="w-4 h-4 bg-gray-100 rounded animate-pulse" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-4/5" />
+          <div className="h-3 bg-gray-100 rounded animate-pulse w-3/5" />
+        </div>
+        <div className="mt-4 h-14 bg-amber-50 rounded-xl animate-pulse" />
+      </section>
+    )
+  }
+
+  if (!coachCopy) return null
+
+  const firstSentence = coachCopy.replace(/\n/g, ' ').split(/(?<=\.)\s/)[0] ?? ''
+  const teaser = firstSentence.length > 120
+    ? firstSentence.slice(0, 120) + '…'
+    : firstSentence
+
+  const paragraphs = coachCopy.split(/\n\n+/).filter(Boolean)
+
+  return (
+    <section className="border-2 border-gray-100 rounded-2xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
+      >
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+        <svg
+          className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          viewBox="0 0 20 20" fill="currentColor"
+        >
+          <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+        </svg>
+      </button>
+      {!expanded && (
+        <p className="px-5 pb-4 text-sm text-gray-400 italic leading-snug">{teaser}</p>
+      )}
+      {expanded && (
+        <div className="px-5 pb-5 space-y-4">
+          {paragraphs.map((p, i) => (
+            <p
+              key={i}
+              className="border-l-2 border-[#48C4B0] pl-3 mb-4 text-sm text-gray-700 leading-relaxed"
+            >
+              {p}
+            </p>
+          ))}
+          {watchOut && (
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-xl">
+              <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 mb-1">
+                Watch out for
+              </p>
+              <p className="text-sm text-amber-900">{watchOut}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ResultsPage({ targets, foundationTargets, selection, addonCoverage, resolvedAddonItems = [], form, onBack, region: regionProp, hideSave = false, isPublicView = false }) {
@@ -1331,6 +1427,10 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
   const [copyPlanState,  setCopyPlanState]  = useState('idle') // idle | copied
+  const [proCoachCopy,   setProCoachCopy]   = useState(null)
+  const [proWatchOut,    setProWatchOut]    = useState(null)
+  const [proCoachLoading, setProCoachLoading] = useState(true)
+  const [planId,         setPlanId]         = useState(null)
   const regionConfig = getRegionConfig(region)
 
   const { products: liveProducts } = useProducts()
@@ -1350,6 +1450,103 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   )
 
   const hasAddons = resolvedAddonItems.length > 0
+
+  const totalGelCount = useMemo(
+    () => selection
+      .filter(i => i.product?.type === 'gel' || i.product?.type === 'ultra_gel')
+      .reduce((sum, i) => sum + i.quantity, 0),
+    [selection]
+  )
+
+  // Pro coach copy
+  useEffect(() => {
+    const cacheKey = `lecka_pro_coach_${targets.race_type}_${targets.total_duration_minutes}_${targets.conditions}_${form.athlete_profile ?? ''}`
+    const cached = getProCoachFromCache(cacheKey)
+    if (cached) {
+      setProCoachCopy(cached.copy ?? null)
+      setProWatchOut(cached.watch_out ?? null)
+      setProCoachLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timeout    = setTimeout(() => controller.abort(), 8000)
+
+    const weight_kg = (() => {
+      if (!form.weight_value) return null
+      const n = parseFloat(form.weight_value)
+      if (!isFinite(n)) return null
+      return form.weight_unit === 'lb' ? n / 2.20462 : n
+    })()
+
+    fetch('/api/coach-copy', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal:  controller.signal,
+      body:    JSON.stringify({
+        mode:              'pro',
+        race_type:         targets.race_type,
+        goal_minutes:      targets.total_duration_minutes,
+        conditions:        targets.conditions,
+        effort:            targets.effort,
+        carb_per_hour:     targets.carb_per_hour,
+        sodium_per_hour:   targets.sodium_per_hour,
+        fluid_ml_per_hour: targets.fluid_ml_per_hour,
+        total_carbs:       targets.total_carbs,
+        total_sodium:      targets.total_sodium,
+        gel_count:         totalGelCount,
+        elevation_tier:    targets.elevation_tier,
+        elevation_gain_m:  targets.elevation_gain_m,
+        athlete_profile:   targets.athlete_profile,
+        gender:            form.gender,
+        weight_kg,
+        caffeine_ok:       targets.caffeine_ok,
+        has_addons:        resolvedAddonItems.length > 0,
+        addon_carbs_ph:    form.addon_carbs_per_hour ?? 0,
+        fuelling_style:    form.fuelling_style,
+        selected_products: effectiveSelection.map(s => s.product.name),
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        clearTimeout(timeout)
+        if (data?.copy) {
+          setProCoachCopy(data.copy)
+          setProWatchOut(data.watch_out ?? null)
+          setProCoachCache(cacheKey, { copy: data.copy, watch_out: data.watch_out ?? null })
+        }
+        setProCoachLoading(false)
+      })
+      .catch(() => {
+        clearTimeout(timeout)
+        setProCoachLoading(false)
+      })
+
+    return () => {
+      clearTimeout(timeout)
+      controller.abort()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Silent plan save for logged-in users — capture planId for checkpoint link
+  useEffect(() => {
+    const userId = localStorage.getItem('lecka_user_id')
+    if (!userId) return
+    fetch('/api/plans', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+      body:    JSON.stringify({
+        inputs:    { ...form, addon_items: form.addon_items ?? [] },
+        targets,
+        selection,
+        region:    regionProp ?? getSavedRegion() ?? 'us',
+        lang:      'en',
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.planId) setPlanId(data.planId) })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const aggregated   = useMemo(
     () => aggregateByProduct(leckaSelection, region, manualQty, allProductsCatalog),
@@ -1671,6 +1868,15 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           {t('results:research.learnMore')}
         </button>
 
+        {/* ── Pro coach notes ──────────────────────────────────────────────── */}
+        {!isPublicView && (
+          <CoachNotes
+            coachCopy={proCoachCopy}
+            watchOut={proWatchOut}
+            loading={proCoachLoading}
+          />
+        )}
+
         {/* ── Pre-race sodium loading callout ─────────────────────────────── */}
         {['hot', 'humid'].includes(targets.conditions) && targets.total_duration_minutes >= 240 && (
           <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
@@ -1805,6 +2011,43 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
         {/* ── Race timeline ─────────────────────────────────────────────────── */}
         <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
+
+        {/* ── Checkpoint planner CTA ────────────────────────────────────────── */}
+        {(() => {
+          const isLongRace = targets.total_duration_minutes >= 180
+          const userId = localStorage.getItem('lecka_user_id')
+          const isLoggedIn = Boolean(userId)
+          if (!isLongRace || isPublicView) return null
+          if (!isLoggedIn) {
+            return (
+              <a
+                href="/auth/login"
+                className="flex items-center justify-center w-full min-h-[48px]
+                           bg-white border-2 border-[#48C4B0] text-[#48C4B0]
+                           font-semibold rounded-xl hover:bg-[#48C4B0]/5 transition-colors text-sm"
+              >
+                Log in to plan your checkpoints →
+              </a>
+            )
+          }
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                if (planId) {
+                  window.location.href = `/plan/${planId}/checkpoints`
+                } else {
+                  window.location.href = '/dashboard'
+                }
+              }}
+              className="flex items-center justify-center w-full min-h-[48px]
+                         bg-white border-2 border-[#48C4B0] text-[#48C4B0]
+                         font-semibold rounded-xl hover:bg-[#48C4B0]/5 transition-colors text-sm"
+            >
+              Plan your checkpoints →
+            </button>
+          )
+        })()}
 
         {/* ── Copy plan to clipboard ────────────────────────────────────────── */}
         <button

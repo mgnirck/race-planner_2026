@@ -106,8 +106,9 @@ const DEFAULT_FORM = {
   preferred_product_ids: [],
   fuelling_style: 'gels_only',
   // Step 4
-  want_addons: false,
-  addon_items: [],
+  want_addons:      false,
+  addon_items:      [],
+  custom_products:  [],
 }
 
 function loadDraft() {
@@ -864,7 +865,7 @@ const competitorProducts = competitorProductsData.products
 
 const POPULAR_IDS = new Set(['maurten-gel-160', 'sis-beta-fuel-gel'])
 
-function AddonProductRow({ product, quantity, onChangeQty }) {
+function AddonProductRow({ product, quantity, onChangeQty, onRemove }) {
   const isSelected = quantity > 0
   return (
     <div
@@ -879,6 +880,11 @@ function AddonProductRow({ product, quantity, onChangeQty }) {
           {POPULAR_IDS.has(product.id) && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#48C4B0]/10 text-[#48C4B0]">
               Popular
+            </span>
+          )}
+          {product.is_custom && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+              Custom
             </span>
           )}
         </div>
@@ -933,6 +939,19 @@ function AddonProductRow({ product, quantity, onChangeQty }) {
         >
           +
         </button>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="w-8 h-8 ml-1 rounded-full border-2 border-gray-200 flex items-center
+                       justify-center text-gray-400 hover:border-red-300 hover:text-red-400 transition-colors"
+            aria-label="Remove product"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   )
@@ -941,6 +960,12 @@ function AddonProductRow({ product, quantity, onChangeQty }) {
 function StepFour({ form, setForm, previewTargets }) {
   const [showElectrolytes, setShowElectrolytes] = useState(false)
   const [showScienceTooltip, setShowScienceTooltip] = useState(false)
+  const [customName,     setCustomName]     = useState('')
+  const [customCarbs,    setCustomCarbs]    = useState('')
+  const [customSodium,   setCustomSodium]   = useState('')
+  const [customCaffeine, setCustomCaffeine] = useState('')
+  const [customError,    setCustomError]    = useState('')
+  const [addedState,     setAddedState]     = useState(false)
 
   const highCarbGels = competitorProducts.filter(p => p.category === 'high_carb_gel')
   const electrolytes = competitorProducts.filter(p => p.category === 'electrolyte')
@@ -963,6 +988,68 @@ function StepFour({ form, setForm, previewTargets }) {
         addon_items: qty > 0 ? [...existing, { id, quantity: qty }] : existing,
       }
     })
+  }
+
+  function removeCustomProduct(id) {
+    setForm(f => ({
+      ...f,
+      addon_items:     f.addon_items.filter(i => i.id !== id),
+      custom_products: (f.custom_products ?? []).filter(p => p.id !== id),
+    }))
+  }
+
+  function handleAddCustomProduct() {
+    const trimmedName = customName.trim()
+    if (!trimmedName || trimmedName.length > 60) {
+      setCustomError('Please enter a product name (max 60 characters).')
+      return
+    }
+    const carbsNum = Number(customCarbs)
+    if (customCarbs === '' || !isFinite(carbsNum) || carbsNum < 0 || carbsNum > 150) {
+      setCustomError('Carbs must be a number between 0 and 150.')
+      return
+    }
+    const sodiumNum   = customSodium   !== '' ? Number(customSodium)   : 0
+    const caffeineNum = customCaffeine !== '' ? Number(customCaffeine) : 0
+    if (!isFinite(sodiumNum) || sodiumNum < 0 || sodiumNum > 2000) {
+      setCustomError('Sodium must be 0–2000 mg.')
+      return
+    }
+    if (!isFinite(caffeineNum) || caffeineNum < 0 || caffeineNum > 300) {
+      setCustomError('Caffeine must be 0–300 mg.')
+      return
+    }
+    setCustomError('')
+
+    const product = {
+      id:               `custom-${Date.now()}`,
+      brand:            'Custom',
+      name:             trimmedName,
+      display_name:     trimmedName,
+      category:         'custom',
+      type:             'custom',
+      carbs_per_unit:   carbsNum,
+      sodium_per_unit:  sodiumNum,
+      caffeine:         caffeineNum > 0,
+      caffeine_mg:      caffeineNum,
+      dual_transporter: false,
+      fructose_ratio:   0,
+      notes:            'Custom product added by athlete',
+      is_custom:        true,
+    }
+
+    setForm(f => ({
+      ...f,
+      addon_items:     [...f.addon_items, { id: product.id, quantity: 1 }],
+      custom_products: [...(f.custom_products ?? []), product],
+    }))
+
+    setCustomName('')
+    setCustomCarbs('')
+    setCustomSodium('')
+    setCustomCaffeine('')
+    setAddedState(true)
+    setTimeout(() => setAddedState(false), 1500)
   }
 
   return (
@@ -1121,6 +1208,96 @@ function StepFour({ form, setForm, previewTargets }) {
             <p className="text-xs text-gray-400 mt-3">
               These fit Lecka's real food philosophy — no synthetic additives
             </p>
+          </div>
+
+          {/* Custom products already added */}
+          {(form.custom_products ?? []).length > 0 && (
+            <div>
+              <FieldLabel>Your custom products</FieldLabel>
+              <div className="space-y-2">
+                {(form.custom_products ?? []).map(p => (
+                  <AddonProductRow
+                    key={p.id}
+                    product={p}
+                    quantity={getQty(p.id)}
+                    onChangeQty={qty => setQty(p.id, qty)}
+                    onRemove={() => removeCustomProduct(p.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add your own product */}
+          <div>
+            <FieldLabel>Add your own product</FieldLabel>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Product name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Maurten Gel 100"
+                  maxLength={60}
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                             focus:outline-none focus:border-[#48C4B0]"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Carbs per unit (g)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 25"
+                    value={customCarbs}
+                    onChange={e => setCustomCarbs(e.target.value)}
+                    className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                               focus:outline-none focus:border-[#48C4B0]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Sodium (mg, opt.)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 0"
+                    value={customSodium}
+                    onChange={e => setCustomSodium(e.target.value)}
+                    className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                               focus:outline-none focus:border-[#48C4B0]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Caffeine (mg, opt.)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 0"
+                    value={customCaffeine}
+                    onChange={e => setCustomCaffeine(e.target.value)}
+                    className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                               focus:outline-none focus:border-[#48C4B0]"
+                  />
+                </div>
+              </div>
+              {customError && (
+                <p className="text-xs text-red-500">{customError}</p>
+              )}
+              <button
+                type="button"
+                onClick={handleAddCustomProduct}
+                className={[
+                  'w-full min-h-[44px] rounded-xl border-2 text-sm font-semibold transition-colors',
+                  addedState
+                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                    : 'border-[#48C4B0] text-[#48C4B0] hover:bg-[#48C4B0]/5',
+                ].join(' ')}
+              >
+                {addedState ? 'Added ✓' : 'Add to plan'}
+              </button>
+            </div>
           </div>
 
         </div>
@@ -1284,10 +1461,15 @@ export default function StepForm({ onComplete }) {
       training_mode:    form.training_mode,
     })
 
+    const allAddonProducts = [
+      ...competitorProducts,
+      ...(form.custom_products ?? []),
+    ]
+
     const resolvedAddonItems = form.addon_items
       .filter(i => i.quantity > 0)
       .map(i => ({
-        product:  competitorProducts.find(p => p.id === i.id),
+        product:  allAddonProducts.find(p => p.id === i.id),
         quantity: i.quantity,
       }))
       .filter(i => i.product !== undefined)
@@ -1308,6 +1490,7 @@ export default function StepForm({ onComplete }) {
         goal_time,
         addon_carbs_per_hour:      Math.round(addonCoverage.carbs_per_hour ?? 0),
         foundation_carbs_per_hour: foundationTargets.carb_per_hour,
+        custom_products:           form.custom_products ?? [],
       },
     })
   }
