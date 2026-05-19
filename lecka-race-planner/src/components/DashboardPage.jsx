@@ -72,7 +72,7 @@ function AddDateInline({ planId, userId, onSaved }) {
     if (!value) return
     setSaving(true)
     try {
-      const res = await fetch('/api/plans/update', {
+      const res = await fetch('/api/plans', {
         method:  'PATCH',
         headers: {
           'Content-Type':  'application/json',
@@ -204,7 +204,7 @@ export default function DashboardPage() {
       return
     }
 
-    fetch('/api/plans/list', {
+    fetch('/api/plans', {
       headers: { 'Authorization': `Bearer ${userId}` },
     })
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -255,6 +255,29 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#1B1B1B]">Your race plans</h1>
         </div>
+
+        {/* ── Start a new plan ──────────────────────────────────────────────── */}
+        <section>
+          <SectionLabel>Start a new plan</SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            <a
+              href="/planner"
+              className="border-2 border-[#48C4B0] rounded-2xl p-5 block hover:bg-[#48C4B0]/5 transition-colors"
+            >
+              <p className="text-base font-bold text-[#1B1B1B] mb-1">Quick plan</p>
+              <p className="text-sm text-gray-500 mb-4">3 inputs, instant result</p>
+              <span className="text-sm font-semibold text-[#48C4B0]">Build quick plan →</span>
+            </a>
+            <a
+              href="/planner/pro"
+              className="bg-[#48C4B0] rounded-2xl p-5 block hover:bg-[#3db09d] transition-colors"
+            >
+              <p className="text-base font-bold text-white mb-1">Pro plan</p>
+              <p className="text-sm text-white/75 mb-4">Full personalisation + gut training, aid stations &amp; more</p>
+              <span className="text-sm font-semibold text-white">Build pro plan →</span>
+            </a>
+          </div>
+        </section>
 
         {/* ── Loading ──────────────────────────────────────────────────────── */}
         {loading && (

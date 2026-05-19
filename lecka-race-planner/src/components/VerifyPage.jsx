@@ -37,7 +37,7 @@ export default function VerifyPage() {
           setStatus('saving')
           try {
             const { inputs, targets, selection, region, lang } = JSON.parse(pending)
-            const saveRes = await fetch('/api/plans/save', {
+            const saveRes = await fetch('/api/plans', {
               method:  'POST',
               headers: {
                 'Content-Type':  'application/json',

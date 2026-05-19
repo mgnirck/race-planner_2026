@@ -7,6 +7,9 @@
   "field.raceName.placeholder": "f.eks. Copenhagen Marathon 2026",
   "field.raceName.hint": "Valgfrit — vises på din plan",
 
+  "field.raceDate": "Løbsdato",
+  "field.raceDate.hint": "Valgfrit — hjælper os med at følge din nedtælling",
+
   "field.sport": "Sport",
   "field.sport.running": "Løb",
   "field.sport.triathlon": "Triatlon",

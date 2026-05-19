@@ -12,15 +12,18 @@
 
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '../i18n.js'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { needsDualTransporter, computeAddonCoverage, computeFoundationTargets } from '../engine/kit-calculator.js'
 import { selectProducts }   from '../engine/product-selector'
-import products             from '../config/products.json'
+import FALLBACK_PRODUCTS    from '../config/products.json'
 import competitorProductsData from '../config/competitor-products.json'
+import { useProducts }      from '../hooks/useProducts.js'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
-import { detectRegion }     from '../embed.js'
+import { getSavedRegion, saveRegion } from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
-import LanguageSwitcher     from './LanguageSwitcher.jsx'
+import WeightInput, { toKg } from './shared/WeightInput.jsx'
+import ProductPreferencePicker from './shared/ProductPreferencePicker.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,6 +37,19 @@ function goalMinutesFromFields(h, m) {
   return total > 0 ? total : null
 }
 
+const PACE_BOUNDS = {
+  '5k':                { min: 12,  max: 120  },
+  '10k':               { min: 27,  max: 180  },
+  'half_marathon':     { min: 58,  max: 360  },
+  'marathon':          { min: 120, max: 720  },
+  'ultra_50k':         { min: 210, max: 1200 },
+  'ultra_100k':        { min: 480, max: 2400 },
+  'triathlon_sprint':  { min: 40,  max: 240  },
+  'triathlon_olympic': { min: 90,  max: 480  },
+  'triathlon_70_3':    { min: 210, max: 900  },
+  'triathlon_140_6':   { min: 480, max: 1800 },
+}
+
 function distanceToRaceType(km) {
   if (km <  10) return '5k'
   if (km <  20) return '10k'
@@ -44,18 +60,11 @@ function distanceToRaceType(km) {
 }
 
 const TRIATHLON_OPTIONS = [
-  { key: 'triathlon_sprint',  label: 'Sprint',  sublabel: '750m swim · 20km bike · 5km run',    km: 51    },
-  { key: 'triathlon_olympic', label: 'Olympic', sublabel: '1.5km swim · 40km bike · 10km run',  km: 51.5  },
-  { key: 'triathlon_70_3',    label: '70.3',    sublabel: '1.9km swim · 90km bike · 21km run',  km: 113   },
-  { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226   },
+  { key: 'triathlon_sprint',  label: 'Sprint',  sublabel: '750m swim · 20km bike · 5km run',    km: 51,   hint: 'Typical finish times: 45 min – 2h'   },
+  { key: 'triathlon_olympic', label: 'Olympic', sublabel: '1.5km swim · 40km bike · 10km run',  km: 51.5, hint: 'Typical finish times: 1h45 – 4h'     },
+  { key: 'triathlon_70_3',    label: '70.3',    sublabel: '1.9km swim · 90km bike · 21km run',  km: 113,  hint: 'Typical finish times: 3h30 – 8h'     },
+  { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226,  hint: 'Typical finish times: 8h – 17h'      },
 ]
-
-function toKg(value, unit) {
-  const n = parseFloat(value)
-  if (!isFinite(n) || n <= 0) return null
-  const kg = unit === 'lb' ? n / 2.20462 : n
-  return kg >= 40 && kg <= 140 ? kg : null
-}
 
 function displayToKm(displayVal, unit) {
   const n = parseFloat(displayVal)
@@ -70,6 +79,7 @@ const DRAFT_KEY = 'lecka_form_draft'
 const DEFAULT_FORM = {
   // Step 1
   race_name:         '',
+  race_date:         '',
   custom_km:         '',
   custom_km_display: '',
   dist_unit:         'km',
@@ -91,12 +101,14 @@ const DEFAULT_FORM = {
   effort:          '',
   athlete_profile: '',
   caffeine_ok:     null,
+  training_mode:   false,
   // Step 3
   preferred_product_ids: [],
   fuelling_style: 'gels_only',
   // Step 4
-  want_addons: false,
-  addon_items: [],
+  want_addons:      false,
+  addon_items:      [],
+  custom_products:  [],
 }
 
 function loadDraft() {
@@ -166,49 +178,6 @@ function FieldLabel({ children }) {
   )
 }
 
-function ProductPreferenceCard({ product, selected, onToggle, t }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={[
-        'w-full px-4 py-3 rounded-xl border-2 text-left transition-colors',
-        selected
-          ? 'border-[#48C4B0] bg-[#48C4B0]/5'
-          : 'border-gray-200 bg-white hover:border-[#48C4B0]/50',
-      ].join(' ')}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm font-semibold leading-tight ${selected ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
-            {product.name}
-          </p>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-            <span className="text-xs text-gray-400">{t('form:product.carbs', { value: product.carbs_per_unit })}</span>
-            <span className="text-xs text-gray-400">{t('form:product.sodium', { value: product.sodium_per_unit })}</span>
-            {product.caffeine && (
-              <span className="text-xs font-medium text-[#48C4B0]">{t('form:product.caffeine', { value: product.caffeine_mg })}</span>
-            )}
-          </div>
-        </div>
-        <div
-          className={[
-            'w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors',
-            selected ? 'bg-[#48C4B0] border-[#48C4B0]' : 'border-gray-300',
-          ].join(' ')}
-        >
-          {selected && (
-            <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          )}
-        </div>
-      </div>
-    </button>
-  )
-}
-
 // ── Step 1: Race ──────────────────────────────────────────────────────────────
 
 function StepOne({ form, setForm }) {
@@ -223,11 +192,14 @@ function StepOne({ form, setForm }) {
   function handleDistChange(rawValue) {
     setForm(f => {
       const kmVal = displayToKm(rawValue, f.dist_unit)
+      const MAX_KM = 250
+      const overMax = kmVal !== null && kmVal > MAX_KM
       return {
         ...f,
         custom_km_display: rawValue,
-        custom_km:  kmVal !== null ? String(Math.round(kmVal * 10) / 10) : '',
-        race_type:  kmVal ? distanceToRaceType(kmVal) : '',
+        custom_km:     kmVal !== null ? String(Math.round(kmVal * 10) / 10) : '',
+        race_type:     kmVal ? distanceToRaceType(kmVal) : '',
+        dist_warning:  overMax,
       }
     })
   }
@@ -328,6 +300,20 @@ function StepOne({ form, setForm }) {
                      focus:outline-none focus:border-[#48C4B0]"
         />
         <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceName.hint')}</p>
+      </div>
+
+      {/* Race date */}
+      <div>
+        <FieldLabel>{t('form:field.raceDate')}</FieldLabel>
+        <input
+          type="date"
+          value={form.race_date}
+          onChange={e => setForm(f => ({ ...f, race_date: e.target.value }))}
+          min={new Date().toISOString().split('T')[0]}
+          className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                     focus:outline-none focus:border-[#48C4B0]"
+        />
+        <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceDate.hint')}</p>
       </div>
 
       {/* Sport selector */}
@@ -443,6 +429,12 @@ function StepOne({ form, setForm }) {
             {form.custom_km_display && (
               <p className="text-xs text-[#48C4B0] mt-1.5">
                 {t('form:field.distance.hint', { value: form.custom_km_display, unit: form.dist_unit })}
+              </p>
+            )}
+            {form.dist_warning && (
+              <p className="text-xs text-amber-600 mt-1.5">
+                That&apos;s a very long distance — your plan will be calculated as Ultra 100km+.
+                If this looks wrong, check your distance units.
               </p>
             )}
           </div>
@@ -593,6 +585,32 @@ function StepOne({ form, setForm }) {
         {!timeIsInvalid && goalMinutes === null && (
           <p className="text-xs text-gray-400 mt-1.5">{t('form:field.goalTime.hint')}</p>
         )}
+        {/* Triathlon typical-times hint — hide once the user has a valid in-range time */}
+        {form.sport === 'triathlon' && form.triathlon_type && (() => {
+          const opt = TRIATHLON_OPTIONS.find(o => o.key === form.triathlon_type)
+          if (!opt) return null
+          const bounds = PACE_BOUNDS[form.triathlon_type]
+          const inRange = goalMinutes !== null && bounds && goalMinutes >= bounds.min && goalMinutes <= bounds.max
+          if (inRange) return null
+          return (
+            <p className="text-xs text-gray-400 mt-1.5">{opt.hint}</p>
+          )
+        })()}
+        {!timeIsInvalid && goalMinutes !== null && form.race_type && (() => {
+          const bounds = PACE_BOUNDS[form.race_type]
+          if (!bounds) return null
+          if (goalMinutes < bounds.min) return (
+            <p className="text-xs text-amber-600 mt-1.5">
+              That&apos;s a very fast target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+            </p>
+          )
+          if (goalMinutes > bounds.max) return (
+            <p className="text-xs text-amber-600 mt-1.5">
+              That&apos;s a very slow target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+            </p>
+          )
+          return null
+        })()}
       </div>
 
     </div>
@@ -601,27 +619,8 @@ function StepOne({ form, setForm }) {
 
 // ── Step 2: Body, conditions & preferences ────────────────────────────────────
 
-function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) {
+function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDismissPrefill }) {
   const { t } = useTranslation(['form', 'common'])
-  const weightOk      = toKg(form.weight_value, form.weight_unit) !== null
-  const weightTouched = form.weight_value !== ''
-
-  function switchUnit(newUnit) {
-    if (form.weight_unit === newUnit) return
-    const n = parseFloat(form.weight_value)
-    if (isFinite(n) && n > 0) {
-      const converted =
-        newUnit === 'lb'
-          ? Math.round(n * 2.20462)
-          : Math.round(n / 2.20462)
-      setForm(f => ({ ...f, weight_unit: newUnit, weight_value: String(converted) }))
-    } else {
-      setForm(f => ({ ...f, weight_unit: newUnit }))
-    }
-  }
-
-  const weightMin = form.weight_unit === 'kg' ? 40  : 88
-  const weightMax = form.weight_unit === 'kg' ? 140 : 309
 
   return (
     <div className="space-y-7">
@@ -629,7 +628,7 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
       {/* Pre-fill badge */}
       {showPrefillBadge && (
         <div className="flex items-center justify-between gap-2 bg-[#48C4B0]/10 border border-[#48C4B0]/30 rounded-full px-4 py-2">
-          <span className="text-xs font-medium text-[#48C4B0]">Pre-filled from your profile</span>
+          <span className="text-xs font-medium text-[#48C4B0]">{prefillMessage ?? 'Pre-filled from your profile'}</span>
           <button
             type="button"
             onClick={onDismissPrefill}
@@ -644,43 +643,11 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
       {/* Weight */}
       <div>
         <FieldLabel>{t('form:field.weight')}</FieldLabel>
-        <div className="flex items-center gap-3">
-          <input
-            type="text"
-            inputMode="decimal"
-            pattern="[0-9]*\.?[0-9]*"
-            maxLength={5}
-            value={form.weight_value}
-            onChange={e => setForm(f => ({ ...f, weight_value: e.target.value }))}
-            className={[
-              'w-24 border-2 rounded-lg px-3 py-2.5 text-sm',
-              'focus:outline-none focus:border-[#48C4B0]',
-              weightTouched && !weightOk ? 'border-red-300' : 'border-gray-200',
-            ].join(' ')}
-          />
-          <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden text-sm font-medium">
-            {['kg', 'lb'].map(unit => (
-              <button
-                key={unit}
-                type="button"
-                onClick={() => switchUnit(unit)}
-                className={[
-                  'px-3 py-2 min-h-[38px] transition-colors',
-                  form.weight_unit === unit
-                    ? 'bg-[#48C4B0] text-white'
-                    : 'bg-white text-[#1B1B1B] hover:bg-gray-50',
-                ].join(' ')}
-              >
-                {unit}
-              </button>
-            ))}
-          </div>
-        </div>
-        {weightTouched && !weightOk && (
-          <p className="text-xs text-red-400 mt-1.5">
-            {t('form:field.weight.error', { min: weightMin, max: weightMax, unit: form.weight_unit })}
-          </p>
-        )}
+        <WeightInput
+          value={form.weight_value}
+          unit={form.weight_unit}
+          onChange={(value, unit) => setForm(f => ({ ...f, weight_value: value, weight_unit: unit }))}
+        />
       </div>
 
       {/* Gender */}
@@ -790,6 +757,26 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
         </div>
       </div>
 
+      {/* Gut training mode */}
+      <div>
+        <FieldLabel>Gut training mode</FieldLabel>
+        <p className="text-xs text-gray-400 mb-2">
+          Reduce carb targets by 30% — for training runs before race day, not race day itself.
+        </p>
+        <div className="flex gap-2">
+          <Pill
+            label="Yes"
+            selected={form.training_mode === true}
+            onClick={() => setForm(f => ({ ...f, training_mode: true }))}
+          />
+          <Pill
+            label="No"
+            selected={form.training_mode === false}
+            onClick={() => setForm(f => ({ ...f, training_mode: false }))}
+          />
+        </div>
+      </div>
+
     </div>
   )
 }
@@ -798,31 +785,8 @@ function StepTwo({ form, setForm, showPrefillBadge = false, onDismissPrefill }) 
 
 function StepThree({ form, setForm }) {
   const { t } = useTranslation(['form', 'common'])
-  const gels = products.filter(p => p.type === 'gel' && isAvailableInRegion(p, detectRegion))
-  const bars = products.filter(p => p.type === 'bar' && isAvailableInRegion(p, detectRegion))
-
-  function toggleProduct(id) {
-    setForm(f => {
-      const current = f.preferred_product_ids
-      return current.includes(id)
-        ? { ...f, preferred_product_ids: current.filter(x => x !== id) }
-        : { ...f, preferred_product_ids: [...current, id] }
-    })
-  }
 
   const style = form.fuelling_style
-
-  const barLabel = style === 'gels_and_bars'
-    ? 'Energy bars (during + around your race)'
-    : style === 'drink_mix_base'
-    ? 'Energy bars (optional, for variety)'
-    : 'Energy bars (for before and after your race)'
-
-  const barSublabel = style === 'drink_mix_base'
-    ? 'With a drink mix base, bars are supplementary'
-    : style === 'gels_and_bars'
-    ? null
-    : 'Bars are used pre-race and for recovery — not during'
 
   return (
     <div className="space-y-7">
@@ -874,40 +838,22 @@ function StepThree({ form, setForm }) {
         {t('form:field.products.intro')}
       </p>
 
-      {/* Gels */}
-      <div>
-        <FieldLabel>{t('form:field.gels')}</FieldLabel>
-        <div className="space-y-2">
-          {gels.map(gel => (
-            <ProductPreferenceCard
-              key={gel.id}
-              product={gel}
-              selected={form.preferred_product_ids.includes(gel.id)}
-              onToggle={() => toggleProduct(gel.id)}
-              t={t}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Bars */}
-      <div>
-        <FieldLabel>{barLabel}</FieldLabel>
-        {barSublabel && (
-          <p className="text-xs text-gray-400 -mt-2 mb-3">{barSublabel}</p>
-        )}
-        <div className="space-y-2">
-          {bars.map(bar => (
-            <ProductPreferenceCard
-              key={bar.id}
-              product={bar}
-              selected={form.preferred_product_ids.includes(bar.id)}
-              onToggle={() => toggleProduct(bar.id)}
-              t={t}
-            />
-          ))}
-        </div>
-      </div>
+      <ProductPreferencePicker
+        preferredProductIds={form.preferred_product_ids}
+        onToggle={(id) =>
+          setForm(f => {
+            const current = f.preferred_product_ids
+            return {
+              ...f,
+              preferred_product_ids: current.includes(id)
+                ? current.filter(x => x !== id)
+                : [...current, id],
+            }
+          })
+        }
+        region={getSavedRegion() ?? 'us'}
+        caffeineOk={form.caffeine_ok !== false}
+      />
 
     </div>
   )
@@ -919,7 +865,7 @@ const competitorProducts = competitorProductsData.products
 
 const POPULAR_IDS = new Set(['maurten-gel-160', 'sis-beta-fuel-gel'])
 
-function AddonProductRow({ product, quantity, onChangeQty }) {
+function AddonProductRow({ product, quantity, onChangeQty, onRemove }) {
   const isSelected = quantity > 0
   return (
     <div
@@ -934,6 +880,11 @@ function AddonProductRow({ product, quantity, onChangeQty }) {
           {POPULAR_IDS.has(product.id) && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#48C4B0]/10 text-[#48C4B0]">
               Popular
+            </span>
+          )}
+          {product.is_custom && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+              Custom
             </span>
           )}
         </div>
@@ -988,6 +939,19 @@ function AddonProductRow({ product, quantity, onChangeQty }) {
         >
           +
         </button>
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="w-8 h-8 ml-1 rounded-full border-2 border-gray-200 flex items-center
+                       justify-center text-gray-400 hover:border-red-300 hover:text-red-400 transition-colors"
+            aria-label="Remove product"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   )
@@ -995,6 +959,13 @@ function AddonProductRow({ product, quantity, onChangeQty }) {
 
 function StepFour({ form, setForm, previewTargets }) {
   const [showElectrolytes, setShowElectrolytes] = useState(false)
+  const [showScienceTooltip, setShowScienceTooltip] = useState(false)
+  const [customName,     setCustomName]     = useState('')
+  const [customCarbs,    setCustomCarbs]    = useState('')
+  const [customSodium,   setCustomSodium]   = useState('')
+  const [customCaffeine, setCustomCaffeine] = useState('')
+  const [customError,    setCustomError]    = useState('')
+  const [addedState,     setAddedState]     = useState(false)
 
   const highCarbGels = competitorProducts.filter(p => p.category === 'high_carb_gel')
   const electrolytes = competitorProducts.filter(p => p.category === 'electrolyte')
@@ -1019,26 +990,115 @@ function StepFour({ form, setForm, previewTargets }) {
     })
   }
 
+  function removeCustomProduct(id) {
+    setForm(f => ({
+      ...f,
+      addon_items:     f.addon_items.filter(i => i.id !== id),
+      custom_products: (f.custom_products ?? []).filter(p => p.id !== id),
+    }))
+  }
+
+  function handleAddCustomProduct() {
+    const trimmedName = customName.trim()
+    if (!trimmedName || trimmedName.length > 60) {
+      setCustomError('Please enter a product name (max 60 characters).')
+      return
+    }
+    const carbsNum = Number(customCarbs)
+    if (customCarbs === '' || !isFinite(carbsNum) || carbsNum < 0 || carbsNum > 150) {
+      setCustomError('Carbs must be a number between 0 and 150.')
+      return
+    }
+    const sodiumNum   = customSodium   !== '' ? Number(customSodium)   : 0
+    const caffeineNum = customCaffeine !== '' ? Number(customCaffeine) : 0
+    if (!isFinite(sodiumNum) || sodiumNum < 0 || sodiumNum > 2000) {
+      setCustomError('Sodium must be 0–2000 mg.')
+      return
+    }
+    if (!isFinite(caffeineNum) || caffeineNum < 0 || caffeineNum > 300) {
+      setCustomError('Caffeine must be 0–300 mg.')
+      return
+    }
+    setCustomError('')
+
+    const product = {
+      id:               `custom-${Date.now()}`,
+      brand:            'Custom',
+      name:             trimmedName,
+      display_name:     trimmedName,
+      category:         'custom',
+      type:             'custom',
+      carbs_per_unit:   carbsNum,
+      sodium_per_unit:  sodiumNum,
+      caffeine:         caffeineNum > 0,
+      caffeine_mg:      caffeineNum,
+      dual_transporter: false,
+      fructose_ratio:   0,
+      notes:            'Custom product added by athlete',
+      is_custom:        true,
+    }
+
+    setForm(f => ({
+      ...f,
+      addon_items:     [...f.addon_items, { id: product.id, quantity: 1 }],
+      custom_products: [...(f.custom_products ?? []), product],
+    }))
+
+    setCustomName('')
+    setCustomCarbs('')
+    setCustomSodium('')
+    setCustomCaffeine('')
+    setAddedState(true)
+    setTimeout(() => setAddedState(false), 1500)
+  }
+
   return (
     <div className="space-y-7">
 
       {/* Context box */}
       {previewTargets && (
         <div className="rounded-xl border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 px-4 py-4 space-y-2">
-          <p className="text-sm font-semibold text-[#1B1B1B]">Your real food foundation</p>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            Lecka covers up to 65g carbs/hour — the maximum your body can absorb
-            from a single carbohydrate source. Your target for this race is{' '}
-            <span className="font-semibold text-[#1B1B1B]">{previewTargets.carb_per_hour}g/hour</span>.
-          </p>
-          {extraCarbs > 0 && (
-            <p className="text-sm text-gray-600 leading-relaxed">
-              The extra{' '}
-              <span className="font-semibold text-[#1B1B1B]">{extraCarbs}g/hour</span>{' '}
-              needs a second carbohydrate source. Sports science calls this the
-              dual-transporter protocol — combining glucose (from real food like Lecka)
-              with fructose (from products below).
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-[#1B1B1B]">
+              Your Lecka foundation covers {Math.min(65, previewTargets.carb_per_hour)}g carbs/hour
             </p>
+            <button
+              type="button"
+              onClick={() => setShowScienceTooltip(v => !v)}
+              className="text-[#48C4B0] hover:text-[#3db09d] flex-shrink-0"
+              aria-label="Show absorption science"
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          {extraCarbs > 0 ? (
+            <>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                For races this long, your body can absorb even more if you add a second type of fuel alongside your gels.
+              </p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Adding{' '}
+                <span className="font-semibold text-[#1B1B1B]">{extraCarbs}g/hour</span>{' '}
+                from the products below gets you to your full target.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Your Lecka gels cover your full target — the options below are optional extras.
+            </p>
+          )}
+          {showScienceTooltip && (
+            <div className="mt-2 pt-3 border-t border-[#48C4B0]/30 text-xs text-gray-500 leading-relaxed space-y-1">
+              <p className="font-semibold text-gray-600">The science behind the limit</p>
+              <p>
+                Your gut absorbs glucose (from real food like Lecka) via one transporter (SGLT1),
+                which maxes out at around 60–65g carbs/hour. A second transporter (GLUT5) handles
+                fructose independently — so combining both types lets you absorb 90g/hour or more.
+                Sports scientists call this the dual-transporter protocol.
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -1048,7 +1108,7 @@ function StepFour({ form, setForm, previewTargets }) {
         <FieldLabel>Want to add performance products?</FieldLabel>
         <div className="space-y-2">
           <OptionCard
-            label="Lecka only — I'm good"
+            label="Lecka gels are enough for me"
             desc="I'll fuel with Lecka and manage the intensity on race day. I can always adjust my plan later."
             selected={!form.want_addons}
             onClick={() => setForm(f => ({ ...f, want_addons: false, addon_items: [] }))}
@@ -1150,6 +1210,96 @@ function StepFour({ form, setForm, previewTargets }) {
             </p>
           </div>
 
+          {/* Custom products already added */}
+          {(form.custom_products ?? []).length > 0 && (
+            <div>
+              <FieldLabel>Your custom products</FieldLabel>
+              <div className="space-y-2">
+                {(form.custom_products ?? []).map(p => (
+                  <AddonProductRow
+                    key={p.id}
+                    product={p}
+                    quantity={getQty(p.id)}
+                    onChangeQty={qty => setQty(p.id, qty)}
+                    onRemove={() => removeCustomProduct(p.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add your own product */}
+          <div>
+            <FieldLabel>Add your own product</FieldLabel>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Product name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Maurten Gel 100"
+                  maxLength={60}
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                             focus:outline-none focus:border-[#48C4B0]"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Carbs per unit (g)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 25"
+                    value={customCarbs}
+                    onChange={e => setCustomCarbs(e.target.value)}
+                    className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                               focus:outline-none focus:border-[#48C4B0]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Sodium (mg, opt.)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 0"
+                    value={customSodium}
+                    onChange={e => setCustomSodium(e.target.value)}
+                    className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                               focus:outline-none focus:border-[#48C4B0]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Caffeine (mg, opt.)</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 0"
+                    value={customCaffeine}
+                    onChange={e => setCustomCaffeine(e.target.value)}
+                    className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
+                               focus:outline-none focus:border-[#48C4B0]"
+                  />
+                </div>
+              </div>
+              {customError && (
+                <p className="text-xs text-red-500">{customError}</p>
+              )}
+              <button
+                type="button"
+                onClick={handleAddCustomProduct}
+                className={[
+                  'w-full min-h-[44px] rounded-xl border-2 text-sm font-semibold transition-colors',
+                  addedState
+                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                    : 'border-[#48C4B0] text-[#48C4B0] hover:bg-[#48C4B0]/5',
+                ].join(' ')}
+              >
+                {addedState ? 'Added ✓' : 'Add to plan'}
+              </button>
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -1191,8 +1341,12 @@ function isStep3Valid(_form) {
 
 export default function StepForm({ onComplete }) {
   const { t } = useTranslation(['form', 'common'])
+  const { products: liveProducts } = useProducts()
+  const allProducts = liveProducts ?? FALLBACK_PRODUCTS
   const [step, setStep] = useState(1)
   const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
+  const [fromSimple, setFromSimple] = useState(() => loadDraft()?._from_simple === true)
+  const [fromSimpleDismissed, setFromSimpleDismissed] = useState(false)
   const [profilePrefilled, setProfilePrefilled] = useState(false)
   const [prefillDismissed, setPrefillDismissed] = useState(false)
   const [previewTargets, setPreviewTargets] = useState(null)
@@ -1236,6 +1390,15 @@ export default function StepForm({ onComplete }) {
           setProfilePrefilled(true)
           return { ...f, ...patch }
         })
+
+        if (profile.preferred_region) {
+          saveRegion(profile.preferred_region)
+        }
+
+        if (profile.preferred_lang && profile.preferred_lang !== i18n.language) {
+          i18n.changeLanguage(profile.preferred_lang)
+          try { localStorage.setItem('lecka_lang', profile.preferred_lang) } catch {}
+        }
       })
       .catch(err => {
         if (err.name !== 'AbortError') console.warn('[StepForm] profile prefill failed:', err)
@@ -1295,19 +1458,25 @@ export default function StepForm({ onComplete }) {
       athlete_profile:  form.athlete_profile,
       elevation_gain_m: form.elevation_gain_m,
       distance_km:      parseFloat(form.custom_km) || 0,
+      training_mode:    form.training_mode,
     })
+
+    const allAddonProducts = [
+      ...competitorProducts,
+      ...(form.custom_products ?? []),
+    ]
 
     const resolvedAddonItems = form.addon_items
       .filter(i => i.quantity > 0)
       .map(i => ({
-        product:  competitorProducts.find(p => p.id === i.id),
+        product:  allAddonProducts.find(p => p.id === i.id),
         quantity: i.quantity,
       }))
       .filter(i => i.product !== undefined)
 
     const addonCoverage      = computeAddonCoverage(resolvedAddonItems, goal_minutes)
     const foundationTargets  = computeFoundationTargets(targets, addonCoverage)
-    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, detectRegion, { fuelling_style: form.fuelling_style })
+    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, getSavedRegion(), { fuelling_style: form.fuelling_style }, allProducts)
 
     try { sessionStorage.removeItem(DRAFT_KEY) } catch {}
     onComplete({
@@ -1316,7 +1485,13 @@ export default function StepForm({ onComplete }) {
       selection,
       addonCoverage,
       resolvedAddonItems,
-      form: { ...form, goal_time },
+      form: {
+        ...form,
+        goal_time,
+        addon_carbs_per_hour:      Math.round(addonCoverage.carbs_per_hour ?? 0),
+        foundation_carbs_per_hour: foundationTargets.carb_per_hour,
+        custom_products:           form.custom_products ?? [],
+      },
     })
   }
 
@@ -1335,7 +1510,7 @@ export default function StepForm({ onComplete }) {
       <div className="max-w-md mx-auto w-full px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-5">
           <img src="/logo.svg" alt="Lecka" className="h-7" />
-          <LanguageSwitcher region={detectRegion} />
+          {/* Language switcher — re-enable when translations complete */}
         </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
           {t('common:step.ofTotal', { step, total: totalSteps })}
@@ -1357,8 +1532,19 @@ export default function StepForm({ onComplete }) {
           <StepTwo
             form={form}
             setForm={setForm}
-            showPrefillBadge={profilePrefilled && !prefillDismissed}
-            onDismissPrefill={() => setPrefillDismissed(true)}
+            showPrefillBadge={
+              (fromSimple && !fromSimpleDismissed) ||
+              (profilePrefilled && !prefillDismissed && !(fromSimple && !fromSimpleDismissed))
+            }
+            prefillMessage={
+              fromSimple && !fromSimpleDismissed
+                ? 'Pre-filled from your Quick plan — just add the details below.'
+                : undefined
+            }
+            onDismissPrefill={() => {
+              if (fromSimple && !fromSimpleDismissed) setFromSimpleDismissed(true)
+              else setPrefillDismissed(true)
+            }}
           />
         )}
         {step === 3 && <StepThree form={form} setForm={setForm} />}
