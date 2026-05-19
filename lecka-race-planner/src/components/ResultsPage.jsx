@@ -1164,10 +1164,15 @@ function ResearchModal({ onClose }) {
 
 function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig, provided, targets, catalog }) {
   const { t } = useTranslation(['results', 'form'])
-  const availableProducts = useMemo(() =>
-    (catalog ?? FALLBACK_PRODUCTS).filter(p => (p.type === 'gel' || p.type === 'ultra_gel' || p.type === 'bar') && isAvailableInRegion(p, region)),
-    [catalog, region]
-  )
+  const availableProducts = useMemo(() => {
+    const all = catalog ?? FALLBACK_PRODUCTS
+    return all.filter(p =>
+      p.type === 'gel'       ? isAvailableInRegion(p, region) :
+      p.type === 'ultra_gel' ? true :   // always show ultra gels regardless of region data
+      p.type === 'bar'       ? isAvailableInRegion(p, region) :
+      false
+    )
+  }, [catalog, region])
 
   function getCurrentQty(productId) {
     if (manualQty !== null && productId in manualQty) return manualQty[productId]
@@ -1190,8 +1195,9 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
     }
   }, [onClose])
 
-  const gels = availableProducts.filter(p => p.type === 'gel' || p.type === 'ultra_gel')
-  const bars = availableProducts.filter(p => p.type === 'bar')
+  const gels      = availableProducts.filter(p => p.type === 'gel')
+  const ultraGels = availableProducts.filter(p => p.type === 'ultra_gel')
+  const bars      = availableProducts.filter(p => p.type === 'bar')
 
   function ProductRow({ product }) {
     const qty = getCurrentQty(product.id)
@@ -1256,6 +1262,14 @@ function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose,
               <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.gels')}</p>
               <div className="space-y-1">
                 {gels.map(p => <ProductRow key={p.id} product={p} />)}
+              </div>
+            </div>
+          )}
+          {ultraGels.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.ultra_gels')}</p>
+              <div className="space-y-1">
+                {ultraGels.map(p => <ProductRow key={p.id} product={p} />)}
               </div>
             </div>
           )}

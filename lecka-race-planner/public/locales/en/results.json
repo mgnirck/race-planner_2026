@@ -88,6 +88,7 @@
   "adjust.subtitle": "Change quantities — cart updates live",
   "adjust.reset": "Reset to recommendation",
   "adjust.done": "Done",
-  "adjust.gels": "Gels",
+  "adjust.gels": "Energy Gels",
+  "adjust.ultra_gels": "Ultra Gels",
   "adjust.bars": "Bars"
 }

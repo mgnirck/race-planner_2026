@@ -82,6 +82,18 @@ export default async function handler(req, res) {
       }
     }
 
+    // For any product whose DB rows produced no available variants in a region,
+    // fall back to the static region data from products.json so those products
+    // remain purchasable (e.g. ultra gels not yet in product_regions table).
+    for (const product of productMap.values()) {
+      const staticRegions = staticById[product.id]?.regions ?? {}
+      for (const [region, staticData] of Object.entries(staticRegions)) {
+        if (!product.regions[region] || product.regions[region].variants.length === 0) {
+          product.regions[region] = staticData
+        }
+      }
+    }
+
     const products = [...productMap.values()].sort((a, b) => a.sort_order - b.sort_order)
     return res.status(200).json(products)
   } catch (err) {
