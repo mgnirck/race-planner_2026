@@ -26,6 +26,8 @@ import i18n from '../i18n.js'
 import { getRaceLabel, getEffortLabel, getConditionLabel } from '../i18n-utils.js'
 import { formatAddonSummary } from '../engine/kit-calculator.js'
 import ShareModal from './ShareModal.jsx'
+import PlanLeftColumn from './PlanLeftColumn.jsx'
+import PlanRightColumn from './PlanRightColumn.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1428,6 +1430,84 @@ function CoachNotes({ coachCopy, watchOut, loading }) {
   )
 }
 
+// ── TrainingAccordion ─────────────────────────────────────────────────────────
+
+function TrainingAccordion({ trainingInfo, t }) {
+  const [open, setOpen] = useState(false)
+  if (!trainingInfo.hasOverage) return null
+  return (
+    <div className="border border-gray-200 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center justify-between w-full px-4 py-3 text-sm font-semibold text-[#1B1B1B]"
+      >
+        <span>{t('results:training.prepTitle') || 'Training tips'}</span>
+        <span className="text-gray-400 text-xs">{open ? '↑' : '↓'}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          <p className="text-sm text-[#1B1B1B] mb-3">
+            {trainingInfo.gelOverage > 0 && (
+              <Trans
+                t={t}
+                i18nKey="results:training.gelOverage"
+                count={trainingInfo.gelRaceUnits}
+                values={{ race: trainingInfo.gelRaceUnits, cart: trainingInfo.gelCartUnits, extra: trainingInfo.gelOverage }}
+                components={{ bold: <strong /> }}
+              />
+            )}
+            {trainingInfo.gelOverage > 0 && trainingInfo.barOverage > 0 ? ' ' : ''}
+            {trainingInfo.barOverage > 0 && (
+              <Trans
+                t={t}
+                i18nKey={trainingInfo.gelOverage > 0 ? 'results:training.barOverage' : 'results:training.barOverageOnly'}
+                count={trainingInfo.barOverage}
+                values={{ extra: trainingInfo.barOverage }}
+                components={{ bold: <strong /> }}
+              />
+            )}
+          </p>
+          <ul className="space-y-2">
+            {[t('results:training.tip1'), t('results:training.tip2'), t('results:training.tip3'), t('results:training.tip4')].map((tip, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-[#1B1B1B]">
+                <span className="text-[#48C4B0] font-bold flex-shrink-0 mt-0.5">→</span>
+                <span>{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── CheckpointsTab ────────────────────────────────────────────────────────────
+
+function CheckpointsTab({ planId, isLoggedIn }) {
+  if (!isLoggedIn) {
+    return (
+      <div className="text-sm text-gray-500 space-y-3">
+        <p>Log in to access the checkpoint planner.</p>
+        <a href="/auth/login" className="inline-block px-4 py-2 border-2 border-[#48C4B0] text-[#48C4B0] rounded-xl text-sm font-semibold hover:bg-[#48C4B0]/5">
+          Log in →
+        </a>
+      </div>
+    )
+  }
+  if (!planId) {
+    return <p className="text-sm text-gray-500">Save your plan first to use the checkpoint planner.</p>
+  }
+  return (
+    <a
+      href={`/plan/${planId}/checkpoints`}
+      className="inline-flex items-center px-4 py-2 border-2 border-[#48C4B0] text-[#48C4B0] rounded-xl text-sm font-semibold hover:bg-[#48C4B0]/5"
+    >
+      Open checkpoint planner →
+    </a>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ResultsPage({ targets, foundationTargets, selection, addonCoverage, resolvedAddonItems = [], form, onBack, region: regionProp, hideSave = false, isPublicView = false, planId: planIdProp = null }) {
@@ -1762,13 +1842,268 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     ? (form.surface_type.charAt(0).toUpperCase() + form.surface_type.slice(1))
     : null
 
+  const [mobileTab, setMobileTab] = useState('timeline')
+  const htmlContent = useMemo(() => markdownToHtml(researchMarkdown), [])
+
+  // Shared JSX fragments used in both mobile and desktop layouts
+  const whatToTakeSection = (
+    <>
+      <SectionLabel>
+        {form.fuelling_style === 'gels_only'      ? 'Your gels'
+         : form.fuelling_style === 'gels_and_bars' ? 'Your gels and bars'
+         : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
+         : 'What to take'}
+      </SectionLabel>
+      {form.fuelling_style === 'drink_mix_base' && (
+        <p className="text-sm text-gray-500 -mt-2 mb-3">
+          Your plan uses gels as your primary fuel. The Lecka carb + hydration powder will
+          replace some of these gel slots when it launches —{' '}
+          <a href="https://www.getlecka.com" className="text-[#48C4B0] underline hover:text-[#3db09d]">
+            join the waitlist
+          </a>{' '}
+          to be notified.
+        </p>
+      )}
+      {regionType !== 'international' && aggregated.length === 0 ? (
+        <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
+          We couldn&apos;t find products available in your region for this plan.
+          Try switching your region below, or contact us at{' '}
+          <a href="mailto:info@getlecka.com" className="text-[#48C4B0] underline">
+            info@getlecka.com
+          </a>.
+        </div>
+      ) : (
+        <>
+          <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
+            {gapSelection.map((item, i) => (
+              <div
+                key={item.product.id + i}
+                className={`flex items-center gap-4 px-5 py-3
+                            ${i < gapSelection.length - 1 ? 'border-b border-gray-100' : ''}`}
+              >
+                <ProductIcon product={item.product} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#1B1B1B]">{item.product.name}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.note}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-[#1B1B1B]">×{item.quantity}</p>
+                  <p className="text-xs text-gray-400">
+                    {item.product.type === 'gel' || item.product.type === 'ultra_gel'
+                      ? 'gels'
+                      : item.product.type === 'bar'
+                      ? 'bars'
+                      : 'units'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {powderPlaceholder && (
+            <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 bg-gray-50 flex items-center gap-3 mt-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-500">
+                  🔜 Lecka Carb + Hydration Powder — coming soon
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  <a
+                    href="mailto:info@getlecka.com?subject=Powder waitlist"
+                    className="text-[#48C4B0] underline"
+                  >
+                    Join the waitlist →
+                  </a>
+                </p>
+              </div>
+            </div>
+          )}
+          {hasAddons && (
+            <div className="mt-3 border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden">
+              {resolvedAddonItems.map((item, i) => (
+                <div
+                  key={item.product.id}
+                  className={`flex items-center gap-4 px-5 py-3
+                              ${i < resolvedAddonItems.length - 1
+                                ? 'border-b border-dashed border-gray-200' : ''}`}
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-gray-400">
+                      {item.product.brand?.slice(0,3).toUpperCase() ?? 'ADD'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-[#1B1B1B]">{item.product.display_name}</p>
+                    <p className="text-xs text-gray-400 italic">buy separately</p>
+                  </div>
+                  <p className="text-sm font-bold text-[#1B1B1B] flex-shrink-0">×{item.quantity}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowCartEditor(true)}
+            className="text-xs text-[#48C4B0] font-semibold hover:underline mt-3 block"
+          >
+            {t('results:cta.adjustPlan')}
+          </button>
+        </>
+      )}
+    </>
+  )
+
+  const orderSection = (
+    <>
+      {/* Region picker */}
+      <div className="flex gap-2 flex-wrap">
+        {Object.entries(regionsConfig).map(([key, cfg]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => handleRegionChange(key)}
+            className={[
+              'px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-colors',
+              region === key
+                ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
+            ].join(' ')}
+          >
+            {cfg.label}
+          </button>
+        ))}
+      </div>
+
+      {region == null ? (
+        <div className="border-2 border-gray-100 rounded-2xl p-5 text-center text-sm text-gray-500">
+          <p className="font-semibold text-[#1B1B1B] mb-1">Select your region above</p>
+          <p>to see local pricing and order.</p>
+        </div>
+      ) : regionType === 'international' ? (
+        <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-3">
+          <p className="text-sm text-[#1B1B1B] leading-relaxed">
+            Lecka isn&apos;t available in your country yet — use this plan with any real food gel matching the targets above.
+          </p>
+          <a
+            href="https://www.getlecka.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
+          >
+            Find Lecka → getlecka.com
+          </a>
+        </div>
+      ) : aggregated.length === 0 ? (
+        <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
+          We couldn&apos;t find products available in your region. Try switching region above.
+        </div>
+      ) : (
+        <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">{t('results:cta.packs', { count: totalPacks })}</span>
+            <span className="text-lg font-bold text-[#1B1B1B]">
+              {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
+            </span>
+          </div>
+
+          {regionType === 'haravan' && (
+            <div className="flex flex-col gap-2">
+              <button onClick={() => handleChatClick(regionConfig.zalo_url)}
+                className="flex items-center justify-center w-full min-h-[48px] bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl text-sm font-bold transition-colors">
+                {t('results:cta.chat.zalo')}
+              </button>
+              <button onClick={() => handleChatClick(regionConfig.facebook_url)}
+                className="flex items-center justify-center w-full min-h-[48px] bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl text-sm font-bold transition-colors">
+                {t('results:cta.chat.facebook')}
+              </button>
+            </div>
+          )}
+
+          {regionType === 'shopify' && (
+            <>
+              <a href={cartURL} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors">
+                {t('results:cta.buyPlan')}
+              </a>
+              {region === 'us' && (
+                <p className="text-xs font-semibold text-[#48C4B0] text-center">{t('results:cta.discount')}</p>
+              )}
+              {region === 'us' && vpCartURL && (
+                <a href={vpCartURL} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-center w-full min-h-[44px] border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors">
+                  {t('results:cta.varietyPack')}
+                </a>
+              )}
+            </>
+          )}
+
+          {regionType === 'distributor' && (
+            <a href={regionConfig.store_url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors">
+              Shop at {regionConfig.label} →
+            </a>
+          )}
+
+          {chatSummary && (
+            <div className="mt-2 bg-white rounded-xl p-3 border border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 mb-1.5">{t('results:cta.chat.summaryLabel')}</p>
+              <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans select-all cursor-text leading-relaxed">{chatSummary}</pre>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+
+  const timelineTabContent = (
+    <div className="space-y-6">
+      <WarningBox warnings={targets.warnings} />
+      {['hot', 'humid'].includes(targets.conditions) && targets.total_duration_minutes >= 240 && (
+        <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
+          <p className="font-semibold text-amber-800 mb-1">Pre-race sodium loading recommended</p>
+          <p className="text-amber-900">
+            2–4 hours before your start, mix ~2 teaspoons of salt (~10g) into 1L of water or electrolyte drink.
+            Sip steadily — don&apos;t chug. This boosts blood sodium and plasma volume, helping you perform in the heat.
+          </p>
+        </div>
+      )}
+      <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
+      <TrainingAccordion trainingInfo={trainingInfo} t={t} />
+      {targets.total_duration_minutes >= 180 && !isPublicView && (
+        <CheckpointsTab
+          planId={planId}
+          isLoggedIn={Boolean(localStorage.getItem('lecka_user_id'))}
+        />
+      )}
+    </div>
+  )
+
+  const coachTabContent = (
+    <div className="space-y-6">
+      {!isPublicView && (
+        <CoachNotes coachCopy={proCoachCopy} watchOut={proWatchOut} loading={proCoachLoading} />
+      )}
+      <PlanDeliveryCard
+        targets={targets}
+        selection={effectiveSelection}
+        form={form}
+        region={region}
+        hideSave={hideSave}
+        resolvedAddonItems={resolvedAddonItems}
+        planId={planId}
+      />
+    </div>
+  )
+
+  const scienceTabContent = (
+    <div
+      className="prose prose-sm max-w-none text-sm"
+      dangerouslySetInnerHTML={{ __html: htmlContent }}
+    />
+  )
+
   return (
     <div className="bg-white">
 
-      {/* ── Research modal ─────────────────────────────────────────────────── */}
-      {showResearch && <ResearchModal onClose={() => setShowResearch(false)} />}
-
-      {/* ── Cart editor modal ───────────────────────────────────────────────── */}
+      {/* ── Modals ──────────────────────────────────────────────────────────── */}
       {showCartEditor && (
         <CartEditorModal
           region={region}
@@ -1782,741 +2117,348 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           catalog={allProductsCatalog}
         />
       )}
-
-      {/* ── Share modal ─────────────────────────────────────────────────────── */}
       {showShareModal && (
         <ShareModal
           onClose={() => setShowShareModal(false)}
           planUrl={planId ? `plan.getlecka.com/plan/${planId}` : 'plan.getlecka.com'}
           planProps={{
-            raceName:     heroTitle,
-            duration:     formatDuration(targets.total_duration_minutes),
-            conditions:   conditionLabel,
-            effort:       effortLabel,
-            carbsPerHour: targets.carb_per_hour,
+            raceName:      heroTitle,
+            duration:      formatDuration(targets.total_duration_minutes),
+            conditions:    conditionLabel,
+            effort:        effortLabel,
+            carbsPerHour:  targets.carb_per_hour,
             sodiumPerHour: targets.sodium_per_hour,
             fluidPerHour:  targets.fluid_ml_per_hour,
-            totalCarbs:   targets.total_carbs,
-            totalSodium:  targets.total_sodium,
-            products:     gapSelection.map(i => ({ name: i.product.name, quantity: i.quantity, type: i.product.type })),
+            totalCarbs:    targets.total_carbs,
+            totalSodium:   targets.total_sodium,
+            products:      gapSelection.map(i => ({ name: i.product.name, quantity: i.quantity, type: i.product.type })),
             region,
           }}
         />
       )}
 
-      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      {isEmbedded ? (
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
-          <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={onBack}
-              className="text-sm text-[#48C4B0] font-medium hover:underline
-                         min-h-[44px] flex items-center"
+      {/* ── Desktop sticky top bar (≥1024px) ────────────────────────────────── */}
+      <div className="hidden lg:flex sticky top-0 z-20 bg-white border-b border-gray-100 h-14 px-6 items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-bold text-[#1B1B1B] text-sm">lecka</span>
+          <span className="text-gray-300">/</span>
+          <span className="text-sm text-gray-500 truncate max-w-xs">{heroTitle}</span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleCopyPlan}
+            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
+          >
+            {copyPlanState === 'copied' ? '✓ Copied' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-400 cursor-default"
+          >
+            PDF
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-400 cursor-default"
+          >
+            Email
+          </button>
+          {regionType === 'international' ? (
+            <a
+              href="https://www.getlecka.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-1.5 text-xs font-bold bg-[#F64866] text-white rounded-lg hover:bg-[#e03558] transition-colors"
             >
-              {t('common:nav.back')}
-            </button>
-            <img src="/logo.svg" alt="Lecka" className="h-6" />
-            <LanguageSwitcher compact />
-          </div>
-        </div>
-      ) : (
-        <Nav backHref="/planner" backLabel="Back to planner" />
-      )}
-
-      <div className="max-w-lg mx-auto px-5 py-6 space-y-8">
-
-        {/* ── Hero ─────────────────────────────────────────────────────────── */}
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-1">
-            {t('results:hero.plan')}
-          </p>
-          <h1 className="text-2xl font-bold text-[#1B1B1B]">{heroTitle}</h1>
-          <p className="text-sm text-gray-400 mt-1.5">
-            {formatDuration(targets.total_duration_minutes)}
-            {surfaceLabel ? ` · ${surfaceLabel}` : ''}
-            {' · '}{effortLabel}
-            {' · '}{conditionLabel}
-            {targets.caffeine_ok ? ` · ${t('results:hero.caffeineTag')}` : ''}
-          </p>
-          {targets.elevation_gain_m > 0 && (
-            <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full
-                             bg-[#48C4B0]/10 text-[#48C4B0] text-xs font-semibold">
-              {targets.elevation_gain_m} m gain
-              {' · '}
-              {targets.elevation_tier
-                .split('_')
-                .map((w, i) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w)
-                .join(' ')}
-            </span>
-          )}
-          {form.race_date && (
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-sm text-gray-500">
-                📅 {formatRaceDate(form.race_date)}
-              </span>
-              {daysUntilRace(form.race_date) > 0 && (
-                <span className="text-xs font-semibold text-white bg-[#48C4B0]
-                                 px-2.5 py-0.5 rounded-full">
-                  {daysUntilRace(form.race_date)} days to go
-                </span>
-              )}
-              {daysUntilRace(form.race_date) === 0 && (
-                <span className="text-xs font-semibold text-white bg-[#F64866]
-                                 px-2.5 py-0.5 rounded-full">
-                  Race day! 🎉
-                </span>
-              )}
-            </div>
-          )}
-          <p className="text-xs text-[#48C4B0] font-medium mt-2 italic">
-            {hasAddons
-              ? 'Real food foundation + add-ons — your complete race plan.'
-              : 'Lecka is your real food foundation. Everything else is optional.'}
-          </p>
-          {form.training_mode === true && (
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1
-                            bg-amber-50 border border-amber-200 rounded-full">
-              <span className="text-xs font-semibold text-amber-700">
-                Training mode — carb targets reduced for gut adaptation
-              </span>
-            </div>
-          )}
-          {form.fuelling_style && form.fuelling_style !== 'flexible' && (() => {
-            const labels = {
-              gels_only:      'Gel-based fuelling',
-              gels_and_bars:  'Gels + bars fuelling',
-              drink_mix_base: 'Drink mix + gels fuelling',
-            }
-            const label = labels[form.fuelling_style]
-            if (!label) return null
-            return (
-              <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full
-                               bg-[#48C4B0]/10 text-[#48C4B0] text-xs font-semibold">
-                {label}
-              </span>
-            )
-          })()}
-        </div>
-
-        {/* ── Warnings ────────────────────────────────────────────────────── */}
-        <WarningBox warnings={targets.warnings} />
-
-        {/* ── Nutrition targets ───────────────────────────────────────────── */}
-        <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} />
-        <button
-          type="button"
-          onClick={() => setShowResearch(true)}
-          className="text-xs text-[#48C4B0] underline underline-offset-2 hover:text-[#3db09d]
-                     transition-colors -mt-4 text-left"
-        >
-          {t('results:research.learnMore')}
-        </button>
-
-        {/* ── Pro coach notes ──────────────────────────────────────────────── */}
-        {!isPublicView && (
-          <CoachNotes
-            coachCopy={proCoachCopy}
-            watchOut={proWatchOut}
-            loading={proCoachLoading}
-          />
-        )}
-
-        {/* ── Pre-race sodium loading callout ─────────────────────────────── */}
-        {['hot', 'humid'].includes(targets.conditions) && targets.total_duration_minutes >= 240 && (
-          <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
-            <p className="font-semibold text-amber-800 mb-1">Pre-race sodium loading recommended</p>
-            <p className="text-amber-900">
-              2–4 hours before your start, mix ~2 teaspoons of salt (~10g) into 1L of water or electrolyte drink.
-              Sip steadily — don&apos;t chug. This boosts blood sodium and plasma volume, helping you perform in the heat.
-            </p>
-            <p className="text-xs text-amber-700 mt-2">This guidance also appears in your PDF plan.</p>
-          </div>
-        )}
-
-        {/* ── Act 1: What to take ──────────────────────────────────────────── */}
-        <section>
-          <SectionLabel>
-            {form.fuelling_style === 'gels_only'      ? 'Your gels'
-             : form.fuelling_style === 'gels_and_bars' ? 'Your gels and bars'
-             : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
-             : 'What to take'}
-          </SectionLabel>
-          {form.fuelling_style === 'drink_mix_base' && (
-            <p className="text-sm text-gray-500 -mt-2 mb-3">
-              Your plan uses gels as your primary fuel. The Lecka carb + hydration powder will
-              replace some of these gel slots when it launches —{' '}
-              <a href="https://www.getlecka.com" className="text-[#48C4B0] underline hover:text-[#3db09d]">
-                join the waitlist
-              </a>{' '}
-              to be notified.
-            </p>
-          )}
-          {regionType !== 'international' && aggregated.length === 0 ? (
-            <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
-              We couldn&apos;t find products available in your region for this plan.
-              Try switching your region below, or contact us at{' '}
-              <a href="mailto:info@getlecka.com" className="text-[#48C4B0] underline">
-                info@getlecka.com
-              </a>.
-            </div>
+              Find Lecka →
+            </a>
           ) : (
-            <>
-              <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
-                {gapSelection.map((item, i) => (
-                  <div
-                    key={item.product.id + i}
-                    className={`flex items-center gap-4 px-5 py-3
-                                ${i < gapSelection.length - 1 ? 'border-b border-gray-100' : ''}`}
-                  >
-                    <ProductIcon product={item.product} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#1B1B1B]">{item.product.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{item.note}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-[#1B1B1B]">×{item.quantity}</p>
-                      <p className="text-xs text-gray-400">
-                        {item.product.type === 'gel' || item.product.type === 'ultra_gel'
-                          ? 'gels'
-                          : item.product.type === 'bar'
-                          ? 'bars'
-                          : 'units'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {powderPlaceholder && (
-                <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 bg-gray-50 flex items-center gap-3 mt-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-500">
-                      🔜 Lecka Carb + Hydration Powder — coming soon
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      <a
-                        href="mailto:info@getlecka.com?subject=Powder waitlist"
-                        className="text-[#48C4B0] underline"
-                      >
-                        Join the waitlist →
-                      </a>
-                    </p>
-                  </div>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => setShowCartEditor(true)}
-                className="text-xs text-[#48C4B0] font-semibold hover:underline mt-3 block"
-              >
-                {t('results:cta.adjustPlan')}
-              </button>
-            </>
-          )}
-        </section>
-
-        {/* ── Act 1: Add-ons ───────────────────────────────────────────────── */}
-        {hasAddons && (
-          <section>
-            <SectionLabel>Add-ons — your complete race fuel</SectionLabel>
-            <p className="text-xs text-gray-400 mb-3">
-              These products supplement your Lecka foundation. Buy them separately from your usual supplier.
-            </p>
-            <div className="border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden">
-              {resolvedAddonItems.map((item, i) => (
-                <div
-                  key={item.product.id}
-                  className={`flex items-center gap-4 px-5 py-3
-                              ${i < resolvedAddonItems.length - 1
-                                ? 'border-b border-dashed border-gray-200' : ''}`}
-                >
-                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center
-                                  justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-gray-400">
-                      {item.product.brand?.slice(0,3).toUpperCase() ?? 'ADD'}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#1B1B1B]">
-                      {item.product.display_name}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {item.product.carbs_per_unit * item.quantity}g carbs total
-                    </p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-[#1B1B1B]">×{item.quantity}</p>
-                    <p className="text-xs text-gray-400 italic">buy separately</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Race timeline ─────────────────────────────────────────────────── */}
-        <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
-
-        {/* ── Checkpoint planner CTA ────────────────────────────────────────── */}
-        {(() => {
-          const isLongRace = targets.total_duration_minutes >= 180
-          const userId = localStorage.getItem('lecka_user_id')
-          const isLoggedIn = Boolean(userId)
-          if (!isLongRace || isPublicView) return null
-          if (!isLoggedIn) {
-            return (
-              <a
-                href="/auth/login"
-                className="flex items-center justify-center w-full min-h-[48px]
-                           bg-white border-2 border-[#48C4B0] text-[#48C4B0]
-                           font-semibold rounded-xl hover:bg-[#48C4B0]/5 transition-colors text-sm"
-              >
-                Log in to plan your checkpoints →
-              </a>
-            )
-          }
-          return (
-            <button
-              type="button"
-              onClick={() => {
-                if (planId) {
-                  window.location.href = `/plan/${planId}/checkpoints`
-                } else {
-                  window.location.href = '/dashboard'
-                }
-              }}
-              className="flex items-center justify-center w-full min-h-[48px]
-                         bg-white border-2 border-[#48C4B0] text-[#48C4B0]
-                         font-semibold rounded-xl hover:bg-[#48C4B0]/5 transition-colors text-sm"
+            <a
+              href={cartURL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-1.5 text-xs font-bold bg-[#F64866] text-white rounded-lg hover:bg-[#e03558] transition-colors"
             >
-              Plan your checkpoints →
-            </button>
-          )
-        })()}
-
-        {/* ── Copy plan to clipboard ────────────────────────────────────────── */}
-        <button
-          type="button"
-          onClick={handleCopyPlan}
-          className="text-sm text-gray-500 border border-gray-200 rounded-xl px-4 py-2
-                     hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors w-full"
-        >
-          {copyPlanState === 'copied' ? '✓ Copied!' : `📋 ${t('cta.copyPlan')}`}
-        </button>
-
-        {/* ── Email + save plan ─────────────────────────────────────────────── */}
-        <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} resolvedAddonItems={resolvedAddonItems} planId={planId} />
-
-        {/* ── Share my plan ─────────────────────────────────────────────────── */}
-        <button
-          type="button"
-          onClick={() => setShowShareModal(true)}
-          className="flex items-center justify-center gap-2 w-full min-h-[48px]
-                     border-2 border-gray-200 rounded-2xl text-sm font-semibold
-                     text-[#1B1B1B] hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-          </svg>
-          Share my plan
-        </button>
-
-        {/* ── Visual break ──────────────────────────────────────────────────── */}
-        <div className="my-8">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-gray-200" />
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 rounded-full bg-[#48C4B0]/10 flex items-center
-                              justify-center">
-                <svg className="w-4 h-4 text-[#48C4B0]" viewBox="0 0 24 24"
-                     fill="none" stroke="currentColor" strokeWidth="2"
-                     strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-                  <line x1="3" y1="6" x2="21" y2="6"/>
-                  <path d="M16 10a4 4 0 01-8 0"/>
-                </svg>
-              </div>
-            </div>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
-          <div className="text-center">
-            <p className="text-base font-bold text-[#1B1B1B]">Ready to stock up?</p>
-            <p className="text-sm text-gray-400 mt-1">Here&apos;s how to get your Lecka products.</p>
-          </div>
-        </div>
-
-        {/* ── Act 2: Region picker ──────────────────────────────────────────── */}
-        <section>
-          <SectionLabel>Where do you want to order?</SectionLabel>
-          <div className="flex gap-2 flex-wrap">
-            {Object.entries(regionsConfig).map(([key, cfg]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleRegionChange(key)}
-                className={[
-                  'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
-                  region === key
-                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                    : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                ].join(' ')}
-              >
-                {cfg.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Act 2: Get your products ──────────────────────────────────────── */}
-        <section>
-          <SectionLabel>Get your products</SectionLabel>
-          {region == null ? (
-            <div className="border-2 border-gray-100 rounded-2xl p-6 text-center text-sm text-gray-500">
-              <p className="font-semibold text-[#1B1B1B] mb-1">Select your region above</p>
-              <p>to see local pricing and order.</p>
-            </div>
-          ) : regionType === 'international' ? (
-            /* International — no cart, just helpful links */
-            <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-4">
-              <p className="text-sm text-[#1B1B1B] leading-relaxed">
-                Lecka isn&apos;t available in your country yet — use this plan with any real food gel matching the targets above.
-              </p>
-              <a
-                href="https://www.getlecka.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block text-sm font-semibold text-[#48C4B0] hover:underline"
-              >
-                Find Lecka near you → getlecka.com
-              </a>
-              {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'distributor') && (
-                <div className="border-t border-gray-100 pt-3">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
-                    Available via distributor
-                  </p>
-                  <div className="space-y-1">
-                    {Object.entries(regionsConfig)
-                      .filter(([, cfg]) => cfg.type === 'distributor')
-                      .map(([key, cfg]) => (
-                        <a
-                          key={key}
-                          href={cfg.store_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block text-sm text-[#48C4B0] hover:underline"
-                        >
-                          {cfg.label} →
-                        </a>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : aggregated.length === 0 ? (
-            <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
-              We couldn&apos;t find products available in your region. Try switching region above.
-            </div>
-          ) : (
-            <>
-              <div className="space-y-3 mb-5">
-                {aggregated.map(row => (
-                  <ProductCard
-                    key={row.product.id}
-                    {...row}
-                    currencySymbol={regionConfig.currency_symbol}
-                    decimals={regionConfig.decimals ?? 2}
-                    cartUnits={row.cartUnits}
-                    savedAmount={row.savedAmount ?? 0}
-                    region={region}
-                  />
-                ))}
-              </div>
-
-              {/* Haravan (VN) — Zalo / Facebook ordering */}
-              {regionType === 'haravan' && (
-                <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
-                  {hasAddons && (
-                    <p className="text-xs text-gray-400 text-center mb-3">
-                      Cart includes Lecka products only — add-on products are sourced separately.
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm text-gray-500">
-                      {t('results:cta.packs', { count: totalPacks })}
-                    </span>
-                    <span className="text-xl font-bold text-[#1B1B1B]">
-                      {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => handleChatClick(regionConfig.zalo_url)}
-                      className="flex items-center justify-center w-full min-h-[52px]
-                                 bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl
-                                 text-base font-bold transition-colors"
-                    >
-                      {t('results:cta.chat.zalo')}
-                    </button>
-                    <button
-                      onClick={() => handleChatClick(regionConfig.facebook_url)}
-                      className="flex items-center justify-center w-full min-h-[52px]
-                                 bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl
-                                 text-base font-bold transition-colors"
-                    >
-                      {t('results:cta.chat.facebook')}
-                    </button>
-                    <p className="text-xs text-gray-400 text-center mt-1">
-                      {t('results:cta.chat.hint')}
-                    </p>
-                    {chatSummary && (
-                      <div className="mt-3 bg-gray-50 rounded-xl p-3">
-                        <p className="text-xs font-semibold text-gray-500 mb-1.5">
-                          {t('results:cta.chat.summaryLabel')}
-                        </p>
-                        <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans select-all cursor-text leading-relaxed">
-                          {chatSummary}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Shopify (US, DE, DK, CH) — cart URL, discount only for US */}
-              {regionType === 'shopify' && (
-                <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
-                  {hasAddons && (
-                    <p className="text-xs text-gray-400 text-center mb-3">
-                      Cart includes Lecka products only — add-on products are sourced separately.
-                    </p>
-                  )}
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm text-gray-500">
-                      {t('results:cta.packs', { count: totalPacks })}
-                    </span>
-                    <span className="text-xl font-bold text-[#1B1B1B]">
-                      {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
-                    </span>
-                  </div>
-                  <a
-                    href={cartURL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center w-full min-h-[52px]
-                               bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
-                               text-base font-bold transition-colors"
-                  >
-                    {t('results:cta.buyPlan')}
-                  </a>
-                  {region === 'us' && (
-                    <p className="text-xs font-semibold text-[#48C4B0] text-center mt-2">
-                      {t('results:cta.discount')}
-                    </p>
-                  )}
-                  {region === 'us' && (
-                    <p className="text-xs text-gray-400 text-center mt-1">
-                      {t('results:cta.shipping.us')}
-                    </p>
-                  )}
-                  {hasAddons && (
-                    <p className="text-xs text-gray-400 text-center mt-1">
-                      Cart includes Lecka products only. Purchase add-ons separately.
-                    </p>
-                  )}
-                  {region === 'us' && vpCartURL && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <a
-                        href={vpCartURL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center w-full min-h-[48px]
-                                   border-2 border-[#48C4B0] text-[#48C4B0] rounded-2xl
-                                   text-sm font-semibold hover:bg-[#48C4B0] hover:text-white transition-colors"
-                      >
-                        {t('results:cta.varietyPack')}
-                      </a>
-                      <p className="text-xs text-gray-400 text-center mt-1.5">
-                        {t('results:cta.varietyPack.hint')}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Distributor (SG, HK, and future regions) — link to partner store */}
-              {regionType === 'distributor' && (
-                <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5">
-                  <a
-                    href={regionConfig.store_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center w-full min-h-[52px]
-                               bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
-                               text-base font-bold transition-colors"
-                  >
-                    Shop at {regionConfig.label} →
-                  </a>
-                  <p className="text-xs text-gray-400 text-center mt-2">
-                    Sold via our partner store — pricing in local currency
-                  </p>
-                </div>
-              )}
-            </>
+              Buy plan →
+            </a>
           )}
-        </section>
+        </div>
+      </div>
 
-        {/* ── Act 2: What you'll have left for training ─────────────────────── */}
-        {trainingInfo.hasOverage && (
-          <section className="border-2 border-[#48C4B0]/30 rounded-2xl p-5 bg-[#48C4B0]/5">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-2">
-              What you&apos;ll have left for training
-            </p>
-            <p className="text-sm text-[#1B1B1B] mb-4">
-              {trainingInfo.gelOverage > 0 && (
-                <>
-                  <Trans
-                    t={t}
-                    i18nKey="results:training.gelOverage"
-                    count={trainingInfo.gelRaceUnits}
-                    values={{ race: trainingInfo.gelRaceUnits, cart: trainingInfo.gelCartUnits, extra: trainingInfo.gelOverage }}
-                    components={{ bold: <strong /> }}
-                  />
-                  {trainingInfo.barOverage > 0 ? ' ' : ''}
-                </>
-              )}
-              {trainingInfo.barOverage > 0 && (
-                <Trans
-                  t={t}
-                  i18nKey={trainingInfo.gelOverage > 0 ? 'results:training.barOverage' : 'results:training.barOverageOnly'}
-                  count={trainingInfo.barOverage}
-                  values={{ extra: trainingInfo.barOverage }}
-                  components={{ bold: <strong /> }}
-                />
-              )}
-            </p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
-              {t('results:training.prepTitle')}
-            </p>
-            <ul className="space-y-2">
-              {[
-                t('results:training.tip1'),
-                t('results:training.tip2'),
-                t('results:training.tip3'),
-                t('results:training.tip4'),
-              ].map((tip, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-[#1B1B1B]">
-                  <span className="text-[#48C4B0] font-bold flex-shrink-0 mt-0.5">→</span>
-                  <span>{tip}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {/* ── Act 2: Add-ons reminder ───────────────────────────────────────── */}
-        {hasAddons && (
-          <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
-            <p className="text-xs font-semibold uppercase tracking-widest
-                          text-gray-400 mb-2">
-              Don&apos;t forget your add-ons
-            </p>
-            <p className="text-sm text-gray-500 mb-3">
-              These products are part of your plan but sold separately
-              from Lecka. Pick them up from your usual sports nutrition supplier.
-            </p>
-            <div className="space-y-1">
-              {resolvedAddonItems.map(item => (
-                <p key={item.product.id} className="text-sm text-[#1B1B1B]">
-                  ×{item.quantity} {item.product.display_name}
-                  <span className="text-gray-400 ml-1">
-                    — {item.product.carbs_per_unit * item.quantity}g carbs
-                  </span>
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Footer ────────────────────────────────────────────────────────── */}
-        <div className="pb-12 space-y-6 border-t border-gray-100 pt-8">
-
-          <div className="text-center">
-            {isPublicView ? (
-              <a
-                href="/planner"
-                className="text-sm font-semibold text-[#48C4B0] hover:underline transition-colors"
-              >
-                Build your own plan →
-              </a>
-            ) : (
+      {/* ── Mobile view (<1024px) ───────────────────────────────────────────── */}
+      <div className="lg:hidden">
+        {/* Nav */}
+        {isEmbedded ? (
+          <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
+            <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between">
               <button
                 type="button"
                 onClick={onBack}
-                className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
+                className="text-sm text-[#48C4B0] font-medium hover:underline min-h-[44px] flex items-center"
               >
-                {t('common:nav.startOver')}
+                {t('common:nav.back')}
               </button>
+              <img src="/logo.svg" alt="Lecka" className="h-6" />
+              <LanguageSwitcher compact />
+            </div>
+          </div>
+        ) : (
+          <Nav backHref="/planner" backLabel="Back to planner" />
+        )}
+
+        {/* Teal header */}
+        <div className="bg-[#48C4B0] px-5 pt-4 pb-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-bold text-white text-base">lecka</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyPlan}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
+                title="Copy plan"
+              >
+                📋
+              </button>
+              <button
+                type="button"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs"
+                title="PDF (coming soon)"
+              >
+                📄
+              </button>
+              <button
+                type="button"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs"
+                title="Email (coming soon)"
+              >
+                ✉️
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowShareModal(true)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
+                title="Share"
+              >
+                🔗
+              </button>
+            </div>
+          </div>
+          <h1 className="text-xl font-bold text-white">{heroTitle}</h1>
+          <p className="text-sm text-white/80 mt-1">
+            {formatDuration(targets.total_duration_minutes)}
+            {' · '}{conditionLabel}
+          </p>
+        </div>
+
+        {/* Mobile tabs */}
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 flex">
+          {[
+            { key: 'timeline', label: 'Timeline' },
+            { key: 'products', label: 'Products' },
+            { key: 'coach',    label: 'Coach' },
+            { key: 'order',    label: 'Order' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setMobileTab(tab.key)}
+              className={[
+                'flex-1 py-3 text-xs font-semibold border-b-2 -mb-px transition-colors',
+                mobileTab === tab.key
+                  ? 'border-[#48C4B0] text-[#1B1B1B]'
+                  : 'border-transparent text-gray-400',
+              ].join(' ')}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Mobile tab content */}
+        <div className="max-w-lg mx-auto px-5 py-6 space-y-8 pb-32">
+          {mobileTab === 'timeline' && timelineTabContent}
+          {mobileTab === 'products' && (
+            <div className="space-y-6">
+              <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} />
+              <section>{whatToTakeSection}</section>
+            </div>
+          )}
+          {mobileTab === 'coach' && coachTabContent}
+          {mobileTab === 'order' && (
+            <section>
+              <SectionLabel>Get your products</SectionLabel>
+              {orderSection}
+            </section>
+          )}
+        </div>
+
+        {/* Mobile sticky bottom bar */}
+        <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-200 px-5 py-3">
+          {regionType === 'international' ? (
+            <a
+              href="https://www.getlecka.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
+            >
+              Find Lecka → getlecka.com
+            </a>
+          ) : (
+            <a
+              href={cartURL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
+            >
+              {aggregated.length > 0
+                ? `Buy plan — ${formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)} →`
+                : 'Buy plan →'}
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* ── Desktop two-column layout (≥1024px) ─────────────────────────────── */}
+      <div className="hidden lg:grid" style={{ gridTemplateColumns: '320px 1fr' }}>
+
+        {/* Left column */}
+        <PlanLeftColumn>
+          {/* Race hero */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-1">
+              {t('results:hero.plan')}
+            </p>
+            <h1 className="font-bold text-[#1B1B1B]" style={{ fontSize: '18px' }}>{heroTitle}</h1>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
+                {formatDuration(targets.total_duration_minutes)}
+              </span>
+              {conditionLabel && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
+                  {conditionLabel}
+                </span>
+              )}
+              {effortLabel && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
+                  {effortLabel}
+                </span>
+              )}
+              {surfaceLabel && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
+                  {surfaceLabel}
+                </span>
+              )}
+            </div>
+            {targets.elevation_gain_m > 0 && (
+              <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full bg-[#48C4B0]/10 text-[#48C4B0] text-xs font-semibold">
+                {targets.elevation_gain_m} m gain · {targets.elevation_tier.split('_').map((w, i) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ')}
+              </span>
+            )}
+            {form.race_date && (
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="text-xs text-gray-500">📅 {formatRaceDate(form.race_date)}</span>
+                {daysUntilRace(form.race_date) > 0 && (
+                  <span className="text-xs font-semibold text-white bg-[#48C4B0] px-2 py-0.5 rounded-full">
+                    {daysUntilRace(form.race_date)}d to go
+                  </span>
+                )}
+                {daysUntilRace(form.race_date) === 0 && (
+                  <span className="text-xs font-semibold text-white bg-[#F64866] px-2 py-0.5 rounded-full">
+                    Race day! 🎉
+                  </span>
+                )}
+              </div>
+            )}
+            {form.training_mode === true && (
+              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-full">
+                <span className="text-xs font-semibold text-amber-700">Training mode</span>
+              </div>
             )}
           </div>
 
-          <div className="text-center space-y-1">
-            <p className="text-xs text-gray-400">
-              Provided by{' '}
-              <a
-                href="https://www.getlecka.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#48C4B0] hover:underline"
-              >
-                www.getlecka.com
-              </a>
-            </p>
-            <p className="text-xs text-gray-400">
-              <a
-                href="mailto:info@getlecka.com"
-                className="text-[#48C4B0] hover:underline"
-              >
-                info@getlecka.com
-              </a>
-              {' '}·{' '}
-              <a
-                href="https://www.instagram.com/leckanutrition"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#48C4B0] hover:underline"
-              >
-                @leckanutrition
-              </a>
-            </p>
-          </div>
+          {/* Nutrition summary */}
+          <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} />
 
-          <div className="text-center">
-            <p className="text-xs text-gray-400 mb-2">Find Lecka near you</p>
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+          {/* What to take */}
+          <section>{whatToTakeSection}</section>
+
+          {/* Order card */}
+          <section>
+            <SectionLabel>Get your products</SectionLabel>
+            {orderSection}
+          </section>
+
+          {/* Share button */}
+          <button
+            type="button"
+            onClick={() => setShowShareModal(true)}
+            className="flex items-center justify-center gap-2 w-full min-h-[44px] border-2 border-gray-200 rounded-2xl text-sm font-semibold text-[#1B1B1B] hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+            Share my plan
+          </button>
+
+          {/* Footer links */}
+          <div className="pt-4 border-t border-gray-100 space-y-2">
+            <p className="text-xs text-gray-400 text-center">
+              <a href="https://www.getlecka.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#48C4B0]">getlecka.com</a>
+              {' '}·{' '}
+              <a href="mailto:info@getlecka.com" className="hover:text-[#48C4B0]">info@getlecka.com</a>
+            </p>
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
               {[
-                { label: 'US',          href: 'https://www.getlecka.com' },
-                { label: 'Vietnam',     href: 'https://www.getlecka.vn' },
-                { label: 'Germany',     href: 'https://www.getlecka.de' },
-                { label: 'Denmark',     href: 'https://www.getlecka.dk' },
-                { label: 'Switzerland', href: 'https://www.getlecka.ch' },
-                { label: 'Singapore',   href: 'https://www.rdrc.sg/collections/lecka' },
-                { label: 'Hong Kong',   href: 'https://foodisdom.is/collections/lecka' },
+                { label: 'US', href: 'https://www.getlecka.com' },
+                { label: 'VN', href: 'https://www.getlecka.vn' },
+                { label: 'DE', href: 'https://www.getlecka.de' },
+                { label: 'DK', href: 'https://www.getlecka.dk' },
+                { label: 'CH', href: 'https://www.getlecka.ch' },
+                { label: 'SG', href: 'https://www.rdrc.sg/collections/lecka' },
+                { label: 'HK', href: 'https://foodisdom.is/collections/lecka' },
               ].map(({ label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-gray-400 hover:text-[#48C4B0] transition-colors"
-                >
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-gray-400 hover:text-[#48C4B0] transition-colors">
                   {label}
                 </a>
               ))}
             </div>
           </div>
+        </PlanLeftColumn>
 
-        </div>
+        {/* Right column with tabs */}
+        <PlanRightColumn
+          defaultTab={isPublicView ? 'timeline' : 'coach'}
+          tabs={[
+            {
+              key: 'timeline',
+              label: 'Timeline',
+              content: timelineTabContent,
+            },
+            {
+              key: 'coach',
+              label: 'Coach notes',
+              content: coachTabContent,
+            },
+            {
+              key: 'science',
+              label: 'Science',
+              content: scienceTabContent,
+            },
+            {
+              key: 'checkpoints',
+              label: 'Checkpoints',
+              content: (
+                <CheckpointsTab
+                  planId={planId}
+                  isLoggedIn={Boolean(localStorage.getItem('lecka_user_id'))}
+                />
+              ),
+            },
+          ]}
+        />
 
       </div>
     </div>
