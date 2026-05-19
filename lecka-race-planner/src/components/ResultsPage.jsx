@@ -26,6 +26,8 @@ import i18n from '../i18n.js'
 import { getRaceLabel, getEffortLabel, getConditionLabel } from '../i18n-utils.js'
 import { formatAddonSummary } from '../engine/kit-calculator.js'
 import ShareModal from './ShareModal.jsx'
+import PlanLeftColumn from './PlanLeftColumn.jsx'
+import PlanRightColumn from './PlanRightColumn.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1428,6 +1430,84 @@ function CoachNotes({ coachCopy, watchOut, loading }) {
   )
 }
 
+// ── TrainingAccordion ─────────────────────────────────────────────────────────
+
+function TrainingAccordion({ trainingInfo, t }) {
+  const [open, setOpen] = useState(false)
+  if (!trainingInfo.hasOverage) return null
+  return (
+    <div className="border border-gray-200 rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center justify-between w-full px-4 py-3 text-sm font-semibold text-[#1B1B1B]"
+      >
+        <span>{t('results:training.prepTitle') || 'Training tips'}</span>
+        <span className="text-gray-400 text-xs">{open ? '↑' : '↓'}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          <p className="text-sm text-[#1B1B1B] mb-3">
+            {trainingInfo.gelOverage > 0 && (
+              <Trans
+                t={t}
+                i18nKey="results:training.gelOverage"
+                count={trainingInfo.gelRaceUnits}
+                values={{ race: trainingInfo.gelRaceUnits, cart: trainingInfo.gelCartUnits, extra: trainingInfo.gelOverage }}
+                components={{ bold: <strong /> }}
+              />
+            )}
+            {trainingInfo.gelOverage > 0 && trainingInfo.barOverage > 0 ? ' ' : ''}
+            {trainingInfo.barOverage > 0 && (
+              <Trans
+                t={t}
+                i18nKey={trainingInfo.gelOverage > 0 ? 'results:training.barOverage' : 'results:training.barOverageOnly'}
+                count={trainingInfo.barOverage}
+                values={{ extra: trainingInfo.barOverage }}
+                components={{ bold: <strong /> }}
+              />
+            )}
+          </p>
+          <ul className="space-y-2">
+            {[t('results:training.tip1'), t('results:training.tip2'), t('results:training.tip3'), t('results:training.tip4')].map((tip, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-[#1B1B1B]">
+                <span className="text-[#48C4B0] font-bold flex-shrink-0 mt-0.5">→</span>
+                <span>{tip}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── CheckpointsTab ────────────────────────────────────────────────────────────
+
+function CheckpointsTab({ planId, isLoggedIn }) {
+  if (!isLoggedIn) {
+    return (
+      <div className="text-sm text-gray-500 space-y-3">
+        <p>Log in to access the checkpoint planner.</p>
+        <a href="/auth/login" className="inline-block px-4 py-2 border-2 border-[#48C4B0] text-[#48C4B0] rounded-xl text-sm font-semibold hover:bg-[#48C4B0]/5">
+          Log in →
+        </a>
+      </div>
+    )
+  }
+  if (!planId) {
+    return <p className="text-sm text-gray-500">Save your plan first to use the checkpoint planner.</p>
+  }
+  return (
+    <a
+      href={`/plan/${planId}/checkpoints`}
+      className="inline-flex items-center px-4 py-2 border-2 border-[#48C4B0] text-[#48C4B0] rounded-xl text-sm font-semibold hover:bg-[#48C4B0]/5"
+    >
+      Open checkpoint planner →
+    </a>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ResultsPage({ targets, foundationTargets, selection, addonCoverage, resolvedAddonItems = [], form, onBack, region: regionProp, hideSave = false, isPublicView = false, planId: planIdProp = null }) {
@@ -1761,6 +1841,9 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const surfaceLabel   = form.surface_type
     ? (form.surface_type.charAt(0).toUpperCase() + form.surface_type.slice(1))
     : null
+
+  const [mobileTab, setMobileTab] = useState('timeline')
+  const htmlContent = useMemo(() => markdownToHtml(researchMarkdown), [])
 
   return (
     <div className="bg-white">
