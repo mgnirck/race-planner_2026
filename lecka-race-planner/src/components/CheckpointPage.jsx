@@ -379,13 +379,14 @@ export default function CheckpointPage({ planId }) {
       .catch(() => setPlanLoading(false))
   }, [planId, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist to localStorage on change
+  // Persist to localStorage on change — guard with planLoading so the initial
+  // empty state doesn't overwrite data that was read from localStorage on mount.
   useEffect(() => {
-    if (!planId) return
+    if (!planId || planLoading) return
     try {
       localStorage.setItem(`lecka_checkpoints_${planId}`, JSON.stringify({ checkpoints, segmentData }))
     } catch {}
-  }, [planId, checkpoints, segmentData])
+  }, [planId, checkpoints, segmentData, planLoading])
 
   // Derived values
   const targets = plan?.targets ?? {}

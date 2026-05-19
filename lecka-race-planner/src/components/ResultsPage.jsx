@@ -825,7 +825,7 @@ function RaceTimeline({ events, totalDuration }) {
 
 // ── PlanDeliveryCard ──────────────────────────────────────────────────────────
 
-function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false, resolvedAddonItems = [] }) {
+function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false, resolvedAddonItems = [], planId: savedPlanId = null }) {
   const { t } = useTranslation('results')
   const [email,      setEmail]      = useState('')
   const [emailState, setEmailState] = useState('idle') // idle | sending | success | error
@@ -834,6 +834,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
 
   const userId     = localStorage.getItem('lecka_user_id')
   const isLoggedIn = Boolean(userId)
+  const alreadySaved = Boolean(savedPlanId)
 
   const isValid   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const showError = touched && email !== '' && !isValid
@@ -963,10 +964,13 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
         {/* Logged-in: inline save section */}
         {isLoggedIn && !hideSave && (
           <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-4 flex-wrap">
-            {saveState === 'saved' ? (
+            {(saveState === 'saved' || alreadySaved) ? (
               <>
                 <p className="text-sm font-semibold text-[#48C4B0]">✓ Plan saved to your account</p>
-                <a href="/dashboard" className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap">
+                <a
+                  href={savedPlanId ? `/plan/${savedPlanId}` : '/dashboard'}
+                  className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap"
+                >
                   View in My Plans →
                 </a>
               </>
@@ -1541,7 +1545,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
       body:    JSON.stringify({
-        inputs:    { ...form, addon_items: form.addon_items ?? [] },
+        inputs:    { ...form, addon_items: form.addon_items ?? [], mode: 'pro' },
         targets,
         selection,
         region:    regionProp ?? getSavedRegion() ?? 'us',
@@ -2065,7 +2069,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         </button>
 
         {/* ── Email + save plan ─────────────────────────────────────────────── */}
-        <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} resolvedAddonItems={resolvedAddonItems} />
+        <PlanDeliveryCard targets={targets} selection={effectiveSelection} form={form} region={region} hideSave={hideSave} resolvedAddonItems={resolvedAddonItems} planId={planId} />
 
         {/* ── Visual break ──────────────────────────────────────────────────── */}
         <div className="my-8">

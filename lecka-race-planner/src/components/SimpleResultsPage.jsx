@@ -239,7 +239,10 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
   // ── Silent plan save for logged-in users ──────────────────────────────────
   useEffect(() => {
     const userId = localStorage.getItem('lecka_user_id')
-    if (!userId) return
+    if (!userId) {
+      localStorage.setItem('lecka_plan_needs_save', 'true')
+      return
+    }
     fetch('/api/plans', {
       method:  'POST',
       headers: {
@@ -247,7 +250,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
         'Authorization': `Bearer ${userId}`,
       },
       body: JSON.stringify({
-        inputs:    { ...form, addon_items: [] },
+        inputs:    { ...form, addon_items: [], mode: 'quick' },
         targets,
         selection,
         region:    region ?? 'us',
