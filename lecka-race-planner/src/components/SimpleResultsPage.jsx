@@ -125,10 +125,11 @@ function SectionLabel({ children }) {
 }
 
 function ProductIcon({ product }) {
-  const isBar = product.type === 'bar'
-  const isCaf = product.caffeine
-  const bg  = isBar ? '#48C4B0' : isCaf ? '#1B1B1B' : '#48C4B0'
-  const tag = isBar ? 'BAR' : isCaf ? 'CAF' : 'GEL'
+  const isBar      = product.type === 'bar'
+  const isUltraGel = product.type === 'ultra_gel'
+  const isCaf      = product.caffeine
+  const bg  = isBar ? '#48C4B0' : isCaf ? '#1B1B1B' : isUltraGel ? '#F64866' : '#48C4B0'
+  const tag = isBar ? 'BAR' : isCaf ? 'CAF' : isUltraGel ? 'UGEL' : 'GEL'
   return (
     <div
       className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -532,6 +533,11 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-[#1B1B1B]">{item.product.name}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{buildPlainTiming(item)}</p>
+                  {item.product.type === 'ultra_gel' && (
+                    <p className="text-xs text-[#F64866] font-medium mt-0.5">
+                      Eat over 10–15 min, not all at once
+                    </p>
+                  )}
                 </div>
                 <p className="text-sm font-bold text-[#1B1B1B] flex-shrink-0">×{item.quantity}</p>
               </div>
@@ -539,6 +545,8 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           </div>
           <p className="text-xs text-gray-400 italic mt-3">
             Take each gel with a small sip of water — around 100–150ml.
+            {leckaSelection.some(i => i.product.type === 'ultra_gel') &&
+              ' Ultra gels are larger — eat over 10–15 min rather than all at once.'}
           </p>
         </section>
 

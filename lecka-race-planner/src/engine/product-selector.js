@@ -18,166 +18,80 @@
  *   'gels_only' | 'flexible' | undefined  → bars before + after only
  *   'gels_and_bars'                        → bars before + during (≥3h) + after
  *   'drink_mix_base'                       → bars before + after + powder placeholder
+ *
+ * Ultra Gel logic:
+ *   Ultra gels (type 'ultra_gel') are 65g carbs / 102g per unit. They are gated
+ *   to qualifying long races and timed at 50-min intervals (not 30 min). When the
+ *   user selects both ultra gels and regular gels, ultra gels anchor the plan
+ *   (~70% of carbs) and regular gels fill the gaps between them.
  */
 
 import staticProducts from '../config/products.json'
 import formulaConfig   from '../config/formula-config.json'
 import { isAvailableInRegion } from './region-utils.js'
 
+// Races where ultra gels are appropriate in the default plan
+const QUALIFYING_RACES_FOR_ULTRA = new Set(['ultra_50k', 'ultra_100k', 'triathlon_140_6'])
+const MARATHON_ULTRA_MIN_MINUTES = 240  // marathons with goal time > 4h
+
 export function selectProducts(targets, preferredProductIds = [], region = 'us', options = {}, allProducts = null) {
   const products = allProducts ?? staticProducts
-  const { total_duration_minutes, caffeine_ok, total_carbs } = targets
+  const { total_duration_minutes, caffeine_ok, total_carbs, race_type } = targets
   const { timing_rules: timingRules, caffeine_rules: caffeineRules } = formulaConfig
+  const ultraGelRules = timingRules.ultra_gel
 
   // ── Filter the full catalogue to products available in this region ────────
-  // Exclude variety packs — they are used at the cart-optimisation layer, not here.
-
   const availableProducts = products.filter(p =>
     isAvailableInRegion(p, region) && p.type !== 'variety_pack'
   )
 
-  // ── Resolve product pools ─────────────────────────────────────────────────
-  // Start from explicit user picks; fall back to curated defaults per type when
-  // the user made no selection (or their picks are all unavailable in this region).
-  // Gel defaults: passion-fruit + coffee-cacao (caffeine OK) else passion-fruit +
-  // banana. Bar default: mango-coconut. Each default is checked through
-  // isAvailableInRegion(); if it is absent the first available product of that
-  // type in the catalogue is used as last resort. Gels and bars fall back
-  // independently — explicit picks for one type are never discarded.
+  // ── Qualify race for ultra gel defaults ───────────────────────────────────
+  const isUltraGelRace = QUALIFYING_RACES_FOR_ULTRA.has(race_type) ||
+    (race_type === 'marathon' && total_duration_minutes >= MARATHON_ULTRA_MIN_MINUTES)
 
+  // ── Resolve product pools ─────────────────────────────────────────────────
   const preferred     = availableProducts.filter(p => preferredProductIds.includes(p.id))
   const preferredGels = preferred.filter(p => p.type === 'gel' || p.type === 'ultra_gel')
   const preferredBars = preferred.filter(p => p.type === 'bar')
 
   const selectedGels = preferredGels.length > 0
     ? preferredGels
-    : resolveDefaultGels(availableProducts, caffeine_ok)
+    : resolveDefaultGels(availableProducts, caffeine_ok, isUltraGelRace)
 
   const bars = preferredBars.length > 0
     ? preferredBars
     : resolveDefaultBars(availableProducts)
 
-  // For plain slots: prefer non-caffeine gels; fall back to any selected gel
-  // (handles the case where user picked only caffeine gels).
-  const plainGelPool = selectedGels.filter(p => !p.caffeine)
-  const plainGels    = plainGelPool.length > 0 ? plainGelPool : selectedGels
-
-  const cafGels = selectedGels.filter(p => p.caffeine)
-
-  // ── Build gel timing slots (target-driven) ───────────────────────────────
-  // Quantity is derived from total_carbs ÷ avg carbs per selected gel, then
-  // slots are spread evenly across the race with a minimum spacing floor.
-
-  const gelSlots = buildGelSlots(total_carbs, selectedGels, total_duration_minutes, timingRules)
-
-  const duringNote = `First intake at ~${getFirstIntakeMin(total_duration_minutes)} min, then every 30 min`
-
-  // Use flavour variety when the race is long enough to warrant it
-  const useVariety = gelSlots.length >= 5
-
-  // ── Assign caffeine vs plain to each slot ────────────────────────────────
-  //
-  // First caffeine dose targets the second half of the race when glycogen
-  // depletion and mental fatigue set in.  The threshold is the larger of the
-  // absolute minimum floor (first_dose_offset_min, default 45 min) and a
-  // fraction of the total race duration (first_dose_race_fraction, default 0.4).
-  //
-  // Expected first-eligible caffeine slot by race duration:
-  //   60 min  → max(45,  24) = 45 min  (floor dominates short races)
-  //  120 min  → max(45,  48) = 48 min
-  //  240 min  → max(45,  96) = 96 min  (1 h 36)
-  //  360 min  → max(45, 144) = 144 min (2 h 24)
-
-  const firstCaffeineMin = Math.max(
-    caffeineRules.first_dose_offset_min,
-    total_duration_minutes * (caffeineRules.first_dose_race_fraction ?? 0.4),
-  )
-
-  const plainGelSlots = []
-  const cafGelSlots   = []
-  let lastCaffeineDoseAt = -Infinity
-
-  for (const slot of gelSlots) {
-    const minutesSinceLast = slot - lastCaffeineDoseAt
-    const isCaffeineEligible =
-      caffeine_ok &&
-      slot >= firstCaffeineMin &&
-      minutesSinceLast >= 60 &&
-      (total_duration_minutes - slot) >= 30
-
-    if (isCaffeineEligible) {
-      cafGelSlots.push(slot)
-      lastCaffeineDoseAt = slot
-    } else {
-      plainGelSlots.push(slot)
-    }
-  }
+  // ── Split gels by type ────────────────────────────────────────────────────
+  const ultraGels   = selectedGels.filter(g => g.type === 'ultra_gel')
+  const regularGels = selectedGels.filter(g => g.type === 'gel')
 
   const selected = []
 
-  // ── Plain gels — with optional variety rotation ───────────────────────────
-
-  if (plainGelSlots.length > 0 && plainGels.length > 0) {
-    if (useVariety && plainGels.length > 1) {
-      // Cycle flavours across slots, then group by product
-      const byProduct = {}
-      plainGelSlots.forEach((slot, i) => {
-        const p = plainGels[i % plainGels.length]
-        if (!byProduct[p.id]) byProduct[p.id] = { product: p, slots: [] }
-        byProduct[p.id].slots.push(slot)
-      })
-      for (const { product, slots } of Object.values(byProduct)) {
-        selected.push({
-          product,
-          quantity:       slots.length,
-          timing_minutes: slots,
-          note:           duringNote,
-        })
-      }
-    } else {
-      selected.push({
-        product:        plainGels[0],
-        quantity:       plainGelSlots.length,
-        timing_minutes: plainGelSlots,
-        note:           duringNote,
-      })
-    }
-  }
-
-  // ── Caffeine gels ─────────────────────────────────────────────────────────
-
-  if (cafGelSlots.length > 0 && cafGels.length > 0) {
-    if (cafGels.length > 1) {
-      const byProduct = {}
-      cafGelSlots.forEach((slot, i) => {
-        const p = cafGels[i % cafGels.length]
-        if (!byProduct[p.id]) byProduct[p.id] = { product: p, slots: [] }
-        byProduct[p.id].slots.push(slot)
-      })
-      for (const { product, slots } of Object.values(byProduct)) {
-        selected.push({
-          product,
-          quantity:       slots.length,
-          timing_minutes: slots,
-          note:           `${duringNote} — caffeine boost`,
-        })
-      }
-    } else {
-      selected.push({
-        product:        cafGels[0],
-        quantity:       cafGelSlots.length,
-        timing_minutes: cafGelSlots,
-        note: `${duringNote} — caffeine boost at ${cafGelSlots.map(m => formatMin(m)).join(', ')}`,
-      })
-    }
+  // ── Build gel items based on what types are present ───────────────────────
+  if (ultraGels.length === 0) {
+    // Regular gels only — existing logic unchanged
+    buildRegularGelSection(
+      selected, total_carbs, regularGels, total_duration_minutes,
+      timingRules, caffeineRules, caffeine_ok
+    )
+  } else if (regularGels.length === 0) {
+    // Ultra gels only
+    buildUltraGelSection(
+      selected, total_carbs, ultraGels, total_duration_minutes, ultraGelRules
+    )
+  } else {
+    // Mixed: ultra gels anchor the plan, regular gels fill the gaps
+    buildMixedGelSection(
+      selected, total_carbs, ultraGels, regularGels, total_duration_minutes,
+      timingRules, caffeineRules, ultraGelRules, caffeine_ok
+    )
   }
 
   // ── Bars: placement depends on fuelling_style ────────────────────────────
-
   const fuelling_style = options.fuelling_style
 
   if (bars.length > 0) {
-    // Rotate through bar flavours across all positions
     let barIndex = 0
     const nextBar = () => {
       const b = bars[barIndex % bars.length]
@@ -186,7 +100,6 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
     }
 
     if (fuelling_style === 'gels_and_bars') {
-      // Before
       if (total_duration_minutes >= 60) {
         selected.push({
           product:        nextBar(),
@@ -195,7 +108,6 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
           note:           timingRules.before.note,
         })
       }
-      // During — one bar at ~40% for races ≥ 3h, a second at ~65% for races ≥ 6h
       if (total_duration_minutes >= 180) {
         selected.push({
           product:        nextBar(),
@@ -212,7 +124,6 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
           note:           timingRules.during.note,
         })
       }
-      // After
       selected.push({
         product:        nextBar(),
         quantity:       1,
@@ -220,7 +131,6 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
         note:           timingRules.after.note,
       })
     } else {
-      // Default: gels_only, flexible, drink_mix_base, or undefined — bars before + after only
       if (total_duration_minutes >= 60) {
         selected.push({
           product:        nextBar(),
@@ -238,8 +148,7 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
     }
   }
 
-  // ── Drink mix placeholder (drink_mix_base only) ───────────────────────────
-
+  // ── Drink mix placeholder ─────────────────────────────────────────────────
   if (fuelling_style === 'drink_mix_base') {
     selected.push({
       product: {
@@ -254,10 +163,6 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
   }
 
   // ── High-fat timing constraint ────────────────────────────────────────────
-  // High-fat products (e.g. Ultra Gel Banana Peanut Butter) slow gastric
-  // emptying. Assign them only to the first 75% of race duration; remove
-  // any slots in the final 25% where fast carb delivery is critical.
-
   const earlyThreshold = Math.round(total_duration_minutes * 0.75)
   for (const item of selected) {
     if (!item.product.high_fat) continue
@@ -274,13 +179,162 @@ export function selectProducts(targets, preferredProductIds = [], region = 'us',
   )
 }
 
+// ── Gel section builders ──────────────────────────────────────────────────────
+
+function buildRegularGelSection(selected, totalCarbs, regularGels, totalDurationMinutes, timingRules, caffeineRules, caffeine_ok) {
+  const gelSlots  = buildGelSlots(totalCarbs, regularGels, totalDurationMinutes, timingRules)
+  const duringNote = `First intake at ~${getFirstIntakeMin(totalDurationMinutes)} min, then every 30 min`
+  const useVariety = gelSlots.length >= 5
+
+  const plainGelPool = regularGels.filter(p => !p.caffeine)
+  const plainGels    = plainGelPool.length > 0 ? plainGelPool : regularGels
+  const cafGels      = regularGels.filter(p => p.caffeine)
+
+  const { plainSlots, cafSlots } = assignCaffeineSlots(
+    gelSlots, caffeine_ok, totalDurationMinutes, caffeineRules
+  )
+
+  addPlainGelItems(selected, plainGels, plainSlots, duringNote, useVariety)
+  addCafGelItems(selected, cafGels, cafSlots, duringNote)
+}
+
+function buildUltraGelSection(selected, totalCarbs, ultraGels, totalDurationMinutes, ultraGelRules) {
+  const firstIntake = getFirstIntakeMin(totalDurationMinutes)
+  const ultraSlots  = buildUltraGelSlots(totalCarbs, ultraGels, totalDurationMinutes, ultraGelRules)
+  if (!ultraSlots.length) return
+
+  const note = `${ultraGelRules.note} — first at ~${firstIntake} min, then every ${ultraGelRules.interval_min} min`
+
+  if (ultraGels.length > 1) {
+    const byProduct = {}
+    ultraSlots.forEach((slot, i) => {
+      const p = ultraGels[i % ultraGels.length]
+      if (!byProduct[p.id]) byProduct[p.id] = { product: p, slots: [] }
+      byProduct[p.id].slots.push(slot)
+    })
+    for (const { product, slots } of Object.values(byProduct)) {
+      selected.push({ product, quantity: slots.length, timing_minutes: slots, note })
+    }
+  } else {
+    selected.push({ product: ultraGels[0], quantity: ultraSlots.length, timing_minutes: ultraSlots, note })
+  }
+}
+
+function buildMixedGelSection(selected, totalCarbs, ultraGels, regularGels, totalDurationMinutes, timingRules, caffeineRules, ultraGelRules, caffeine_ok) {
+  const { ultraSlots, regSlots } = buildMixedGelSlots(
+    totalCarbs, ultraGels, regularGels, totalDurationMinutes, timingRules, ultraGelRules
+  )
+
+  // Ultra gel items
+  if (ultraSlots.length > 0) {
+    const firstIntake = getFirstIntakeMin(totalDurationMinutes)
+    const ultraNote = `${ultraGelRules.note} — first at ~${firstIntake} min, then every ${ultraGelRules.interval_min} min`
+    selected.push({ product: ultraGels[0], quantity: ultraSlots.length, timing_minutes: ultraSlots, note: ultraNote })
+  }
+
+  // Regular gel items (with caffeine logic)
+  if (regSlots.length > 0) {
+    const regNote = `First at ~${regSlots[0]} min, then every 30 min`
+    const plainGelPool = regularGels.filter(p => !p.caffeine)
+    const plainGels    = plainGelPool.length > 0 ? plainGelPool : regularGels
+    const cafGels      = regularGels.filter(p => p.caffeine)
+
+    const { plainSlots, cafSlots } = assignCaffeineSlots(
+      regSlots, caffeine_ok, totalDurationMinutes, caffeineRules
+    )
+
+    addPlainGelItems(selected, plainGels, plainSlots, regNote, regSlots.length >= 5)
+    addCafGelItems(selected, cafGels, cafSlots, regNote)
+  }
+}
+
+// ── Gel item helpers ──────────────────────────────────────────────────────────
+
+function addPlainGelItems(selected, plainGels, plainSlots, duringNote, useVariety) {
+  if (!plainSlots.length || !plainGels.length) return
+
+  if (useVariety && plainGels.length > 1) {
+    const byProduct = {}
+    plainSlots.forEach((slot, i) => {
+      const p = plainGels[i % plainGels.length]
+      if (!byProduct[p.id]) byProduct[p.id] = { product: p, slots: [] }
+      byProduct[p.id].slots.push(slot)
+    })
+    for (const { product, slots } of Object.values(byProduct)) {
+      selected.push({ product, quantity: slots.length, timing_minutes: slots, note: duringNote })
+    }
+  } else {
+    selected.push({ product: plainGels[0], quantity: plainSlots.length, timing_minutes: plainSlots, note: duringNote })
+  }
+}
+
+function addCafGelItems(selected, cafGels, cafSlots, duringNote) {
+  if (!cafSlots.length || !cafGels.length) return
+
+  if (cafGels.length > 1) {
+    const byProduct = {}
+    cafSlots.forEach((slot, i) => {
+      const p = cafGels[i % cafGels.length]
+      if (!byProduct[p.id]) byProduct[p.id] = { product: p, slots: [] }
+      byProduct[p.id].slots.push(slot)
+    })
+    for (const { product, slots } of Object.values(byProduct)) {
+      selected.push({ product, quantity: slots.length, timing_minutes: slots, note: `${duringNote} — caffeine boost` })
+    }
+  } else {
+    selected.push({
+      product:        cafGels[0],
+      quantity:       cafSlots.length,
+      timing_minutes: cafSlots,
+      note:           `${duringNote} — caffeine boost at ${cafSlots.map(m => formatMin(m)).join(', ')}`,
+    })
+  }
+}
+
+// ── Caffeine slot assignment ───────────────────────────────────────────────────
+
+function assignCaffeineSlots(gelSlots, caffeine_ok, totalDurationMinutes, caffeineRules) {
+  const firstCaffeineMin = Math.max(
+    caffeineRules.first_dose_offset_min,
+    totalDurationMinutes * (caffeineRules.first_dose_race_fraction ?? 0.4),
+  )
+
+  const plainSlots = []
+  const cafSlots   = []
+  let lastCaffeineDoseAt = -Infinity
+
+  for (const slot of gelSlots) {
+    const minutesSinceLast = slot - lastCaffeineDoseAt
+    const isCaffeineEligible =
+      caffeine_ok &&
+      slot >= firstCaffeineMin &&
+      minutesSinceLast >= 60 &&
+      (totalDurationMinutes - slot) >= 30
+
+    if (isCaffeineEligible) {
+      cafSlots.push(slot)
+      lastCaffeineDoseAt = slot
+    } else {
+      plainSlots.push(slot)
+    }
+  }
+
+  return { plainSlots, cafSlots }
+}
+
 // ── Default-selection helpers ─────────────────────────────────────────────────
 
 const GEL_DEFAULTS_CAFFEINE    = ['gel-passion-fruit', 'gel-coffee-cacao']
 const GEL_DEFAULTS_NO_CAFFEINE = ['gel-passion-fruit', 'gel-banana']
 const BAR_DEFAULT_ID           = 'bar-mango-coconut'
+const ULTRA_GEL_DEFAULT_ID     = 'ultra-gel-passion-fruit-mango'
 
-function resolveDefaultGels(availableProducts, caffeine_ok) {
+function resolveDefaultGels(availableProducts, caffeine_ok, isUltraGelRace) {
+  if (isUltraGelRace) {
+    const ultraGel = availableProducts.find(p => p.id === ULTRA_GEL_DEFAULT_ID)
+    if (ultraGel) return [ultraGel]
+  }
+
   const ids = caffeine_ok ? GEL_DEFAULTS_CAFFEINE : GEL_DEFAULTS_NO_CAFFEINE
   const defaults = ids.map(id => availableProducts.find(p => p.id === id)).filter(Boolean)
   if (defaults.length > 0) return defaults
@@ -295,46 +349,113 @@ function resolveDefaultBars(availableProducts) {
   return fallback ? [fallback] : []
 }
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+// ── Slot-building helpers ─────────────────────────────────────────────────────
 
 function getFirstIntakeMin(totalDurationMinutes) {
-  if (totalDurationMinutes < 60)  return 15  // very short: get carbs in early
-  if (totalDurationMinutes < 120) return 30  // under 2h: standard race start
-  if (totalDurationMinutes < 240) return 25  // marathon zone: slightly earlier
-  return 20                                   // ultra: front-load from 20 min
+  if (totalDurationMinutes < 60)  return 15
+  if (totalDurationMinutes < 120) return 30
+  if (totalDurationMinutes < 240) return 25
+  return 20
 }
 
 /**
- * Builds an array of gel timing slots whose combined carbs meet total_carbs.
- *
- * Quantity = ceil(total_carbs / avg_carbs_per_selected_gel).
- * Slots are spread evenly from first_intake_min to (total_duration_minutes - 1),
- * capped so no two consecutive slots are closer than min_interval_min apart.
+ * Builds ultra gel slots at ultraGelRules.interval_min spacing.
+ * Count = ceil(totalCarbs / avgCarbsPerUltraGel), capped by race window.
+ */
+function buildUltraGelSlots(totalCarbs, ultraGels, totalDurationMinutes, ultraGelRules) {
+  const firstIntake = getFirstIntakeMin(totalDurationMinutes)
+  const interval    = ultraGelRules.interval_min
+
+  if (ultraGels.length === 0 || totalCarbs <= 0 || firstIntake >= totalDurationMinutes) return []
+
+  const avgCarbs    = ultraGels.reduce((s, g) => s + g.carbs_per_unit, 0) / ultraGels.length
+  const slotsNeeded = Math.ceil(totalCarbs / avgCarbs)
+  const maxSlots    = Math.floor((totalDurationMinutes - 1 - firstIntake) / interval) + 1
+  const n           = Math.max(1, Math.min(slotsNeeded, maxSlots))
+
+  if (n === 1) return [firstIntake]
+  const lastSlot = totalDurationMinutes - 1
+  return Array.from({ length: n }, (_, i) =>
+    Math.round(firstIntake + (i * (lastSlot - firstIntake)) / (n - 1))
+  )
+}
+
+/**
+ * Builds an array of regular gel timing slots.
+ * Quantity = ceil(totalCarbs / avg carbs per gel).
+ * Slots spread evenly from first_intake to race end at min_interval spacing.
  */
 function buildGelSlots(totalCarbs, selectedGels, totalDurationMinutes, timingRules) {
   const firstIntake = getFirstIntakeMin(totalDurationMinutes)
   const minInterval = timingRules.during.min_interval_min
 
-  if (selectedGels.length === 0 || totalCarbs <= 0 || firstIntake >= totalDurationMinutes) {
-    return []
-  }
+  if (selectedGels.length === 0 || totalCarbs <= 0 || firstIntake >= totalDurationMinutes) return []
 
-  // Average carbs per slot — gels are rotated round-robin so this is correct.
   const avgCarbsPerSlot = selectedGels.reduce((sum, g) => sum + g.carbs_per_unit, 0) / selectedGels.length
-
-  const slotsNeeded = Math.ceil(totalCarbs / avgCarbsPerSlot)
-
-  // How many slots physically fit at min spacing within the race window.
-  const maxSlots = Math.floor((totalDurationMinutes - 1 - firstIntake) / minInterval) + 1
-
-  const n = Math.max(1, Math.min(slotsNeeded, maxSlots))
+  const slotsNeeded     = Math.ceil(totalCarbs / avgCarbsPerSlot)
+  const maxSlots        = Math.floor((totalDurationMinutes - 1 - firstIntake) / minInterval) + 1
+  const n               = Math.max(1, Math.min(slotsNeeded, maxSlots))
 
   if (n === 1) return [firstIntake]
-
   const lastSlot = totalDurationMinutes - 1
   return Array.from({ length: n }, (_, i) =>
     Math.round(firstIntake + (i * (lastSlot - firstIntake)) / (n - 1))
   )
+}
+
+/**
+ * Builds interleaved slots for a mixed ultra gel + regular gel plan.
+ *
+ * Strategy: ultra gels anchor ~70% of carb target at 50-min intervals;
+ * regular gels fill the remainder by slotting into the midpoints between
+ * consecutive ultra gel slots, then continuing after the last ultra gel.
+ *
+ * Returns { ultraSlots, regSlots } — both as arrays of minute values.
+ */
+function buildMixedGelSlots(totalCarbs, ultraGels, regularGels, totalDurationMinutes, timingRules, ultraGelRules) {
+  const firstIntake   = getFirstIntakeMin(totalDurationMinutes)
+  const ultraInterval = ultraGelRules.interval_min          // 50 min
+  const minGap        = timingRules.during.min_interval_min // 20 min
+  const regInterval   = timingRules.during.interval_min     // 30 min
+
+  const avgUltraCarbs = ultraGels.reduce((s, g) => s + g.carbs_per_unit, 0) / ultraGels.length
+  const avgRegCarbs   = regularGels.reduce((s, g) => s + g.carbs_per_unit, 0) / regularGels.length
+
+  // Ultra gels cover ~70% of total carbs
+  const ultraTarget   = totalCarbs * 0.70
+  const maxUltraSlots = Math.floor((totalDurationMinutes - 1 - firstIntake) / ultraInterval) + 1
+  const ultraCount    = Math.max(1, Math.min(Math.ceil(ultraTarget / avgUltraCarbs), maxUltraSlots))
+
+  const ultraSlots = Array.from({ length: ultraCount }, (_, i) =>
+    Math.round(firstIntake + i * ultraInterval)
+  ).filter(t => t < totalDurationMinutes)
+
+  // Remaining carbs go to regular gels
+  const ultraCarbs      = ultraSlots.length * avgUltraCarbs
+  let remainingCarbs    = Math.max(0, totalCarbs - ultraCarbs)
+  const regSlots        = []
+
+  // First: fill midpoints between consecutive ultra slots
+  for (let i = 0; i < ultraSlots.length - 1 && remainingCarbs > 0; i++) {
+    const mid = Math.round((ultraSlots[i] + ultraSlots[i + 1]) / 2)
+    if (mid - ultraSlots[i] >= minGap && ultraSlots[i + 1] - mid >= minGap) {
+      regSlots.push(mid)
+      remainingCarbs -= avgRegCarbs
+    }
+  }
+
+  // Then: continue after the last ultra slot at regInterval spacing
+  if (remainingCarbs > 0) {
+    const lastUltra = ultraSlots.length > 0 ? ultraSlots[ultraSlots.length - 1] : firstIntake - regInterval
+    let regT = lastUltra + regInterval
+    while (regT < totalDurationMinutes && remainingCarbs > 0) {
+      regSlots.push(regT)
+      remainingCarbs -= avgRegCarbs
+      regT += regInterval
+    }
+  }
+
+  return { ultraSlots, regSlots }
 }
 
 function formatMin(minutes) {

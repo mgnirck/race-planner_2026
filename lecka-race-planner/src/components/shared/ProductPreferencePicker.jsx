@@ -26,6 +26,9 @@ function ProductPreferenceCard({ product, selected, onToggle, caffeineOk, t }) {
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
               <span className="text-xs text-gray-400">{t('form:product.carbs', { value: product.carbs_per_unit })}</span>
               <span className="text-xs text-gray-400">{t('form:product.sodium', { value: product.sodium_per_unit })}</span>
+              {product.type === 'ultra_gel' && product.net_weight_g && (
+                <span className="text-xs text-gray-400">{product.net_weight_g}g pack</span>
+              )}
               {product.caffeine && (
                 <span className="text-xs font-medium text-[#48C4B0]">{t('form:product.caffeine', { value: product.caffeine_mg })}</span>
               )}
@@ -57,11 +60,34 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
   const { t } = useTranslation(['form', 'common'])
   const { products: liveProducts } = useProducts()
   const products = liveProducts ?? FALLBACK_PRODUCTS
-  const gels = products.filter(p => p.type === 'gel' && isAvailableInRegion(p, region))
-  const bars = products.filter(p => p.type === 'bar' && isAvailableInRegion(p, region))
+  const ultraGels = products.filter(p => p.type === 'ultra_gel' && isAvailableInRegion(p, region))
+  const gels      = products.filter(p => p.type === 'gel'       && isAvailableInRegion(p, region))
+  const bars      = products.filter(p => p.type === 'bar'       && isAvailableInRegion(p, region))
 
   return (
     <div className="space-y-6">
+
+      {/* Ultra Gels — shown above regular gels */}
+      {ultraGels.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Ultra Gels</p>
+          <p className="text-xs text-gray-400 mb-3">Large format, real food. Best for ultra events and marathons over 4 hours.</p>
+          <div className="space-y-2">
+            {ultraGels.map(gel => (
+              <ProductPreferenceCard
+                key={gel.id}
+                product={gel}
+                selected={preferredProductIds.includes(gel.id)}
+                onToggle={() => onToggle(gel.id)}
+                caffeineOk={caffeineOk}
+                t={t}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Regular Gels */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Gels</p>
         <div className="space-y-2">
@@ -77,6 +103,8 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
           ))}
         </div>
       </div>
+
+      {/* Bars */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Bars</p>
         <div className="space-y-2">
@@ -92,6 +120,7 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
           ))}
         </div>
       </div>
+
     </div>
   )
 }
