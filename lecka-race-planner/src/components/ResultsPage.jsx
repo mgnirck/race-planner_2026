@@ -28,6 +28,8 @@ import { formatAddonSummary } from '../engine/kit-calculator.js'
 import ShareModal from './ShareModal.jsx'
 import PlanLeftColumn from './PlanLeftColumn.jsx'
 import PlanRightColumn from './PlanRightColumn.jsx'
+import PlanProductEditor from './PlanProductEditor.jsx'
+import GutTrainingTab from './GutTrainingTab.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -514,22 +516,6 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage 
           </p>
         )}
 
-        {/* Carry strategy tip */}
-        {(() => {
-          const f = targets.fluid_ml_per_hour
-          const d = targets.total_duration_minutes
-          let key
-          if (d > 300)           key = 'nutrition.carry.vest2'
-          else if (f > 500 && d > 120) key = 'nutrition.carry.vest1_5'
-          else if (f > 500)      key = 'nutrition.carry.twoBottles'
-          else if (d > 90)       key = 'nutrition.carry.softFlask'
-          else                   key = 'nutrition.carry.singleBottle'
-          return (
-            <div className="border-l-4 border-[#48C4B0] pl-3 py-1">
-              <p className="text-sm text-gray-600">{t(key)}</p>
-            </div>
-          )
-        })()}
       </div>
       <p className="text-xs text-gray-400 text-center mt-2">
         Numbers are personalised to your weight, conditions, and training level.
@@ -599,223 +585,85 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, cur
   )
 }
 
-// ── RaceTimeline ──────────────────────────────────────────────────────────────
+// ── RaceTimelineV2 ────────────────────────────────────────────────────────────
 
-/**
- * Visual fuel bar — shows each gel as a dot along the race duration track.
- * Works well for any race length; a 14-hour ultra simply has closely-spaced dots.
- */
-function FuelBar({ events, totalDuration }) {
+function RaceTimelineV2({ events, totalDuration }) {
   const { t } = useTranslation('results')
-  const duringEvents = events.filter(e => e.phase === 'during')
-  const hasCaf       = duringEvents.some(e => e.product.caffeine)
-
-  return (
-    <div>
-      <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-        <span>{t('timeline.start')}</span>
-        <span>{t('timeline.finish', { duration: formatDuration(totalDuration) })}</span>
-      </div>
-
-      {/* Track */}
-      <div className="relative h-4 mx-0.5">
-        {/* Background rail */}
-        <div className="absolute inset-y-[5px] inset-x-0 bg-gray-100 rounded-full" />
-        {/* Coloured fill */}
-        <div className="absolute inset-y-[5px] inset-x-0 bg-gradient-to-r from-[#48C4B0]/30 to-[#48C4B0]/10 rounded-full" />
-
-        {/* Gel dots */}
-        {duringEvents.map((ev, i) => {
-          const pct = Math.min(Math.max((ev.time / totalDuration) * 100, 1), 99)
-          return (
-            <div
-              key={i}
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2
-                         w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm"
-              style={{
-                left:            `${pct}%`,
-                backgroundColor: ev.product.caffeine ? '#1B1B1B' : '#48C4B0',
-                zIndex:          1,
-              }}
-            />
-          )
-        })}
-
-        {/* Start marker */}
-        <div className="absolute left-0 top-1/2 -translate-y-1/2
-                        w-3 h-3 rounded-full bg-[#48C4B0] border-2 border-white" style={{ zIndex: 2 }} />
-        {/* Finish marker */}
-        <div className="absolute right-0 top-1/2 -translate-y-1/2
-                        w-3 h-3 rounded-full bg-gray-300 border-2 border-white" style={{ zIndex: 2 }} />
-      </div>
-
-      {/* Legend */}
-      {hasCaf && (
-        <div className="flex gap-4 mt-2 justify-end">
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-[#48C4B0]" />
-            <span className="text-xs text-gray-400">{t('timeline.gel')}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-[#1B1B1B]" />
-            <span className="text-xs text-gray-400">{t('timeline.caffeineGel')}</span>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-const PHASE_BADGE = {
-  before: 'bg-[#48C4B0]/10 text-[#48C4B0]',
-  during: 'bg-[#48C4B0]/20 text-[#1B1B1B]',
-  after:  'bg-gray-100 text-gray-500',
-}
-
-function TimelineRow({ event, totalDuration, isLast }) {
-  const { t } = useTranslation('results')
-  const badgeClass = event.isAddon ? 'bg-gray-100 text-gray-500' : PHASE_BADGE[event.phase]
-  return (
-    <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
-      <div className="w-24 flex-shrink-0 pt-0.5">
-        <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
-                          whitespace-nowrap ${badgeClass}`}>
-          {formatTimingLabel(event.time, totalDuration, t)}
-        </span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">
-          {event.isAddon
-            ? (event.product.display_name ?? event.product.name)
-            : event.product.name}
-        </p>
-        <p className="text-xs text-gray-400 mt-0.5 leading-snug">{event.note}</p>
-      </div>
-    </div>
-  )
-}
-
-function DuringGroupRow({ group, isLast }) {
-  const { t } = useTranslation('results')
-  const badgeClass = group.isAddon ? 'bg-gray-100 text-gray-500' : PHASE_BADGE.during
-  return (
-    <div className={`flex items-start gap-4 px-5 py-3 ${!isLast ? 'border-b border-gray-100' : ''}`}>
-      <div className="w-24 flex-shrink-0 pt-0.5">
-        <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full
-                          whitespace-nowrap ${badgeClass}`}>
-          ×{group.count}
-        </span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">
-          {group.isAddon
-            ? (group.product.display_name ?? group.product.name)
-            : group.product.name}
-        </p>
-        <p className="text-xs text-gray-400 mt-0.5">{group.scheduleText}</p>
-        {!group.isAddon && group.product.caffeine && (
-          <span className="text-xs font-medium text-[#48C4B0]">+ {t('hero.caffeineTag').toLowerCase()}</span>
-        )}
-        {group.isAddon && (
-          <span className="text-xs text-gray-400 italic">Add-on — buy separately</span>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function RaceStartDivider() {
-  const { t } = useTranslation('results')
-  return (
-    <div className="flex items-center gap-3 px-5 py-2 bg-[#48C4B0]/5">
-      <div className="flex-1 h-px bg-[#48C4B0]/30" />
-      <span className="text-xs font-semibold text-[#48C4B0] uppercase tracking-wider whitespace-nowrap">
-        {t('timeline.raceStart')}
-      </span>
-      <div className="flex-1 h-px bg-[#48C4B0]/30" />
-    </div>
-  )
-}
-
-function FinishDivider({ totalDuration }) {
-  const { t } = useTranslation('results')
-  return (
-    <div className="flex items-center gap-3 px-5 py-2 bg-gray-50">
-      <div className="flex-1 h-px bg-gray-200" />
-      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
-        {t('timeline.finishLine', { duration: formatDuration(totalDuration) })}
-      </span>
-      <div className="flex-1 h-px bg-gray-200" />
-    </div>
-  )
-}
-
-/**
- * Compact timeline that works for any race length.
- * - Visual fuel bar at top shows gel density across the race.
- * - "During" events are always shown grouped by product + schedule pattern
- *   (e.g. "every 30 min from 20 min × 14") instead of individual rows.
- * - Before / After retain individual rows (typically 1–2 items each).
- */
-function RaceTimeline({ events, totalDuration }) {
-  const { t } = useTranslation('results')
-  if (events.length === 0) return null
+  if (!events.length) return null
 
   const beforeEvents = events.filter(e => e.phase === 'before')
   const duringEvents = events.filter(e => e.phase === 'during')
   const afterEvents  = events.filter(e => e.phase === 'after')
   const duringGroups = buildDuringGroups(duringEvents, t)
 
-  return (
-    <section>
-      <SectionLabel>{t('section.raceTimeline')}</SectionLabel>
+  const PhaseHeader = ({ phase }) => (
+    <div className="flex items-center gap-2 mt-4 mb-2 first:mt-0">
+      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+        phase === 'during' ? 'bg-[#48C4B0]' : 'bg-gray-300'
+      }`} />
+      <span className="text-[10px] font-semibold tracking-widest uppercase text-gray-400">
+        {phase === 'before' ? t('timeline.preRace')
+         : phase === 'during' ? t('timeline.duringRace')
+         : t('timeline.postRace')}
+      </span>
+    </div>
+  )
 
-      {/* Visual fuel bar */}
-      {duringEvents.length > 0 && (
-        <div className="mb-5">
-          <FuelBar events={events} totalDuration={totalDuration} />
-        </div>
-      )}
-
-      {/* Phase list */}
-      <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
-
-        {/* Before */}
-        {beforeEvents.map((ev, i) => (
-          <TimelineRow
-            key={`b${i}`}
-            event={ev}
-            totalDuration={totalDuration}
-            isLast={false}
-          />
-        ))}
-
-        {/* Race start divider */}
-        <RaceStartDivider />
-
-        {/* During — grouped */}
-        {duringGroups.map((group, i) => (
-          <DuringGroupRow
-            key={`d${i}`}
-            group={group}
-            isLast={i === duringGroups.length - 1 && afterEvents.length === 0}
-          />
-        ))}
-
-        {/* Finish divider */}
-        {afterEvents.length > 0 && <FinishDivider totalDuration={totalDuration} />}
-
-        {/* After */}
-        {afterEvents.map((ev, i) => (
-          <TimelineRow
-            key={`a${i}`}
-            event={ev}
-            totalDuration={totalDuration}
-            isLast={i === afterEvents.length - 1}
-          />
-        ))}
+  const EventRow = ({ event }) => (
+    <div className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0">
+      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${
+        event.phase === 'before'
+          ? 'bg-[#E1F5EE] text-[#085041]'
+          : 'bg-gray-100 text-gray-400'
+      }`}>
+        {formatTimingLabel(event.time, totalDuration, t)}
+      </span>
+      <ProductIcon product={event.product} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-[#1B1B1B]">{event.product.name}</p>
+        <p className="text-[10px] text-gray-400">{event.note}</p>
       </div>
-    </section>
+    </div>
+  )
+
+  const DuringRow = ({ group }) => (
+    <div className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0">
+      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap
+                       bg-gray-100 text-gray-500">
+        ×{group.count}
+      </span>
+      <ProductIcon product={group.product} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-[#1B1B1B]">{group.product.name}</p>
+        <p className="text-[10px] text-gray-400">{group.scheduleText}</p>
+        {group.isAddon && (
+          <span className="text-[10px] text-gray-400 italic">Add-on — buy separately</span>
+        )}
+      </div>
+    </div>
+  )
+
+  return (
+    <div>
+      {beforeEvents.length > 0 && (
+        <>
+          <PhaseHeader phase="before" />
+          {beforeEvents.map((ev, i) => <EventRow key={`b${i}`} event={ev} />)}
+        </>
+      )}
+      {duringGroups.length > 0 && (
+        <>
+          <PhaseHeader phase="during" />
+          {duringGroups.map((g, i) => <DuringRow key={`d${i}`} group={g} />)}
+        </>
+      )}
+      {afterEvents.length > 0 && (
+        <>
+          <PhaseHeader phase="after" />
+          {afterEvents.map((ev, i) => <EventRow key={`a${i}`} event={ev} />)}
+        </>
+      )}
+    </div>
   )
 }
 
@@ -1156,185 +1004,6 @@ function ResearchModal({ onClose }) {
   )
 }
 
-// ── CartEditorModal ───────────────────────────────────────────────────────────
-
-function CartEditorModal({ region, aggregated, manualQty, setManualQty, onClose, regionConfig, provided, targets, catalog }) {
-  const { t } = useTranslation(['results', 'form'])
-  const availableProducts = useMemo(() => {
-    const all = catalog ?? FALLBACK_PRODUCTS
-    return all.filter(p =>
-      p.type === 'gel'       ? isAvailableInRegion(p, region) :
-      p.type === 'ultra_gel' ? true :   // always show ultra gels regardless of region data
-      p.type === 'bar'       ? isAvailableInRegion(p, region) :
-      false
-    )
-  }, [catalog, region])
-
-  function getCurrentQty(productId) {
-    if (manualQty !== null && productId in manualQty) return manualQty[productId]
-    const row = aggregated.find(r => r.product.id === productId)
-    return row ? row.totalUnits : 0
-  }
-
-  function handleChange(productId, delta) {
-    const next = Math.max(0, getCurrentQty(productId) + delta)
-    setManualQty(prev => ({ ...(prev ?? {}), [productId]: next }))
-  }
-
-  useEffect(() => {
-    const onKey = e => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-    }
-  }, [onClose])
-
-  const gels      = availableProducts.filter(p => p.type === 'gel')
-  const ultraGels = availableProducts.filter(p => p.type === 'ultra_gel')
-  const bars      = availableProducts.filter(p => p.type === 'bar')
-
-  function ProductRow({ product }) {
-    const qty = getCurrentQty(product.id)
-    return (
-      <div className="flex items-center gap-3 py-2">
-        <ProductIcon product={product} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">{product.name}</p>
-          <p className="text-xs text-gray-400">
-            {t('form:product.carbs', { value: product.carbs_per_unit })}
-            {product.caffeine ? ` · ${t('form:product.caffeine', { value: product.caffeine_mg })}` : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            type="button"
-            onClick={() => handleChange(product.id, -1)}
-            disabled={qty === 0}
-            className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center
-                       text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors
-                       disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none"
-          >−</button>
-          <span className="w-6 text-center text-sm font-bold text-[#1B1B1B]">{qty}</span>
-          <button
-            type="button"
-            onClick={() => handleChange(product.id, +1)}
-            className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center
-                       text-gray-500 hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors text-lg leading-none"
-          >+</button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div
-        className="bg-white w-full sm:max-w-lg sm:mx-4 sm:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col"
-        style={{ maxHeight: '85vh' }}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-          <div>
-            <h2 className="text-base font-bold text-[#1B1B1B]">{t('adjust.title')}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{t('adjust.subtitle')}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full
-                       bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors text-lg leading-none"
-            aria-label="Close"
-          >×</button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
-          {gels.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.gels')}</p>
-              <div className="space-y-1">
-                {gels.map(p => <ProductRow key={p.id} product={p} />)}
-              </div>
-            </div>
-          )}
-          {ultraGels.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.ultra_gels')}</p>
-              <div className="space-y-1">
-                {ultraGels.map(p => <ProductRow key={p.id} product={p} />)}
-              </div>
-            </div>
-          )}
-          {bars.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">{t('adjust.bars')}</p>
-              <div className="space-y-1">
-                {bars.map(p => <ProductRow key={p.id} product={p} />)}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Nutrition match bar */}
-        <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/60 flex-shrink-0">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2.5">{t('nutrition.provided')}</p>
-          <div className="space-y-2.5">
-            {[
-              { label: t('nutrition.carbsShort'), prov: provided.carbs_per_hour_provided, target: targets.carb_per_hour, unit: 'g/h' },
-              { label: t('nutrition.sodiumShort'), prov: provided.sodium_per_hour_provided, target: targets.sodium_per_hour, unit: 'mg/h' },
-            ].map(({ label, prov, target, unit }) => {
-              const fillPct = target > 0 ? Math.min(130, Math.round((prov / target) * 100)) : 0
-              const barColor = fillPct >= 90 && fillPct <= 110 ? '#48C4B0'
-                : fillPct < 75  ? '#ef4444'
-                : fillPct < 90  ? '#f59e0b'
-                : '#3b82f6'
-              return (
-                <div key={label}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-500">{label}</span>
-                    <span className="font-semibold text-[#1B1B1B]">{prov} / {target} {unit}</span>
-                  </div>
-                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(fillPct, 100)}%`, backgroundColor: barColor }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0 space-y-2">
-          {manualQty !== null && (
-            <button
-              type="button"
-              onClick={() => setManualQty(null)}
-              className="w-full min-h-[44px] border-2 border-gray-200 text-gray-500 rounded-xl
-                         text-sm font-semibold hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
-            >
-              {t('adjust.reset')}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full min-h-[52px] bg-[#48C4B0] hover:bg-[#3db09d] text-white rounded-xl
-                       text-sm font-bold transition-colors"
-          >
-            {t('adjust.done')}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── CoachNotes (Pro) ──────────────────────────────────────────────────────────
 
 const PRO_COACH_TTL_MS = 24 * 60 * 60 * 1000
@@ -1516,7 +1185,7 @@ function TrainingAccordion({ trainingInfo, t }) {
   )
 }
 
-// ── CheckpointsTab ────────────────────────────────────────────────────────────
+// ── Race distance constant ─────────────────────────────────────────────────────
 
 const RACE_DISTANCE_KM = {
   '5k': 5, '10k': 10, 'half_marathon': 21.1, 'marathon': 42.2,
@@ -1524,258 +1193,14 @@ const RACE_DISTANCE_KM = {
   'triathlon_70_3': 113, 'triathlon_140_6': 226,
 }
 
-function newCp() {
-  return { id: `cp-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: '', distance: '', elevation: '' }
-}
-
-function cpEstTime(segKm, segElevM, totalKm, totalMins) {
-  if (!segKm || !totalKm || !totalMins) return null
-  const pace = totalMins / totalKm
-  const penalty = (segElevM ?? 0) / 10
-  return Math.round(segKm * pace + penalty)
-}
-
-function cpSegNutrition(estMins, targets) {
-  if (!estMins || !targets) return null
-  const h = estMins / 60
-  return {
-    carbs:  Math.round(targets.carb_per_hour  * h),
-    sodium: Math.round(targets.sodium_per_hour * h),
-    fluid:  Math.round(targets.fluid_ml_per_hour * h),
-  }
-}
-
-function CheckpointsTab({ planId, isLoggedIn, targets, form, selection = [] }) {
-  const storageKey = planId ? `lecka_checkpoints_${planId}` : null
-  const [checkpoints, setCheckpoints] = useState(() => {
-    try {
-      if (storageKey) {
-        const raw = localStorage.getItem(storageKey)
-        if (raw) return JSON.parse(raw).checkpoints ?? []
-      }
-    } catch {}
-    return []
-  })
-  const [cpProducts, setCpProducts] = useState(() => {
-    try {
-      if (storageKey) {
-        const raw = localStorage.getItem(storageKey)
-        if (raw) return JSON.parse(raw).cpProducts ?? {}
-      }
-    } catch {}
-    return {}
-  })
-
-  const totalKm   = form?.custom_race_km > 0 ? form.custom_race_km : (RACE_DISTANCE_KM[targets?.race_type] ?? 0)
-  const totalMins = targets?.total_duration_minutes ?? 0
-
-  const planProducts = selection.filter(i => i.product?.name).map(i => i.product.name)
-
-  useEffect(() => {
-    if (!storageKey) return
-    try { localStorage.setItem(storageKey, JSON.stringify({ checkpoints, cpProducts })) } catch {}
-  }, [checkpoints, cpProducts, storageKey])
-
-  function addCp() { setCheckpoints(prev => [...prev, newCp()]) }
-  function removeCp(id) {
-    setCheckpoints(prev => prev.filter(c => c.id !== id))
-    setCpProducts(prev => { const n = { ...prev }; delete n[id]; return n })
-  }
-  function updateCp(id, patch) { setCheckpoints(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c)) }
-  function toggleCpProduct(cpId, productName) {
-    setCpProducts(prev => {
-      const existing = prev[cpId] ?? []
-      const next = existing.includes(productName)
-        ? existing.filter(p => p !== productName)
-        : [...existing, productName]
-      return { ...prev, [cpId]: next }
-    })
-  }
-
-  // Build segments: [start, ...checkpoints, finish]
-  const points = [
-    { id: '__start', name: 'Start', distance: 0, elevation: 0, _fixed: true },
-    ...checkpoints,
-    { id: '__finish', name: 'Finish', distance: totalKm > 0 ? totalKm : null, elevation: 0, _fixed: true },
-  ]
-
-  const segments = points.slice(0, -1).map((from, i) => {
-    const to = points[i + 1]
-    const fromKm = parseFloat(from.distance) || 0
-    const toKm   = parseFloat(to.distance)   || 0
-    const segKm  = toKm - fromKm
-    const segElev = parseFloat(to.elevation) || 0
-    const estMins = cpEstTime(segKm, segElev, totalKm, totalMins)
-    const nutrition = cpSegNutrition(estMins, targets)
-    return { from, to, segKm: segKm > 0 ? segKm : null, segElev, estMins, nutrition }
-  })
-
-  return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold text-[#1B1B1B]">Checkpoint planner</p>
-          {totalKm > 0 && (
-            <p className="text-xs text-gray-400">{totalKm} km · {checkpoints.length} checkpoint{checkpoints.length !== 1 ? 's' : ''}</p>
-          )}
-        </div>
-        <button type="button" onClick={addCp}
-          className="px-4 py-2 rounded-xl border-2 border-[#48C4B0] text-[#48C4B0] text-sm font-semibold
-                     hover:bg-[#48C4B0]/5 transition-colors">
-          + Add checkpoint
-        </button>
-      </div>
-
-      {!storageKey && (
-        <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
-          {isLoggedIn ? 'Save your plan to persist checkpoints across sessions.' : 'Log in and save your plan to keep checkpoints.'}
-        </div>
-      )}
-
-      {/* Segment list */}
-      <div className="space-y-2">
-        {segments.map((seg, i) => {
-          const isLast = i === segments.length - 1
-          const cp = checkpoints[i] // undefined for start→first and last→finish
-          const isFirstSeg = i === 0
-          const isLastSeg = isLast
-
-          return (
-            <div key={`${seg.from.id}-${seg.to.id}`}>
-              {/* Checkpoint row (editable) — for each non-fixed waypoint */}
-              {!seg.from._fixed && (
-                <div className="rounded-xl border-2 border-[#48C4B0] bg-[#48C4B0]/5 px-4 py-3 mb-2">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Checkpoint name"
-                        value={seg.from.name}
-                        onChange={e => updateCp(seg.from.id, { name: e.target.value })}
-                        className="w-full border-b border-[#48C4B0]/30 bg-transparent text-sm font-medium
-                                   text-[#1B1B1B] placeholder-gray-300 focus:outline-none focus:border-[#48C4B0]"
-                      />
-                      <div className="flex gap-3">
-                        <label className="flex-1">
-                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">km mark</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max={totalKm || 999}
-                            step="0.1"
-                            placeholder="—"
-                            value={seg.from.distance}
-                            onChange={e => updateCp(seg.from.id, { distance: e.target.value })}
-                            className="w-full mt-0.5 border-b border-gray-200 bg-transparent text-sm
-                                       focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
-                          />
-                        </label>
-                        <label className="flex-1">
-                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">elev gain (m)</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="10"
-                            placeholder="—"
-                            value={seg.from.elevation}
-                            onChange={e => updateCp(seg.from.id, { elevation: e.target.value })}
-                            className="w-full mt-0.5 border-b border-gray-200 bg-transparent text-sm
-                                       focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
-                          />
-                        </label>
-                      </div>
-                    </div>
-                    <button type="button" onClick={() => removeCp(seg.from.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-full bg-white border-2
-                                 border-gray-200 text-gray-400 hover:border-red-300 hover:text-red-400
-                                 transition-colors text-sm leading-none flex-shrink-0">
-                      ×
-                    </button>
-                  </div>
-                  {planProducts.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-[#48C4B0]/20">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Products at this checkpoint</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {planProducts.map(name => {
-                          const checked = (cpProducts[seg.from.id] ?? []).includes(name)
-                          return (
-                            <button
-                              key={name}
-                              type="button"
-                              onClick={() => toggleCpProduct(seg.from.id, name)}
-                              className={[
-                                'text-xs px-2.5 py-1 rounded-full border font-medium transition-colors',
-                                checked
-                                  ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                                  : 'border-gray-200 text-gray-500 hover:border-[#48C4B0]',
-                              ].join(' ')}
-                            >
-                              {name}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Segment info */}
-              <div className="flex items-center gap-3 px-1">
-                <div className="flex flex-col items-center gap-1">
-                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${seg.from._fixed ? 'bg-gray-400' : 'bg-[#48C4B0]'}`} />
-                  {!isLastSeg && <div className="w-px flex-1 bg-gray-200" style={{ minHeight: '24px' }} />}
-                </div>
-                <div className="flex-1 pb-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-medium text-gray-500">
-                      {seg.from._fixed ? seg.from.name : (seg.from.name || 'Checkpoint')}
-                    </span>
-                    {seg.segKm !== null && seg.segKm > 0 && (
-                      <span className="text-xs text-gray-400">{seg.segKm.toFixed(1)} km</span>
-                    )}
-                    {seg.estMins && (
-                      <span className="text-xs text-gray-400">~{seg.estMins >= 60 ? `${Math.floor(seg.estMins/60)}h${seg.estMins%60 ? `${seg.estMins%60}m` : ''}` : `${seg.estMins}m`}</span>
-                    )}
-                  </div>
-                  {seg.nutrition && (
-                    <div className="flex gap-3 mt-1">
-                      <span className="text-xs font-medium text-[#48C4B0]">{seg.nutrition.carbs}g carbs</span>
-                      <span className="text-xs text-gray-400">{seg.nutrition.sodium}mg sodium</span>
-                      <span className="text-xs text-gray-400">{seg.nutrition.fluid}ml fluid</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Finish marker */}
-        <div className="flex items-center gap-3 px-1">
-          <div className="w-2.5 h-2.5 rounded-full bg-gray-800 flex-shrink-0" />
-          <span className="text-xs font-medium text-gray-500">Finish{totalKm > 0 ? ` (${totalKm} km)` : ''}</span>
-        </div>
-      </div>
-
-      {checkpoints.length === 0 && (
-        <p className="text-xs text-gray-400 text-center py-4">
-          Add checkpoints to see segment nutrition breakdowns.
-        </p>
-      )}
-
-    </div>
-  )
-}
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function ResultsPage({ targets, foundationTargets, selection, addonCoverage, resolvedAddonItems = [], form, onBack, region: regionProp, hideSave = false, isPublicView = false, planId: planIdProp = null }) {
   const { t } = useTranslation(['results', 'common'])
   const [showResearch,   setShowResearch]   = useState(false)
-  const [showCartEditor, setShowCartEditor] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [addonOverrides, setAddonOverrides] = useState({})
   const [region,         setRegion]         = useState(regionProp ?? getSavedRegion())
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
@@ -2104,6 +1529,10 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     setCoachRetryKey(k => k + 1)
   }
 
+  function handleAddonChange(productId, qty) {
+    setAddonOverrides(prev => ({ ...prev, [productId]: qty }))
+  }
+
   // Prefer athlete's race name → triathlon type label (if triathlon) → distance typed → race_type label
   const heroTitle      = form.race_name ||
     (form.sport === 'triathlon' ? getRaceLabel(t, targets.race_type) : null) ||
@@ -2117,112 +1546,6 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
   const [mobileTab, setMobileTab] = useState('products')
   const htmlContent = useMemo(() => markdownToHtml(researchMarkdown), [])
-
-  // Shared JSX fragments used in both mobile and desktop layouts
-  const whatToTakeSection = (
-    <>
-      <SectionLabel>
-        {form.fuelling_style === 'gels_only'      ? 'Your gels'
-         : form.fuelling_style === 'gels_and_bars' ? 'Your gels and bars'
-         : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
-         : 'What to take'}
-      </SectionLabel>
-      {form.fuelling_style === 'drink_mix_base' && (
-        <p className="text-sm text-gray-500 -mt-2 mb-3">
-          Your plan uses gels as your primary fuel. The Lecka carb + hydration powder will
-          replace some of these gel slots when it launches —{' '}
-          <a href="https://www.getlecka.com" className="text-[#48C4B0] underline hover:text-[#3db09d]">
-            join the waitlist
-          </a>{' '}
-          to be notified.
-        </p>
-      )}
-      {regionType !== 'international' && aggregated.length === 0 ? (
-        <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
-          We couldn&apos;t find products available in your region for this plan.
-          Try switching your region below, or contact us at{' '}
-          <a href="mailto:info@getlecka.com" className="text-[#48C4B0] underline">
-            info@getlecka.com
-          </a>.
-        </div>
-      ) : (
-        <>
-          <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
-            {gapSelection.map((item, i) => (
-              <div
-                key={item.product.id + i}
-                className={`flex items-center gap-4 px-5 py-3
-                            ${i < gapSelection.length - 1 ? 'border-b border-gray-100' : ''}`}
-              >
-                <ProductIcon product={item.product} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#1B1B1B]">{item.product.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{item.note}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold text-[#1B1B1B]">×{item.quantity}</p>
-                  <p className="text-xs text-gray-400">
-                    {item.product.type === 'gel' || item.product.type === 'ultra_gel'
-                      ? 'gels'
-                      : item.product.type === 'bar'
-                      ? 'bars'
-                      : 'units'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-          {powderPlaceholder && (
-            <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 bg-gray-50 flex items-center gap-3 mt-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-500">
-                  🔜 Lecka Carb + Hydration Powder — coming soon
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  <a
-                    href="mailto:info@getlecka.com?subject=Powder waitlist"
-                    className="text-[#48C4B0] underline"
-                  >
-                    Join the waitlist →
-                  </a>
-                </p>
-              </div>
-            </div>
-          )}
-          {hasAddons && (
-            <div className="mt-3 border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden">
-              {resolvedAddonItems.map((item, i) => (
-                <div
-                  key={item.product.id}
-                  className={`flex items-center gap-4 px-5 py-3
-                              ${i < resolvedAddonItems.length - 1
-                                ? 'border-b border-dashed border-gray-200' : ''}`}
-                >
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-gray-400">
-                      {item.product.brand?.slice(0,3).toUpperCase() ?? 'ADD'}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[#1B1B1B]">{item.product.display_name}</p>
-                    <p className="text-xs text-gray-400 italic">buy separately</p>
-                  </div>
-                  <p className="text-sm font-bold text-[#1B1B1B] flex-shrink-0">×{item.quantity}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowCartEditor(true)}
-            className="text-xs text-[#48C4B0] font-semibold hover:underline mt-3 block"
-          >
-            {t('results:cta.adjustPlan')}
-          </button>
-        </>
-      )}
-    </>
-  )
 
   const orderSection = (
     <>
@@ -2338,7 +1661,25 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           </p>
         </div>
       )}
-      <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
+      <section>
+        <SectionLabel>{t('section.raceTimeline')}</SectionLabel>
+        <RaceTimelineV2 events={timeline} totalDuration={targets.total_duration_minutes} />
+      </section>
+      {(() => {
+        const f = targets.fluid_ml_per_hour
+        const d = targets.total_duration_minutes
+        let key
+        if (d > 300)                key = 'nutrition.carry.vest2'
+        else if (f > 500 && d > 120) key = 'nutrition.carry.vest1_5'
+        else if (f > 500)           key = 'nutrition.carry.twoBottles'
+        else if (d > 90)            key = 'nutrition.carry.softFlask'
+        else                        key = 'nutrition.carry.singleBottle'
+        return (
+          <div className="border-l-4 border-[#48C4B0] pl-3 py-1">
+            <p className="text-sm text-gray-600">{t(key)}</p>
+          </div>
+        )
+      })()}
       <TrainingAccordion trainingInfo={trainingInfo} t={t} />
     </div>
   )
@@ -2369,19 +1710,6 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     <div className="bg-white">
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
-      {showCartEditor && (
-        <CartEditorModal
-          region={region}
-          aggregated={aggregated}
-          manualQty={manualQty}
-          setManualQty={setManualQty}
-          onClose={() => setShowCartEditor(false)}
-          regionConfig={regionConfig}
-          provided={provided}
-          targets={targets}
-          catalog={allProductsCatalog}
-        />
-      )}
       {showShareModal && (
         <ShareModal
           onClose={() => setShowShareModal(false)}
@@ -2522,9 +1850,21 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             </div>
           </div>
           <h1 className="text-xl font-bold text-white">{heroTitle}</h1>
-          <p className="text-sm text-white/80 mt-1">
-            {formatDuration(targets.total_duration_minutes)}
-            {' · '}{conditionLabel}
+          <p className="text-sm text-white/80 mt-1 flex flex-wrap items-center gap-1.5">
+            {(() => {
+              const km = form.custom_race_km > 0
+                ? form.custom_race_km
+                : RACE_DISTANCE_KM[targets.race_type] ?? null
+              return km ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-black/15 text-white text-xs">
+                  {km} km
+                </span>
+              ) : null
+            })()}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-black/15 text-white text-xs">
+              {form.goal_time ? 'Target ' : ''}{formatDuration(targets.total_duration_minutes)}
+            </span>
+            {conditionLabel && <span className="opacity-80">{conditionLabel}</span>}
           </p>
         </div>
 
@@ -2558,10 +1898,52 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           {mobileTab === 'products' && (
             <div className="space-y-6">
               <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} />
-              <section>{whatToTakeSection}</section>
+              <section>
+                <SectionLabel>
+                  {form.fuelling_style === 'gels_only'       ? 'Your gels'
+                   : form.fuelling_style === 'gels_and_bars'  ? 'Your gels and bars'
+                   : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
+                   : 'What to take'}
+                </SectionLabel>
+                <PlanProductEditor
+                  region={region}
+                  regionType={regionType}
+                  leckaSelection={leckaSelection}
+                  resolvedAddonItems={resolvedAddonItems}
+                  addonOverrides={addonOverrides}
+                  onAddonChange={handleAddonChange}
+                  manualQty={manualQty}
+                  setManualQty={setManualQty}
+                  targets={targets}
+                  provided={provided}
+                  catalog={allProductsCatalog}
+                />
+              </section>
             </div>
           )}
-          {mobileTab === 'coach' && coachTabContent}
+          {mobileTab === 'coach' && (
+            <div className="space-y-6">
+              {!isPublicView && (
+                <CoachNotes
+                  coachCopy={proCoachCopy}
+                  watchOut={proWatchOut}
+                  loading={proCoachLoading}
+                  failed={proCoachFailed}
+                  onRetry={retryCoach}
+                  startExpanded
+                />
+              )}
+              <details className="mt-4">
+                <summary className="text-xs font-semibold text-[#48C4B0] cursor-pointer list-none flex items-center gap-1">
+                  <span>Gut training protocol</span>
+                  <span className="text-gray-400">↓</span>
+                </summary>
+                <div className="mt-3">
+                  <GutTrainingTab targets={targets} form={form} leckaSelection={leckaSelection} />
+                </div>
+              </details>
+            </div>
+          )}
           {mobileTab === 'order' && (
             <div className="space-y-6">
               <section>
@@ -2621,8 +2003,18 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             </p>
             <h1 className="font-bold text-[#1B1B1B]" style={{ fontSize: '18px' }}>{heroTitle}</h1>
             <div className="flex flex-wrap gap-1.5 mt-2">
+              {(() => {
+                const km = form.custom_race_km > 0
+                  ? form.custom_race_km
+                  : RACE_DISTANCE_KM[targets.race_type] ?? null
+                return km ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
+                    {km} km
+                  </span>
+                ) : null
+              })()}
               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
-                {formatDuration(targets.total_duration_minutes)}
+                {form.goal_time ? 'Target ' : ''}{formatDuration(targets.total_duration_minutes)}
               </span>
               {conditionLabel && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
@@ -2667,11 +2059,53 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             )}
           </div>
 
-          {/* Nutrition summary */}
-          <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} />
+          {/* Compact nutrition targets */}
+          <section>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+              Nutrition targets
+            </p>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                { value: targets.carb_per_hour,     unit: 'g',  label: 'carbs/h',  total: `${targets.total_carbs}g total` },
+                { value: targets.sodium_per_hour,   unit: 'mg', label: 'sodium/h', total: `${targets.total_sodium}mg total` },
+                { value: targets.fluid_ml_per_hour, unit: 'ml', label: 'fluid/h',  total: null },
+              ].map(m => (
+                <div key={m.label} className="bg-gray-50 rounded-xl py-2.5 px-1">
+                  <p className="text-xl font-bold text-[#1B1B1B] leading-none">
+                    {m.value}
+                    <span className="text-xs text-gray-400 font-normal">{m.unit}</span>
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{m.label}</p>
+                  {m.total && (
+                    <p className="text-[9px] text-gray-300 mt-0.5">{m.total}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
 
           {/* What to take */}
-          <section>{whatToTakeSection}</section>
+          <section>
+            <SectionLabel>
+              {form.fuelling_style === 'gels_only'       ? 'Your gels'
+               : form.fuelling_style === 'gels_and_bars'  ? 'Your gels and bars'
+               : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
+               : 'What to take'}
+            </SectionLabel>
+            <PlanProductEditor
+              region={region}
+              regionType={regionType}
+              leckaSelection={leckaSelection}
+              resolvedAddonItems={resolvedAddonItems}
+              addonOverrides={addonOverrides}
+              onAddonChange={handleAddonChange}
+              manualQty={manualQty}
+              setManualQty={setManualQty}
+              targets={targets}
+              provided={provided}
+              catalog={allProductsCatalog}
+            />
+          </section>
 
           {/* Order card */}
           <section>
@@ -2746,15 +2180,13 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               content: coachTabContent,
             },
             {
-              key: 'checkpoints',
-              label: 'Checkpoints',
+              key: 'gut',
+              label: 'Gut training',
               content: (
-                <CheckpointsTab
-                  planId={planId}
-                  isLoggedIn={Boolean(localStorage.getItem('lecka_user_id'))}
+                <GutTrainingTab
                   targets={targets}
                   form={form}
-                  selection={effectiveSelection}
+                  leckaSelection={leckaSelection}
                 />
               ),
             },
