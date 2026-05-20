@@ -714,10 +714,16 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
         )
       }
       const [planRes] = await Promise.all(fetches)
-      if (!planRes.ok) throw new Error(`HTTP ${planRes.status}`)
+      if (!planRes.ok) {
+        let apiMsg = ''
+        try { apiMsg = (await planRes.json()).error ?? '' } catch {}
+        console.error('[send-plan] failed', planRes.status, apiMsg)
+        throw new Error(`HTTP ${planRes.status}: ${apiMsg}`)
+      }
       setEmailState('success')
       notifyEmailCapture(email, targets.race_type)
-    } catch {
+    } catch (err) {
+      console.error('[send-plan] caught:', err.message)
       setEmailState('error')
     }
   }

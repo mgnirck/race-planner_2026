@@ -407,7 +407,7 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
   const productRows = selectedProducts.map(item => [
     item.product.name,
     String(item.quantity),
-    item.timing_minutes.map(min => fmtMin(min, targets.total_duration_minutes, t)).join(', '),
+    (item.timing_minutes ?? []).map(min => fmtMin(min, targets.total_duration_minutes, t)).join(', '),
     item.note ?? '',
   ])
 
@@ -519,7 +519,7 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
     { time: 0,                              action: t('pdf.timeline.raceStart'),  product: '—', marker: true },
     { time: targets.total_duration_minutes, action: t('pdf.timeline.finishLine'), product: '—', marker: true },
     ...selectedProducts.flatMap(item =>
-      item.timing_minutes.map(min => ({
+      (item.timing_minutes ?? []).map(min => ({
         time: min,
         action:
           min < 0                                    ? t('pdf.timeline.preRaceFuel') :
