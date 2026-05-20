@@ -200,6 +200,12 @@ async function addVariant(req, res) {
     VALUES (${product_id}, ${region}, ${String(shopify_variant_id)}, ${units_per_pack}, ${price}, ${sortOrder})
     RETURNING *
   `
+  // Ensure the region is marked available now that it has a real variant
+  await sql`
+    INSERT INTO product_regions (product_id, region, available)
+    VALUES (${product_id}, ${region}, true)
+    ON CONFLICT (product_id, region) DO UPDATE SET available = true, updated_at = NOW()
+  `
   await sql`
     INSERT INTO product_audit (product_id, region, field_changed, old_value, new_value)
     VALUES (${product_id}, ${region}, 'variant_added', null,

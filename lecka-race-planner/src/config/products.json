@@ -19,38 +19,80 @@
     "shopify_variant_id": "43249546526767",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"],
+    "ideal_time": [
+      "during"
+    ],
     "lab_report": "AR-25-VD-249580-01-EN",
     "lab_date": "2025-12-24",
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "43249546526767", "units_per_pack": 12, "price": 29.95 }
+          {
+            "shopify_variant_id": "43249546526767",
+            "units_per_pack": 12,
+            "price": 29.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "44368630579390", "units_per_pack": 12, "price": 29.99 },
-          { "shopify_variant_id": "44368630612158", "units_per_pack": 1,  "price": 2.59  }
+          {
+            "shopify_variant_id": "44368630579390",
+            "units_per_pack": 12,
+            "price": 29.99
+          },
+          {
+            "shopify_variant_id": "44368630612158",
+            "units_per_pack": 1,
+            "price": 2.59
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "49881661669642", "units_per_pack": 12, "price": 209.00 },
-          { "shopify_variant_id": "51601535467786", "units_per_pack": 6,  "price": 115.00 },
-          { "shopify_variant_id": "49881661636874", "units_per_pack": 1,  "price": 21.00  }
+          {
+            "shopify_variant_id": "49881661669642",
+            "units_per_pack": 12,
+            "price": 209.0
+          },
+          {
+            "shopify_variant_id": "51601535467786",
+            "units_per_pack": 6,
+            "price": 115.0
+          },
+          {
+            "shopify_variant_id": "49881661636874",
+            "units_per_pack": 1,
+            "price": 21.0
+          }
         ]
       },
       "ch": {
         "variants": [
-          { "shopify_variant_id": "57678501183752", "units_per_pack": 12, "price": 36.99 },
-          { "shopify_variant_id": "57678501216520", "units_per_pack": 1,  "price": 3.80  }
+          {
+            "shopify_variant_id": "57678501183752",
+            "units_per_pack": 12,
+            "price": 36.99
+          },
+          {
+            "shopify_variant_id": "57678501216520",
+            "units_per_pack": 1,
+            "price": 3.8
+          }
         ]
       },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1125250882", "units_per_pack": 12, "price": 600000 },
-          { "shopify_variant_id": "1159957439", "units_per_pack": 1,  "price": 50000  }
+          {
+            "shopify_variant_id": "1125250882",
+            "units_per_pack": 12,
+            "price": 600000
+          },
+          {
+            "shopify_variant_id": "1159957439",
+            "units_per_pack": 1,
+            "price": 50000
+          }
         ]
       },
       "sg": {
@@ -58,18 +100,32 @@
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "49101082493226", "units_per_pack": 6,  "price": 144.00 },
-          { "shopify_variant_id": "49101082525994", "units_per_pack": 12, "price": 288.00 }
+          {
+            "shopify_variant_id": "49101082493226",
+            "units_per_pack": 6,
+            "price": 144.0
+          },
+          {
+            "shopify_variant_id": "49101082525994",
+            "units_per_pack": 12,
+            "price": 288.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.99 }
+          {
+            "units_per_pack": 1,
+            "price": 3.99
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.70 }
+          {
+            "units_per_pack": 1,
+            "price": 2.7
+          }
         ]
       }
     }
@@ -94,59 +150,119 @@
     "shopify_variant_id": "43649538064431",
     "caffeine": true,
     "caffeine_mg": 80,
-    "ideal_time": ["during"],
+    "ideal_time": [
+      "during"
+    ],
     "lab_report": "AR-25-VD-258719-01-EN",
     "lab_date": "2025-12-31",
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "43649538064431", "units_per_pack": 12, "price": 29.95 }
+          {
+            "shopify_variant_id": "43649538064431",
+            "units_per_pack": 12,
+            "price": 29.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "45134288552126", "units_per_pack": 12, "price": 29.99 },
-          { "shopify_variant_id": "45134288584894", "units_per_pack": 1,  "price": 2.59  }
+          {
+            "shopify_variant_id": "45134288552126",
+            "units_per_pack": 12,
+            "price": 29.99
+          },
+          {
+            "shopify_variant_id": "45134288584894",
+            "units_per_pack": 1,
+            "price": 2.59
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "50948779671818", "units_per_pack": 12, "price": 209.00 },
-          { "shopify_variant_id": "51601533927690", "units_per_pack": 6,  "price": 115.00 },
-          { "shopify_variant_id": "50948779639050", "units_per_pack": 1,  "price": 21.00  }
+          {
+            "shopify_variant_id": "50948779671818",
+            "units_per_pack": 12,
+            "price": 209.0
+          },
+          {
+            "shopify_variant_id": "51601533927690",
+            "units_per_pack": 6,
+            "price": 115.0
+          },
+          {
+            "shopify_variant_id": "50948779639050",
+            "units_per_pack": 1,
+            "price": 21.0
+          }
         ]
       },
       "ch": {
         "variants": [
-          { "shopify_variant_id": "57678500725000", "units_per_pack": 12, "price": 36.99 },
-          { "shopify_variant_id": "57678500757768", "units_per_pack": 1,  "price": 3.80  }
+          {
+            "shopify_variant_id": "57678500725000",
+            "units_per_pack": 12,
+            "price": 36.99
+          },
+          {
+            "shopify_variant_id": "57678500757768",
+            "units_per_pack": 1,
+            "price": 3.8
+          }
         ]
       },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1150176317", "units_per_pack": 12, "price": 600000 },
-          { "shopify_variant_id": "1160327888", "units_per_pack": 1,  "price": 50000  }
+          {
+            "shopify_variant_id": "1150176317",
+            "units_per_pack": 12,
+            "price": 600000
+          },
+          {
+            "shopify_variant_id": "1160327888",
+            "units_per_pack": 1,
+            "price": 50000
+          }
         ]
       },
       "sg": {
         "variants": [
-          { "shopify_variant_id": "42549244133459", "units_per_pack": 1, "price": 3.21 }
+          {
+            "shopify_variant_id": "42549244133459",
+            "units_per_pack": 1,
+            "price": 3.21
+          }
         ]
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "50051279520042", "units_per_pack": 6,  "price": 144.00 },
-          { "shopify_variant_id": "50051279552810", "units_per_pack": 12, "price": 288.00 }
+          {
+            "shopify_variant_id": "50051279520042",
+            "units_per_pack": 6,
+            "price": 144.0
+          },
+          {
+            "shopify_variant_id": "50051279552810",
+            "units_per_pack": 12,
+            "price": 288.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.99 }
+          {
+            "units_per_pack": 1,
+            "price": 3.99
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.70 }
+          {
+            "units_per_pack": 1,
+            "price": 2.7
+          }
         ]
       }
     }
@@ -171,59 +287,119 @@
     "shopify_variant_id": "43249546854447",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"],
+    "ideal_time": [
+      "during"
+    ],
     "lab_report": "AR-25-VD-249581-01-EN",
     "lab_date": "2025-12-24",
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "43249546854447", "units_per_pack": 12, "price": 29.95 }
+          {
+            "shopify_variant_id": "43249546854447",
+            "units_per_pack": 12,
+            "price": 29.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "44368627826878", "units_per_pack": 12, "price": 29.99 },
-          { "shopify_variant_id": "44368627859646", "units_per_pack": 1,  "price": 2.59  }
+          {
+            "shopify_variant_id": "44368627826878",
+            "units_per_pack": 12,
+            "price": 29.99
+          },
+          {
+            "shopify_variant_id": "44368627859646",
+            "units_per_pack": 1,
+            "price": 2.59
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "49881668026634", "units_per_pack": 12, "price": 209.00 },
-          { "shopify_variant_id": "51601535172874", "units_per_pack": 6,  "price": 115.00 },
-          { "shopify_variant_id": "49881667993866", "units_per_pack": 1,  "price": 21.00  }
+          {
+            "shopify_variant_id": "49881668026634",
+            "units_per_pack": 12,
+            "price": 209.0
+          },
+          {
+            "shopify_variant_id": "51601535172874",
+            "units_per_pack": 6,
+            "price": 115.0
+          },
+          {
+            "shopify_variant_id": "49881667993866",
+            "units_per_pack": 1,
+            "price": 21.0
+          }
         ]
       },
       "ch": {
         "variants": [
-          { "shopify_variant_id": "57678501675272", "units_per_pack": 12, "price": 36.99 },
-          { "shopify_variant_id": "57678501708040", "units_per_pack": 1,  "price": 3.80  }
+          {
+            "shopify_variant_id": "57678501675272",
+            "units_per_pack": 12,
+            "price": 36.99
+          },
+          {
+            "shopify_variant_id": "57678501708040",
+            "units_per_pack": 1,
+            "price": 3.8
+          }
         ]
       },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1125250887", "units_per_pack": 12, "price": 600000 },
-          { "shopify_variant_id": "1160327319", "units_per_pack": 1,  "price": 50000  }
+          {
+            "shopify_variant_id": "1125250887",
+            "units_per_pack": 12,
+            "price": 600000
+          },
+          {
+            "shopify_variant_id": "1160327319",
+            "units_per_pack": 1,
+            "price": 50000
+          }
         ]
       },
       "sg": {
         "variants": [
-          { "shopify_variant_id": "42051166666835", "units_per_pack": 1, "price": 3.21 }
+          {
+            "shopify_variant_id": "42051166666835",
+            "units_per_pack": 1,
+            "price": 3.21
+          }
         ]
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "49101171032362", "units_per_pack": 6,  "price": 144.00 },
-          { "shopify_variant_id": "49101171097898", "units_per_pack": 12, "price": 288.00 }
+          {
+            "shopify_variant_id": "49101171032362",
+            "units_per_pack": 6,
+            "price": 144.0
+          },
+          {
+            "shopify_variant_id": "49101171097898",
+            "units_per_pack": 12,
+            "price": 288.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.99 }
+          {
+            "units_per_pack": 1,
+            "price": 3.99
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.70 }
+          {
+            "units_per_pack": 1,
+            "price": 2.7
+          }
         ]
       }
     }
@@ -248,59 +424,119 @@
     "shopify_variant_id": "44452873404463",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"],
+    "ideal_time": [
+      "during"
+    ],
     "lab_report": "AR-25-VD-251832-01-EN",
     "lab_date": "2025-12-24",
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "44452873404463", "units_per_pack": 12, "price": 29.95 }
+          {
+            "shopify_variant_id": "44452873404463",
+            "units_per_pack": 12,
+            "price": 29.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "45293740425406", "units_per_pack": 12, "price": 29.99 },
-          { "shopify_variant_id": "45293740458174", "units_per_pack": 1,  "price": 2.59  }
+          {
+            "shopify_variant_id": "45293740425406",
+            "units_per_pack": 12,
+            "price": 29.99
+          },
+          {
+            "shopify_variant_id": "45293740458174",
+            "units_per_pack": 1,
+            "price": 2.59
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "51596039815434", "units_per_pack": 12, "price": 209.00 },
-          { "shopify_variant_id": "51601533468938", "units_per_pack": 6,  "price": 115.00 },
-          { "shopify_variant_id": "51596039782666", "units_per_pack": 1,  "price": 21.00  }
+          {
+            "shopify_variant_id": "51596039815434",
+            "units_per_pack": 12,
+            "price": 209.0
+          },
+          {
+            "shopify_variant_id": "51601533468938",
+            "units_per_pack": 6,
+            "price": 115.0
+          },
+          {
+            "shopify_variant_id": "51596039782666",
+            "units_per_pack": 1,
+            "price": 21.0
+          }
         ]
       },
       "ch": {
         "variants": [
-          { "shopify_variant_id": "57678500430088", "units_per_pack": 12, "price": 36.99 },
-          { "shopify_variant_id": "57678500462856", "units_per_pack": 1,  "price": 3.80  }
+          {
+            "shopify_variant_id": "57678500430088",
+            "units_per_pack": 12,
+            "price": 36.99
+          },
+          {
+            "shopify_variant_id": "57678500462856",
+            "units_per_pack": 1,
+            "price": 3.8
+          }
         ]
       },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1157493058", "units_per_pack": 12, "price": 600000 },
-          { "shopify_variant_id": "1160326580", "units_per_pack": 1,  "price": 50000  }
+          {
+            "shopify_variant_id": "1157493058",
+            "units_per_pack": 12,
+            "price": 600000
+          },
+          {
+            "shopify_variant_id": "1160326580",
+            "units_per_pack": 1,
+            "price": 50000
+          }
         ]
       },
       "sg": {
         "variants": [
-          { "shopify_variant_id": "43073025310803", "units_per_pack": 1, "price": 3.21 }
+          {
+            "shopify_variant_id": "43073025310803",
+            "units_per_pack": 1,
+            "price": 3.21
+          }
         ]
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "50622014882090", "units_per_pack": 6,  "price": 144.00 },
-          { "shopify_variant_id": "50622014914858", "units_per_pack": 12, "price": 288.00 }
+          {
+            "shopify_variant_id": "50622014882090",
+            "units_per_pack": 6,
+            "price": 144.0
+          },
+          {
+            "shopify_variant_id": "50622014914858",
+            "units_per_pack": 12,
+            "price": 288.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.99 }
+          {
+            "units_per_pack": 1,
+            "price": 3.99
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.70 }
+          {
+            "units_per_pack": 1,
+            "price": 2.7
+          }
         ]
       }
     }
@@ -325,58 +561,114 @@
     "shopify_variant_id": "44452862492719",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"],
+    "ideal_time": [
+      "during"
+    ],
     "lab_report": "AR-25-VD-251833-01-EN",
     "lab_date": "2025-12-24",
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "44452862492719", "units_per_pack": 12, "price": 29.95 }
+          {
+            "shopify_variant_id": "44452862492719",
+            "units_per_pack": 12,
+            "price": 29.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "45293152731326", "units_per_pack": 12, "price": 29.99 },
-          { "shopify_variant_id": "45293152764094", "units_per_pack": 1,  "price": 2.59  }
+          {
+            "shopify_variant_id": "45293152731326",
+            "units_per_pack": 12,
+            "price": 29.99
+          },
+          {
+            "shopify_variant_id": "45293152764094",
+            "units_per_pack": 1,
+            "price": 2.59
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "51596043976970", "units_per_pack": 12, "price": 209.00 },
-          { "shopify_variant_id": "51601529372938", "units_per_pack": 6,  "price": 115.00 },
-          { "shopify_variant_id": "51596043944202", "units_per_pack": 1,  "price": 21.00  }
+          {
+            "shopify_variant_id": "51596043976970",
+            "units_per_pack": 12,
+            "price": 209.0
+          },
+          {
+            "shopify_variant_id": "51601529372938",
+            "units_per_pack": 6,
+            "price": 115.0
+          },
+          {
+            "shopify_variant_id": "51596043944202",
+            "units_per_pack": 1,
+            "price": 21.0
+          }
         ]
       },
       "ch": {
         "variants": [
-          { "shopify_variant_id": "57678498267400", "units_per_pack": 12, "price": 36.99 },
-          { "shopify_variant_id": "57678498300168", "units_per_pack": 1,  "price": 3.80  }
+          {
+            "shopify_variant_id": "57678498267400",
+            "units_per_pack": 12,
+            "price": 36.99
+          },
+          {
+            "shopify_variant_id": "57678498300168",
+            "units_per_pack": 1,
+            "price": 3.8
+          }
         ]
       },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1157486060", "units_per_pack": 12, "price": 600000 }
+          {
+            "shopify_variant_id": "1157486060",
+            "units_per_pack": 12,
+            "price": 600000
+          }
         ]
       },
       "sg": {
         "variants": [
-          { "shopify_variant_id": "43073025671251", "units_per_pack": 1, "price": 3.21 }
+          {
+            "shopify_variant_id": "43073025671251",
+            "units_per_pack": 1,
+            "price": 3.21
+          }
         ]
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "50621994303786", "units_per_pack": 6,  "price": 144.00 },
-          { "shopify_variant_id": "50621994336554", "units_per_pack": 12, "price": 288.00 }
+          {
+            "shopify_variant_id": "50621994303786",
+            "units_per_pack": 6,
+            "price": 144.0
+          },
+          {
+            "shopify_variant_id": "50621994336554",
+            "units_per_pack": 12,
+            "price": 288.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.99 }
+          {
+            "units_per_pack": 1,
+            "price": 3.99
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.70 }
+          {
+            "units_per_pack": 1,
+            "price": 2.7
+          }
         ]
       }
     }
@@ -392,41 +684,43 @@
     "shopify_variant_id": "43844672356399",
     "caffeine": true,
     "caffeine_mg": 80,
-    "ideal_time": ["during"],
+    "ideal_time": [
+      "during"
+    ],
     "contains": {
       "us": {
         "gel-passion-fruit": 3,
-        "gel-coffee-cacao":  3,
-        "gel-banana":        2,
-        "gel-lime-ginger":   2,
+        "gel-coffee-cacao": 3,
+        "gel-banana": 2,
+        "gel-lime-ginger": 2,
         "gel-kumquat-honey": 2
       },
       "de": {
         "gel-passion-fruit": 3,
-        "gel-coffee-cacao":  3,
-        "gel-banana":        3,
-        "gel-lime-ginger":   3,
+        "gel-coffee-cacao": 3,
+        "gel-banana": 3,
+        "gel-lime-ginger": 3,
         "gel-kumquat-honey": 3
       },
       "dk": {
         "gel-passion-fruit": 3,
-        "gel-coffee-cacao":  3,
-        "gel-banana":        2,
-        "gel-lime-ginger":   2,
+        "gel-coffee-cacao": 3,
+        "gel-banana": 2,
+        "gel-lime-ginger": 2,
         "gel-kumquat-honey": 2
       },
       "ch": {
         "gel-passion-fruit": 3,
-        "gel-coffee-cacao":  3,
-        "gel-banana":        3,
-        "gel-lime-ginger":   3,
+        "gel-coffee-cacao": 3,
+        "gel-banana": 3,
+        "gel-lime-ginger": 3,
         "gel-kumquat-honey": 3
       },
       "vn": {
         "gel-passion-fruit": 3,
-        "gel-coffee-cacao":  3,
-        "gel-banana":        2,
-        "gel-lime-ginger":   2,
+        "gel-coffee-cacao": 3,
+        "gel-banana": 2,
+        "gel-lime-ginger": 2,
         "gel-kumquat-honey": 2
       },
       "sg": {
@@ -436,27 +730,47 @@
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "43844672356399", "units_per_pack": 12, "price": 27.95 }
+          {
+            "shopify_variant_id": "43844672356399",
+            "units_per_pack": 12,
+            "price": 27.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "45341759996094", "units_per_pack": 15, "price": 36.99 }
+          {
+            "shopify_variant_id": "45341759996094",
+            "units_per_pack": 15,
+            "price": 36.99
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "50971167916298", "units_per_pack": 12, "price": 209.00 }
+          {
+            "shopify_variant_id": "50971167916298",
+            "units_per_pack": 12,
+            "price": 209.0
+          }
         ]
       },
       "ch": {
         "variants": [
-          { "shopify_variant_id": "51780152262920", "units_per_pack": 15, "price": 36.99 }
+          {
+            "shopify_variant_id": "51780152262920",
+            "units_per_pack": 15,
+            "price": 36.99
+          }
         ]
       },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1158896125", "units_per_pack": 12, "price": 600000 }
+          {
+            "shopify_variant_id": "1158896125",
+            "units_per_pack": 12,
+            "price": 600000
+          }
         ]
       },
       "sg": {
@@ -465,8 +779,12 @@
       "hk": {
         "variants": []
       },
-      "au": { "variants": [] },
-      "fr": { "variants": [] }
+      "au": {
+        "variants": []
+      },
+      "fr": {
+        "variants": []
+      }
     }
   },
   {
@@ -480,33 +798,57 @@
     "shopify_variant_id": "PLACEHOLDER_US",
     "caffeine": true,
     "caffeine_mg": 80,
-    "ideal_time": ["before", "during", "after"],
+    "ideal_time": [
+      "before",
+      "during",
+      "after"
+    ],
     "contains": {
       "dk": {
-        "gel-banana":           1,
-        "gel-passion-fruit":    1,
-        "gel-coffee-cacao":     1,
-        "gel-kumquat-honey":    1,
-        "gel-lime-ginger":      1,
-        "bar-mango-coconut":    2,
-        "bar-cacao-banana":     2,
+        "gel-banana": 1,
+        "gel-passion-fruit": 1,
+        "gel-coffee-cacao": 1,
+        "gel-kumquat-honey": 1,
+        "gel-lime-ginger": 1,
+        "bar-mango-coconut": 2,
+        "bar-cacao-banana": 2,
         "bar-pineapple-banana": 2
       }
     },
     "regions": {
-      "us": { "variants": [] },
-      "de": { "variants": [] },
+      "us": {
+        "variants": []
+      },
+      "de": {
+        "variants": []
+      },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "50971111981322", "units_per_pack": 11, "price": 189.00 }
+          {
+            "shopify_variant_id": "50971111981322",
+            "units_per_pack": 11,
+            "price": 189.0
+          }
         ]
       },
-      "ch": { "variants": [] },
-      "vn": { "variants": [] },
-      "sg": { "variants": [] },
-      "hk": { "variants": [] },
-      "au": { "variants": [] },
-      "fr": { "variants": [] }
+      "ch": {
+        "variants": []
+      },
+      "vn": {
+        "variants": []
+      },
+      "sg": {
+        "variants": []
+      },
+      "hk": {
+        "variants": []
+      },
+      "au": {
+        "variants": []
+      },
+      "fr": {
+        "variants": []
+      }
     }
   },
   {
@@ -529,29 +871,90 @@
     "shopify_variant_id": "PLACEHOLDER_US",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"],
+    "ideal_time": [
+      "during"
+    ],
     "lab_report": "AR-25-VD-256496-01-EN",
     "lab_date": "2026-01-08",
     "regions": {
-      "us": { "variants": [{ "shopify_variant_id": "45340409823279", "units_per_pack": 4, "price": 28.95 }] },
-      "de": { "variants": [{ "shopify_variant_id": "46650707607742", "units_per_pack": 1, "price": 6.49 }] },
-      "dk": { "variants": [{ "shopify_variant_id": "53036444057866", "units_per_pack": 1, "price": 49.00 }] },
-      "ch": { "variants": [{ "shopify_variant_id": "57767835828488", "units_per_pack": 1, "price": 8.00 }] },
-      "vn": { "variants": [{ "shopify_variant_id": "1167740193", "units_per_pack": 1, "price": 135000 }] },
-      "sg": { "variants": [{ "shopify_variant_id": "10147404709971", "units_per_pack": 1, "price": 7.98 }] },
+      "us": {
+        "variants": []
+      },
+      "de": {
+        "variants": [
+          {
+            "shopify_variant_id": "PLACEHOLDER_DE_ULTRA_GEL_PFM",
+            "units_per_pack": 1,
+            "price": 7.5
+          }
+        ]
+      },
+      "dk": {
+        "variants": [
+          {
+            "shopify_variant_id": "PLACEHOLDER_DK_ULTRA_GEL_PFM",
+            "units_per_pack": 1,
+            "price": 59.0
+          }
+        ]
+      },
+      "ch": {
+        "variants": [
+          {
+            "shopify_variant_id": "57767835828488",
+            "units_per_pack": 1,
+            "price": 8.0
+          }
+        ]
+      },
+      "vn": {
+        "variants": [
+          {
+            "shopify_variant_id": "PLACEHOLDER_VN_ULTRA_GEL_PFM",
+            "units_per_pack": 1,
+            "price": 185000
+          }
+        ]
+      },
+      "sg": {
+        "variants": [
+          {
+            "shopify_variant_id": "PLACEHOLDER_SG_ULTRA_GEL_PFM",
+            "units_per_pack": 1,
+            "price": 10.8
+          }
+        ]
+      },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "51518552375594", "units_per_pack": 1, "price": 58.00  },
-          { "shopify_variant_id": "51518415438122", "units_per_pack": 3, "price": 145.00 },
-          { "shopify_variant_id": "51518415470890", "units_per_pack": 6, "price": 278.00 }
+          {
+            "shopify_variant_id": "51518552375594",
+            "units_per_pack": 1,
+            "price": 58.0
+          },
+          {
+            "shopify_variant_id": "51518415438122",
+            "units_per_pack": 3,
+            "price": 145.0
+          },
+          {
+            "shopify_variant_id": "51518415470890",
+            "units_per_pack": 6,
+            "price": 278.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 7.99 }
+          {
+            "units_per_pack": 1,
+            "price": 7.99
+          }
         ]
       },
-      "fr": { "variants": [] }
+      "fr": {
+        "variants": []
+      }
     }
   },
   {
@@ -575,23 +978,45 @@
     "shopify_variant_id": "PLACEHOLDER_US",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["during"],
-    "allergens": ["peanuts"],
+    "ideal_time": [
+      "during"
+    ],
+    "allergens": [
+      "peanuts"
+    ],
     "ingredients": "Cane Sugar, Banana (27%), Tapioca Syrup, Peanuts (12%), Filtered Water, Sodium Citrate, Glutinous Rice Flour, Salt, Cinnamon, Magnesium Gluconate, Potassium Citrate",
     "potassium_per_unit": null,
     "magnesium_per_unit": null,
     "lab_report": "AR-26-VD-082550-01-EN",
     "lab_date": "2026-04-13",
     "regions": {
-      "us": { "variants": [] },
-      "de": { "variants": [] },
-      "dk": { "variants": [] },
-      "ch": { "variants": [] },
-      "vn": { "variants": [] },
-      "sg": { "variants": [] },
-      "hk": { "variants": [] },
-      "au": { "variants": [] },
-      "fr": { "variants": [] }
+      "us": {
+        "variants": []
+      },
+      "de": {
+        "variants": []
+      },
+      "dk": {
+        "variants": []
+      },
+      "ch": {
+        "variants": []
+      },
+      "vn": {
+        "variants": []
+      },
+      "sg": {
+        "variants": []
+      },
+      "hk": {
+        "variants": []
+      },
+      "au": {
+        "variants": []
+      },
+      "fr": {
+        "variants": []
+      }
     }
   },
   {
@@ -605,31 +1030,50 @@
     "shopify_variant_id": "43249547018287",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["before", "after"],
+    "ideal_time": [
+      "before",
+      "after"
+    ],
     "contains": {
       "vn": {
-        "bar-mango-coconut":    3,
-        "bar-cacao-banana":     3,
-        "bar-banana-cinnamon":  3,
+        "bar-mango-coconut": 3,
+        "bar-cacao-banana": 3,
+        "bar-banana-cinnamon": 3,
         "bar-pineapple-banana": 3
       }
     },
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "43249547018287", "units_per_pack": 12, "price": 29.95 }
+          {
+            "shopify_variant_id": "43249547018287",
+            "units_per_pack": 12,
+            "price": 29.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "43525358878910", "units_per_pack": 8, "price": 19.50 }
+          {
+            "shopify_variant_id": "43525358878910",
+            "units_per_pack": 8,
+            "price": 19.5
+          }
         ]
       },
-      "dk": { "variants": [] },
-      "ch": { "variants": [] },
+      "dk": {
+        "variants": []
+      },
+      "ch": {
+        "variants": []
+      },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1158896932", "units_per_pack": 12, "price": 480000 }
+          {
+            "shopify_variant_id": "1158896932",
+            "units_per_pack": 12,
+            "price": 480000
+          }
         ]
       },
       "sg": {
@@ -638,8 +1082,12 @@
       "hk": {
         "variants": []
       },
-      "au": { "variants": [] },
-      "fr": { "variants": [] }
+      "au": {
+        "variants": []
+      },
+      "fr": {
+        "variants": []
+      }
     }
   },
   {
@@ -658,35 +1106,74 @@
     "shopify_variant_id": "43249548558383",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["before", "after"],
+    "ideal_time": [
+      "before",
+      "after"
+    ],
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "43249548558383", "units_per_pack": 12, "price": 29.95 }
+          {
+            "shopify_variant_id": "43249548558383",
+            "units_per_pack": 12,
+            "price": 29.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "42825271083198", "units_per_pack": 12, "price": 28.90 },
-          { "shopify_variant_id": "43508209483966", "units_per_pack": 1,  "price": 2.49  }
+          {
+            "shopify_variant_id": "42825271083198",
+            "units_per_pack": 12,
+            "price": 28.9
+          },
+          {
+            "shopify_variant_id": "43508209483966",
+            "units_per_pack": 1,
+            "price": 2.49
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "44220595601674", "units_per_pack": 12, "price": 209.00 },
-          { "shopify_variant_id": "51601536778506", "units_per_pack": 6,  "price": 115.00 },
-          { "shopify_variant_id": "44608860455178", "units_per_pack": 1,  "price": 21.00  }
+          {
+            "shopify_variant_id": "44220595601674",
+            "units_per_pack": 12,
+            "price": 209.0
+          },
+          {
+            "shopify_variant_id": "51601536778506",
+            "units_per_pack": 6,
+            "price": 115.0
+          },
+          {
+            "shopify_variant_id": "44608860455178",
+            "units_per_pack": 1,
+            "price": 21.0
+          }
         ]
       },
       "ch": {
         "variants": [
-          { "shopify_variant_id": "51778157150472", "units_per_pack": 12, "price": 36.99 }
+          {
+            "shopify_variant_id": "51778157150472",
+            "units_per_pack": 12,
+            "price": 36.99
+          }
         ]
       },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1162368754", "units_per_pack": 1,  "price": 40000  },
-          { "shopify_variant_id": "1154478003", "units_per_pack": 12, "price": 480000 }
+          {
+            "shopify_variant_id": "1162368754",
+            "units_per_pack": 1,
+            "price": 40000
+          },
+          {
+            "shopify_variant_id": "1154478003",
+            "units_per_pack": 12,
+            "price": 480000
+          }
         ]
       },
       "sg": {
@@ -694,18 +1181,32 @@
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "46364605120810", "units_per_pack": 6,  "price": 180.00 },
-          { "shopify_variant_id": "46364605153578", "units_per_pack": 12, "price": 360.00 }
+          {
+            "shopify_variant_id": "46364605120810",
+            "units_per_pack": 6,
+            "price": 180.0
+          },
+          {
+            "shopify_variant_id": "46364605153578",
+            "units_per_pack": 12,
+            "price": 360.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.00 }
+          {
+            "units_per_pack": 1,
+            "price": 3.0
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.50 }
+          {
+            "units_per_pack": 1,
+            "price": 2.5
+          }
         ]
       }
     }
@@ -726,48 +1227,101 @@
     "shopify_variant_id": "PLACEHOLDER_US",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["before", "after"],
+    "ideal_time": [
+      "before",
+      "after"
+    ],
     "regions": {
-      "us": { "variants": [] },
+      "us": {
+        "variants": []
+      },
       "de": {
         "variants": [
-          { "shopify_variant_id": "42825278914750", "units_per_pack": 12, "price": 28.90 },
-          { "shopify_variant_id": "43508198015166", "units_per_pack": 1,  "price": 2.49  }
+          {
+            "shopify_variant_id": "42825278914750",
+            "units_per_pack": 12,
+            "price": 28.9
+          },
+          {
+            "shopify_variant_id": "43508198015166",
+            "units_per_pack": 1,
+            "price": 2.49
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "44220597240074", "units_per_pack": 12, "price": 209.00 },
-          { "shopify_variant_id": "51601536450826", "units_per_pack": 6,  "price": 115.00 },
-          { "shopify_variant_id": "44608860422410", "units_per_pack": 1,  "price": 21.00  }
+          {
+            "shopify_variant_id": "44220597240074",
+            "units_per_pack": 12,
+            "price": 209.0
+          },
+          {
+            "shopify_variant_id": "51601536450826",
+            "units_per_pack": 6,
+            "price": 115.0
+          },
+          {
+            "shopify_variant_id": "44608860422410",
+            "units_per_pack": 1,
+            "price": 21.0
+          }
         ]
       },
-      "ch": { "variants": [] },
+      "ch": {
+        "variants": []
+      },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1162369093", "units_per_pack": 1,  "price": 40000  },
-          { "shopify_variant_id": "1141355435", "units_per_pack": 12, "price": 480000 }
+          {
+            "shopify_variant_id": "1162369093",
+            "units_per_pack": 1,
+            "price": 40000
+          },
+          {
+            "shopify_variant_id": "1141355435",
+            "units_per_pack": 12,
+            "price": 480000
+          }
         ]
       },
       "sg": {
         "variants": [
-          { "shopify_variant_id": "40389468389459", "units_per_pack": 1, "price": 3.21 }
+          {
+            "shopify_variant_id": "40389468389459",
+            "units_per_pack": 1,
+            "price": 3.21
+          }
         ]
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "46364390097194", "units_per_pack": 6,  "price": 180.00 },
-          { "shopify_variant_id": "46364390129962", "units_per_pack": 12, "price": 360.00 }
+          {
+            "shopify_variant_id": "46364390097194",
+            "units_per_pack": 6,
+            "price": 180.0
+          },
+          {
+            "shopify_variant_id": "46364390129962",
+            "units_per_pack": 12,
+            "price": 360.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.00 }
+          {
+            "units_per_pack": 1,
+            "price": 3.0
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.50 }
+          {
+            "units_per_pack": 1,
+            "price": 2.5
+          }
         ]
       }
     }
@@ -788,42 +1342,85 @@
     "shopify_variant_id": "PLACEHOLDER_US",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["before", "after"],
+    "ideal_time": [
+      "before",
+      "after"
+    ],
     "regions": {
-      "us": { "variants": [] },
+      "us": {
+        "variants": []
+      },
       "de": {
         "variants": [
-          { "shopify_variant_id": "42825293234366", "units_per_pack": 12, "price": 28.90 },
-          { "shopify_variant_id": "44061328474302", "units_per_pack": 1,  "price": 2.49  }
+          {
+            "shopify_variant_id": "42825293234366",
+            "units_per_pack": 12,
+            "price": 28.9
+          },
+          {
+            "shopify_variant_id": "44061328474302",
+            "units_per_pack": 1,
+            "price": 2.49
+          }
         ]
       },
-      "dk": { "variants": [] },
-      "ch": { "variants": [] },
+      "dk": {
+        "variants": []
+      },
+      "ch": {
+        "variants": []
+      },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1162369016", "units_per_pack": 1,  "price": 40000  },
-          { "shopify_variant_id": "1141355329", "units_per_pack": 12, "price": 480000 }
+          {
+            "shopify_variant_id": "1162369016",
+            "units_per_pack": 1,
+            "price": 40000
+          },
+          {
+            "shopify_variant_id": "1141355329",
+            "units_per_pack": 12,
+            "price": 480000
+          }
         ]
       },
       "sg": {
         "variants": [
-          { "shopify_variant_id": "40189107077203", "units_per_pack": 1, "price": 3.21 }
+          {
+            "shopify_variant_id": "40189107077203",
+            "units_per_pack": 1,
+            "price": 3.21
+          }
         ]
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "46363724185898", "units_per_pack": 6,  "price": 180.00 },
-          { "shopify_variant_id": "46363724218666", "units_per_pack": 12, "price": 360.00 }
+          {
+            "shopify_variant_id": "46363724185898",
+            "units_per_pack": 6,
+            "price": 180.0
+          },
+          {
+            "shopify_variant_id": "46363724218666",
+            "units_per_pack": 12,
+            "price": 360.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.00 }
+          {
+            "units_per_pack": 1,
+            "price": 3.0
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.50 }
+          {
+            "units_per_pack": 1,
+            "price": 2.5
+          }
         ]
       }
     }
@@ -844,56 +1441,113 @@
     "shopify_variant_id": "43249547706415",
     "caffeine": false,
     "caffeine_mg": 0,
-    "ideal_time": ["before", "after"],
+    "ideal_time": [
+      "before",
+      "after"
+    ],
     "regions": {
       "us": {
         "variants": [
-          { "shopify_variant_id": "43249547706415", "units_per_pack": 12, "price": 29.95 }
+          {
+            "shopify_variant_id": "43249547706415",
+            "units_per_pack": 12,
+            "price": 29.95
+          }
         ]
       },
       "de": {
         "variants": [
-          { "shopify_variant_id": "42825289957566", "units_per_pack": 12, "price": 28.90 },
-          { "shopify_variant_id": "44061332373694", "units_per_pack": 1,  "price": 2.49  }
+          {
+            "shopify_variant_id": "42825289957566",
+            "units_per_pack": 12,
+            "price": 28.9
+          },
+          {
+            "shopify_variant_id": "44061332373694",
+            "units_per_pack": 1,
+            "price": 2.49
+          }
         ]
       },
       "dk": {
         "variants": [
-          { "shopify_variant_id": "44608862191882", "units_per_pack": 12, "price": 209.00 },
-          { "shopify_variant_id": "51601535729930", "units_per_pack": 6,  "price": 115.00 },
-          { "shopify_variant_id": "44608862224650", "units_per_pack": 1,  "price": 21.00  }
+          {
+            "shopify_variant_id": "44608862191882",
+            "units_per_pack": 12,
+            "price": 209.0
+          },
+          {
+            "shopify_variant_id": "51601535729930",
+            "units_per_pack": 6,
+            "price": 115.0
+          },
+          {
+            "shopify_variant_id": "44608862224650",
+            "units_per_pack": 1,
+            "price": 21.0
+          }
         ]
       },
       "ch": {
         "variants": [
-          { "shopify_variant_id": "51764600766728", "units_per_pack": 12, "price": 36.99 }
+          {
+            "shopify_variant_id": "51764600766728",
+            "units_per_pack": 12,
+            "price": 36.99
+          }
         ]
       },
       "vn": {
         "variants": [
-          { "shopify_variant_id": "1162368673", "units_per_pack": 1,  "price": 40000  },
-          { "shopify_variant_id": "1141355224", "units_per_pack": 12, "price": 480000 }
+          {
+            "shopify_variant_id": "1162368673",
+            "units_per_pack": 1,
+            "price": 40000
+          },
+          {
+            "shopify_variant_id": "1141355224",
+            "units_per_pack": 12,
+            "price": 480000
+          }
         ]
       },
       "sg": {
         "variants": [
-          { "shopify_variant_id": "41347780182099", "units_per_pack": 1, "price": 3.21 }
+          {
+            "shopify_variant_id": "41347780182099",
+            "units_per_pack": 1,
+            "price": 3.21
+          }
         ]
       },
       "hk": {
         "variants": [
-          { "shopify_variant_id": "46364666462506", "units_per_pack": 6,  "price": 180.00 },
-          { "shopify_variant_id": "46364666495274", "units_per_pack": 12, "price": 360.00 }
+          {
+            "shopify_variant_id": "46364666462506",
+            "units_per_pack": 6,
+            "price": 180.0
+          },
+          {
+            "shopify_variant_id": "46364666495274",
+            "units_per_pack": 12,
+            "price": 360.0
+          }
         ]
       },
       "au": {
         "variants": [
-          { "units_per_pack": 1, "price": 3.00 }
+          {
+            "units_per_pack": 1,
+            "price": 3.0
+          }
         ]
       },
       "fr": {
         "variants": [
-          { "units_per_pack": 1, "price": 2.50 }
+          {
+            "units_per_pack": 1,
+            "price": 2.5
+          }
         ]
       }
     }

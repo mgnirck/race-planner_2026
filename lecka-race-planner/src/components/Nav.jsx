@@ -1,7 +1,7 @@
 import React from 'react'
 import { isEmbedded } from '../embed.js'
 
-export default function Nav({ backHref, backLabel }) {
+export default function Nav() {
   if (isEmbedded) return null
 
   const userId  = localStorage.getItem('lecka_user_id')
@@ -10,19 +10,23 @@ export default function Nav({ backHref, backLabel }) {
 
   return (
     <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
-      <div className="max-w-lg mx-auto px-5 py-3 flex items-center">
+      <div className="flex items-center px-5 py-3">
 
-        {/* Left — back link or spacer */}
-        <div className="w-28 flex-shrink-0">
-          {backHref && (
-            <a
-              href={backHref}
-              className="text-sm text-[#48C4B0] font-medium hover:underline
-                         min-h-[44px] flex items-center"
-            >
-              ← {backLabel || 'Back'}
-            </a>
-          )}
+        {/* Left — new plan links */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <a
+            href="/planner"
+            className="text-xs font-medium text-[#1B1B1B] hover:text-[#48C4B0] transition-colors whitespace-nowrap"
+          >
+            New Quick Plan
+          </a>
+          <span className="text-gray-200 text-xs">|</span>
+          <a
+            href="/planner/pro"
+            className="text-xs font-medium text-[#1B1B1B] hover:text-[#48C4B0] transition-colors whitespace-nowrap"
+          >
+            New Pro Plan
+          </a>
         </div>
 
         {/* Centre — logo */}
@@ -33,23 +37,14 @@ export default function Nav({ backHref, backLabel }) {
         </div>
 
         {/* Right — auth */}
-        <div className="w-28 flex-shrink-0 flex items-center justify-end gap-2">
-          {/* Language switcher — re-enable when translations complete */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           {userId ? (
             <>
               <a
                 href="/dashboard"
-                className="text-sm font-medium text-[#1B1B1B] hover:text-[#48C4B0]
-                           transition-colors hidden sm:block"
+                className="text-xs font-medium text-[#1B1B1B] hover:text-[#48C4B0] transition-colors whitespace-nowrap"
               >
-                My plans
-              </a>
-              <a
-                href="/planner/pro"
-                className="text-sm font-medium text-[#1B1B1B] hover:text-[#48C4B0]
-                           transition-colors hidden sm:block"
-              >
-                Pro plan
+                My Plans
               </a>
               <a
                 href="/dashboard"
@@ -64,7 +59,7 @@ export default function Nav({ backHref, backLabel }) {
           ) : (
             <a
               href="/auth/login"
-              className="text-sm font-medium text-[#1B1B1B] hover:text-[#48C4B0] transition-colors"
+              className="text-xs font-medium text-[#1B1B1B] hover:text-[#48C4B0] transition-colors whitespace-nowrap"
             >
               Log in
             </a>

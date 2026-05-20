@@ -14,14 +14,28 @@ function buildProtocol(daysToRace, carbTarget, firstGelName) {
       body: `Reduce volume but keep gel timing on shorter runs. Your gut adapts downward too — do not skip fuelling sessions in taper. Arrive at the start line with a trained gut.` },
   ]
 
-  let weekStart = 1
+  const useWeeks = daysToRace >= 28
+
+  if (useWeeks) {
+    let weekStart = 1
+    return phases.map(phase => {
+      const phaseDays = Math.round(daysToRace * phase.share)
+      const weekEnd = weekStart + Math.ceil(phaseDays / 7) - 1
+      const label = weekStart === weekEnd
+        ? `Week ${weekStart}`
+        : `Weeks ${weekStart}–${weekEnd}`
+      weekStart = weekEnd + 1
+      return { weekLabel: label, title: phase.title, body: phase.body }
+    })
+  }
+
+  // < 28 days — use day ranges so "Week 5" doesn't appear when there are only 2 weeks left
+  let dayStart = 1
   return phases.map(phase => {
-    const phaseDays = Math.round(daysToRace * phase.share)
-    const weekEnd = weekStart + Math.ceil(phaseDays / 7) - 1
-    const label = weekStart === weekEnd
-      ? `Week ${weekStart}`
-      : `Weeks ${weekStart}–${weekEnd}`
-    weekStart = weekEnd + 1
+    const phaseDays = Math.max(1, Math.round(daysToRace * phase.share))
+    const dayEnd = Math.min(dayStart + phaseDays - 1, daysToRace)
+    const label = dayStart === dayEnd ? `Day ${dayStart}` : `Days ${dayStart}–${dayEnd}`
+    dayStart = dayEnd + 1
     return { weekLabel: label, title: phase.title, body: phase.body }
   })
 }

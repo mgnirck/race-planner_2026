@@ -1665,6 +1665,12 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         <SectionLabel>{t('section.raceTimeline')}</SectionLabel>
         <RaceTimelineV2 events={timeline} totalDuration={targets.total_duration_minutes} />
       </section>
+      {leckaSelection.some(i => i.product?.type === 'ultra_gel') && (
+        <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-xl p-3">
+          <p className="text-xs font-semibold text-amber-900 mb-0.5">Running vest required</p>
+          <p className="text-xs text-amber-800">Ultra gels are larger than standard gels and need a running vest pocket to carry during the race.</p>
+        </div>
+      )}
       {(() => {
         const f = targets.fluid_ml_per_hour
         const d = targets.total_duration_minutes
@@ -1687,14 +1693,27 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const coachTabContent = (
     <div className="space-y-6">
       {!isPublicView && (
-        <CoachNotes
-          coachCopy={proCoachCopy}
-          watchOut={proWatchOut}
-          loading={proCoachLoading}
-          failed={proCoachFailed}
-          onRetry={retryCoach}
-          startExpanded
-        />
+        <>
+          <CoachNotes
+            coachCopy={proCoachCopy}
+            watchOut={proWatchOut}
+            loading={proCoachLoading}
+            failed={proCoachFailed}
+            onRetry={retryCoach}
+            startExpanded
+          />
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={retryCoach}
+              disabled={proCoachLoading}
+              className="text-xs text-gray-400 hover:text-[#48C4B0] transition-colors disabled:opacity-40 flex items-center gap-1"
+            >
+              <span>↻</span>
+              <span>{proCoachLoading ? 'Refreshing…' : 'Refresh with new product selection'}</span>
+            </button>
+          </div>
+        </>
       )}
     </div>
   )
@@ -1732,7 +1751,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
       {/* ── Desktop Nav bar ─────────────────────────────────────────────────── */}
       <div className="hidden lg:block">
-        {isEmbedded ? null : <Nav backHref="/planner" backLabel="Back to planner" />}
+        {isEmbedded ? null : <Nav />}
       </div>
 
       {/* ── Desktop teal hero header ─────────────────────────────────────────── */}
@@ -1861,7 +1880,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             </div>
           </div>
         ) : (
-          <Nav backHref="/planner" backLabel="Back to planner" />
+          <Nav />
         )}
 
         {/* Teal header */}
