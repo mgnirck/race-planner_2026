@@ -71,7 +71,7 @@ export default function VerifyPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
-        <img src="/logo.svg" alt="Lecka" className="h-8 mx-auto mb-8" />
+        <img src="/lecka%20logo%20green.svg" alt="Lecka" className="h-8 mx-auto mb-8" />
 
         {status === 'verifying' && (
           <>

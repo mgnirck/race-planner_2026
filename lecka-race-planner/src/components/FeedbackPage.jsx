@@ -167,7 +167,7 @@ export default function FeedbackPage({ planId }) {
           >
             ← Dashboard
           </a>
-          <img src="/logo.svg" alt="Lecka" className="h-6" />
+          <img src="/lecka%20logo%20green.svg" alt="Lecka" className="h-6" />
           <div className="w-20" />
         </div>
       </div>

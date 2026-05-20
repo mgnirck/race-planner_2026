@@ -742,7 +742,7 @@ export default function CheckpointPage({ planId }) {
             </svg>
             Back to my plan
           </a>
-          <img src="/logo.svg" alt="Lecka" className="h-6" />
+          <img src="/lecka%20logo%20green.svg" alt="Lecka" className="h-6" />
           <div className="flex items-center gap-2">
             <button
               type="button"

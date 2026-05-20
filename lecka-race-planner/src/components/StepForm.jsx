@@ -1628,7 +1628,7 @@ export default function StepForm({ onComplete }) {
       {/* ── Logo + Step header ── */}
       <div className="max-w-md mx-auto w-full px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-5">
-          <img src="/logo.svg" alt="Lecka" className="h-7" />
+          <img src="/lecka%20logo%20green.svg" alt="Lecka" className="h-7" />
           {/* Language switcher — re-enable when translations complete */}
         </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">

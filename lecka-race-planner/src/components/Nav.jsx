@@ -32,7 +32,7 @@ export default function Nav() {
         {/* Centre — logo */}
         <div className="flex-1 flex justify-center">
           <a href="/">
-            <img src="/logo.svg" alt="Lecka" className="h-6" />
+            <img src="/lecka%20logo%20green.svg" alt="Lecka" className="h-6" />
           </a>
         </div>
 
