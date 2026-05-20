@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import ResultsPage from './ResultsPage'
+import SimpleResultsPage from './SimpleResultsPage'
 import Nav from './Nav'
 
 const planId = window.location.pathname.split('/')[2]
@@ -43,6 +44,20 @@ export default function PlanViewPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-[#48C4B0] border-t-transparent rounded-full animate-spin" />
       </div>
+    )
+  }
+
+  const isQuickPlan = plan.inputs?.mode === 'quick' || plan.mode === 'quick'
+
+  if (isQuickPlan) {
+    return (
+      <SimpleResultsPage
+        targets={plan.targets}
+        selection={plan.selection}
+        form={plan.inputs}
+        region={plan.region}
+        onBack={isOwner ? () => window.location.replace('/dashboard') : null}
+      />
     )
   }
 

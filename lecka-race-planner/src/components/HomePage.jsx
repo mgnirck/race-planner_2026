@@ -65,7 +65,8 @@ export default function HomePage() {
           >
             Build my plan →
           </a>
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="text-sm text-gray-400 mt-3">Takes 30 seconds.</p>
+          <p className="text-xs text-gray-400 mt-3">
             Already used the planner?{' '}
             <a href="/auth/login" className="text-[#48C4B0] hover:underline">
               Log in to access your plans and the Pro planner →

@@ -435,7 +435,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           )}
         </div>
 
-        {/* ── Section 2: Nutrition targets + caveat ───────────────────────── */}
+        {/* ── Section 2: Nutrition targets ─────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
           <SectionLabel>Your targets</SectionLabel>
           <div style={{
@@ -476,19 +476,6 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
             <span>Total sodium: <strong style={{ color: '#1B1B1B' }}>{targets.total_sodium}mg</strong></span>
           </div>
 
-          {/* Caveat */}
-          <div style={{
-            background: '#FAEEDA',
-            borderLeft: '3px solid #BA7517',
-            borderRadius: '0 8px 8px 0',
-            padding: '10px 14px',
-            fontSize: 13,
-            color: '#633806',
-            marginTop: 14,
-          }}>
-            Estimated for a 70 kg intermediate athlete at race pace. Your actual targets may vary
-            by 20–40% depending on your weight, fitness, and effort level.
-          </div>
         </div>
 
         {/* ── Section 3: Pro plan upsell card ─────────────────────────────── */}

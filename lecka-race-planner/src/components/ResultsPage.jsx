@@ -1359,14 +1359,19 @@ function setProCoachCache(key, data) {
   } catch {}
 }
 
-function CoachNotes({ coachCopy, watchOut, loading, startExpanded = false }) {
+function CoachNotes({ coachCopy, watchOut, loading, failed = false, onRetry, startExpanded = false }) {
   const [expanded, setExpanded] = useState(startExpanded)
 
   if (loading) {
     return (
       <section className="border-2 border-gray-100 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[10px] font-semibold text-violet-600">
+              AI · Lecka knowledge
+            </span>
+          </div>
           <div className="w-4 h-4 bg-gray-100 rounded animate-pulse" />
         </div>
         <div className="space-y-2">
@@ -1375,6 +1380,29 @@ function CoachNotes({ coachCopy, watchOut, loading, startExpanded = false }) {
           <div className="h-3 bg-gray-100 rounded animate-pulse w-3/5" />
         </div>
         <div className="mt-4 h-14 bg-amber-50 rounded-xl animate-pulse" />
+      </section>
+    )
+  }
+
+  if (failed) {
+    return (
+      <section className="border-2 border-gray-100 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[10px] font-semibold text-violet-600">
+            AI · Lecka knowledge
+          </span>
+        </div>
+        <p className="text-sm text-gray-400 mb-3">Coach notes couldn&apos;t load this time.</p>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="text-xs font-semibold text-[#48C4B0] hover:underline"
+          >
+            Retry →
+          </button>
+        )}
       </section>
     )
   }
@@ -1395,7 +1423,12 @@ function CoachNotes({ coachCopy, watchOut, loading, startExpanded = false }) {
         onClick={() => setExpanded(v => !v)}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
       >
-        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[10px] font-semibold text-violet-600">
+            AI · Lecka knowledge
+          </span>
+        </div>
         <svg
           className={`w-4 h-4 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
           viewBox="0 0 20 20" fill="currentColor"
@@ -1511,7 +1544,7 @@ function cpSegNutrition(estMins, targets) {
   }
 }
 
-function CheckpointsTab({ planId, isLoggedIn, targets, form }) {
+function CheckpointsTab({ planId, isLoggedIn, targets, form, selection = [] }) {
   const storageKey = planId ? `lecka_checkpoints_${planId}` : null
   const [checkpoints, setCheckpoints] = useState(() => {
     try {
@@ -1522,18 +1555,41 @@ function CheckpointsTab({ planId, isLoggedIn, targets, form }) {
     } catch {}
     return []
   })
+  const [cpProducts, setCpProducts] = useState(() => {
+    try {
+      if (storageKey) {
+        const raw = localStorage.getItem(storageKey)
+        if (raw) return JSON.parse(raw).cpProducts ?? {}
+      }
+    } catch {}
+    return {}
+  })
 
   const totalKm   = form?.custom_race_km > 0 ? form.custom_race_km : (RACE_DISTANCE_KM[targets?.race_type] ?? 0)
   const totalMins = targets?.total_duration_minutes ?? 0
 
+  const planProducts = selection.filter(i => i.product?.name).map(i => i.product.name)
+
   useEffect(() => {
     if (!storageKey) return
-    try { localStorage.setItem(storageKey, JSON.stringify({ checkpoints })) } catch {}
-  }, [checkpoints, storageKey])
+    try { localStorage.setItem(storageKey, JSON.stringify({ checkpoints, cpProducts })) } catch {}
+  }, [checkpoints, cpProducts, storageKey])
 
   function addCp() { setCheckpoints(prev => [...prev, newCp()]) }
-  function removeCp(id) { setCheckpoints(prev => prev.filter(c => c.id !== id)) }
+  function removeCp(id) {
+    setCheckpoints(prev => prev.filter(c => c.id !== id))
+    setCpProducts(prev => { const n = { ...prev }; delete n[id]; return n })
+  }
   function updateCp(id, patch) { setCheckpoints(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c)) }
+  function toggleCpProduct(cpId, productName) {
+    setCpProducts(prev => {
+      const existing = prev[cpId] ?? []
+      const next = existing.includes(productName)
+        ? existing.filter(p => p !== productName)
+        : [...existing, productName]
+      return { ...prev, [cpId]: next }
+    })
+  }
 
   // Build segments: [start, ...checkpoints, finish]
   const points = [
@@ -1636,6 +1692,31 @@ function CheckpointsTab({ planId, isLoggedIn, targets, form }) {
                       ×
                     </button>
                   </div>
+                  {planProducts.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-[#48C4B0]/20">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Products at this checkpoint</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {planProducts.map(name => {
+                          const checked = (cpProducts[seg.from.id] ?? []).includes(name)
+                          return (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() => toggleCpProduct(seg.from.id, name)}
+                              className={[
+                                'text-xs px-2.5 py-1 rounded-full border font-medium transition-colors',
+                                checked
+                                  ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
+                                  : 'border-gray-200 text-gray-500 hover:border-[#48C4B0]',
+                              ].join(' ')}
+                            >
+                              {name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1683,11 +1764,6 @@ function CheckpointsTab({ planId, isLoggedIn, targets, form }) {
         </p>
       )}
 
-      {planId && (
-        <a href={`/plan/${planId}/checkpoints`} className="flex items-center gap-1.5 text-xs text-[#48C4B0] hover:underline">
-          Open full planner with product assignment →
-        </a>
-      )}
     </div>
   )
 }
@@ -1703,10 +1779,13 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
   const [copyPlanState,  setCopyPlanState]  = useState('idle') // idle | copied
-  const [proCoachCopy,   setProCoachCopy]   = useState(null)
-  const [proWatchOut,    setProWatchOut]    = useState(null)
+  const [proCoachCopy,    setProCoachCopy]    = useState(null)
+  const [proWatchOut,     setProWatchOut]     = useState(null)
   const [proCoachLoading, setProCoachLoading] = useState(!isPublicView)
-  const [planId,         setPlanId]         = useState(planIdProp)
+  const [proCoachFailed,   setProCoachFailed]   = useState(false)
+  const [coachRetryKey,    setCoachRetryKey]    = useState(0)
+  const [planId,           setPlanId]           = useState(planIdProp)
+  const emailRef = useRef(null)
   const regionConfig = getRegionConfig(region)
   const regionType   = regionsConfig[region]?.type ?? null
 
@@ -1738,6 +1817,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   // Pro coach copy — only for live plans, not public/shared views
   useEffect(() => {
     if (isPublicView) return
+    setProCoachLoading(true)
+    setProCoachFailed(false)
     const cacheKey = `lecka_pro_coach_${targets.race_type}_${targets.total_duration_minutes}_${targets.conditions}_${form.athlete_profile ?? ''}`
     const cached = getProCoachFromCache(cacheKey)
     if (cached) {
@@ -1748,7 +1829,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     }
 
     const controller = new AbortController()
-    const timeout    = setTimeout(() => controller.abort(), 8000)
+    const timeout    = setTimeout(() => controller.abort(), 30000)
 
     const weight_kg = (() => {
       if (!form.weight_value) return null
@@ -1798,13 +1879,14 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       .catch(() => {
         clearTimeout(timeout)
         setProCoachLoading(false)
+        setProCoachFailed(true)
       })
 
     return () => {
       clearTimeout(timeout)
       controller.abort()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [coachRetryKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Silent plan save for logged-in users — only for fresh plans, not when viewing a saved plan
   useEffect(() => {
@@ -2013,6 +2095,12 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     return Math.round((race - today) / (1000 * 60 * 60 * 24))
+  }
+
+  function retryCoach() {
+    const cacheKey = `lecka_pro_coach_${targets.race_type}_${targets.total_duration_minutes}_${targets.conditions}_${form.athlete_profile ?? ''}`
+    try { localStorage.removeItem(cacheKey) } catch {}
+    setCoachRetryKey(k => k + 1)
   }
 
   // Prefer athlete's race name → triathlon type label (if triathlon) → distance typed → race_type label
@@ -2251,31 +2339,21 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       )}
       <RaceTimeline events={timeline} totalDuration={targets.total_duration_minutes} />
       <TrainingAccordion trainingInfo={trainingInfo} t={t} />
-      {targets.total_duration_minutes >= 180 && !isPublicView && (
-        <CheckpointsTab
-          planId={planId}
-          isLoggedIn={Boolean(localStorage.getItem('lecka_user_id'))}
-          targets={targets}
-          form={form}
-        />
-      )}
     </div>
   )
 
   const coachTabContent = (
     <div className="space-y-6">
       {!isPublicView && (
-        <CoachNotes coachCopy={proCoachCopy} watchOut={proWatchOut} loading={proCoachLoading} startExpanded />
+        <CoachNotes
+          coachCopy={proCoachCopy}
+          watchOut={proWatchOut}
+          loading={proCoachLoading}
+          failed={proCoachFailed}
+          onRetry={retryCoach}
+          startExpanded
+        />
       )}
-      <PlanDeliveryCard
-        targets={targets}
-        selection={effectiveSelection}
-        form={form}
-        region={region}
-        hideSave={hideSave}
-        resolvedAddonItems={resolvedAddonItems}
-        planId={planId}
-      />
     </div>
   )
 
@@ -2348,13 +2426,15 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           </button>
           <button
             type="button"
-            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-400 cursor-default"
+            onClick={() => window.print()}
+            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
           >
             PDF
           </button>
           <button
             type="button"
-            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-400 cursor-default"
+            onClick={() => emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
           >
             Email
           </button>
@@ -2416,15 +2496,17 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               </button>
               <button
                 type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs"
-                title="PDF (coming soon)"
+                onClick={() => window.print()}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
+                title="Download PDF"
               >
                 📄
               </button>
               <button
                 type="button"
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs"
-                title="Email (coming soon)"
+                onClick={() => { setMobileTab('order'); setTimeout(() => emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100) }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
+                title="Email plan"
               >
                 ✉️
               </button>
@@ -2480,10 +2562,23 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           )}
           {mobileTab === 'coach' && coachTabContent}
           {mobileTab === 'order' && (
-            <section>
-              <SectionLabel>Get your products</SectionLabel>
-              {orderSection}
-            </section>
+            <div className="space-y-6">
+              <section>
+                <SectionLabel>Get your products</SectionLabel>
+                {orderSection}
+              </section>
+              <div ref={emailRef}>
+                <PlanDeliveryCard
+                  targets={targets}
+                  selection={effectiveSelection}
+                  form={form}
+                  region={region}
+                  hideSave={hideSave}
+                  resolvedAddonItems={resolvedAddonItems}
+                  planId={planId}
+                />
+              </div>
+            </div>
           )}
         </div>
 
@@ -2583,6 +2678,19 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             {orderSection}
           </section>
 
+          {/* Email plan */}
+          <div ref={emailRef}>
+            <PlanDeliveryCard
+              targets={targets}
+              selection={effectiveSelection}
+              form={form}
+              region={region}
+              hideSave={hideSave}
+              resolvedAddonItems={resolvedAddonItems}
+              planId={planId}
+            />
+          </div>
+
           {/* Share button */}
           <button
             type="button"
@@ -2637,11 +2745,6 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               content: coachTabContent,
             },
             {
-              key: 'science',
-              label: 'Science',
-              content: scienceTabContent,
-            },
-            {
               key: 'checkpoints',
               label: 'Checkpoints',
               content: (
@@ -2650,8 +2753,14 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                   isLoggedIn={Boolean(localStorage.getItem('lecka_user_id'))}
                   targets={targets}
                   form={form}
+                  selection={effectiveSelection}
                 />
               ),
+            },
+            {
+              key: 'science',
+              label: 'Science',
+              content: scienceTabContent,
             },
           ]}
         />
