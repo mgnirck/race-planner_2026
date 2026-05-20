@@ -533,12 +533,12 @@
     "lab_report": "AR-25-VD-256496-01-EN",
     "lab_date": "2026-01-08",
     "regions": {
-      "us": { "variants": [{ "shopify_variant_id": "PLACEHOLDER_US_ULTRA_GEL_PFM", "units_per_pack": 1, "price": 7.95 }] },
-      "de": { "variants": [{ "shopify_variant_id": "PLACEHOLDER_DE_ULTRA_GEL_PFM", "units_per_pack": 1, "price": 7.50 }] },
-      "dk": { "variants": [{ "shopify_variant_id": "PLACEHOLDER_DK_ULTRA_GEL_PFM", "units_per_pack": 1, "price": 59.00 }] },
-      "ch": { "variants": [{ "shopify_variant_id": "57767835828488",               "units_per_pack": 1, "price": 8.00 }] },
-      "vn": { "variants": [{ "shopify_variant_id": "PLACEHOLDER_VN_ULTRA_GEL_PFM", "units_per_pack": 1, "price": 185000 }] },
-      "sg": { "variants": [{ "shopify_variant_id": "PLACEHOLDER_SG_ULTRA_GEL_PFM", "units_per_pack": 1, "price": 10.80 }] },
+      "us": { "variants": [{ "shopify_variant_id": "45340409823279", "units_per_pack": 4, "price": 28.95 }] },
+      "de": { "variants": [{ "shopify_variant_id": "46650707607742", "units_per_pack": 1, "price": 6.49 }] },
+      "dk": { "variants": [{ "shopify_variant_id": "53036444057866", "units_per_pack": 1, "price": 49.00 }] },
+      "ch": { "variants": [{ "shopify_variant_id": "57767835828488", "units_per_pack": 1, "price": 8.00 }] },
+      "vn": { "variants": [{ "shopify_variant_id": "1167740193", "units_per_pack": 1, "price": 135000 }] },
+      "sg": { "variants": [{ "shopify_variant_id": "10147404709971", "units_per_pack": 1, "price": 7.98 }] },
       "hk": {
         "variants": [
           { "shopify_variant_id": "51518552375594", "units_per_pack": 1, "price": 58.00  },
