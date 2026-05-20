@@ -35,8 +35,8 @@ const REGION_LABELS = Object.fromEntries(
   Object.entries(regionsConfig).map(([k, v]) => [k, v.label])
 )
 
-const CATALOG_REGIONS      = ['us', 'de', 'dk', 'ch', 'vn']
-const CATALOG_REGION_CODES = { us: 'US', de: 'DE', dk: 'DK', ch: 'CH', vn: 'VN' }
+const CATALOG_REGIONS      = ['us', 'de', 'dk', 'ch', 'vn', 'sg', 'hk', 'au', 'fr']
+const CATALOG_REGION_CODES = { us: 'US', de: 'DE', dk: 'DK', ch: 'CH', vn: 'VN', sg: 'SG', hk: 'HK', au: 'AU', fr: 'FR' }
 
 const ATHLETE_PROFILE_LABELS = {
   untrained: 'New to endurance sports',
@@ -813,7 +813,7 @@ function ProductsTab({ data, password }) {
           <>
             {/* Region header */}
             <div className="grid items-center px-3 py-1 mb-1"
-                 style={{ gridTemplateColumns: '1fr repeat(5, 3rem)' }}>
+                 style={{ gridTemplateColumns: '1fr repeat(9, 2.5rem)' }}>
               <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Product</span>
               {CATALOG_REGIONS.map(r => (
                 <span key={r} className="text-xs font-semibold uppercase tracking-wider text-gray-400 text-center">{CATALOG_REGION_CODES[r]}</span>
@@ -829,7 +829,7 @@ function ProductsTab({ data, password }) {
                   <div key={product.id} className="border-2 border-gray-100 rounded-xl overflow-hidden">
                     {/* Availability row */}
                     <div className="grid items-center px-3 py-2.5"
-                         style={{ gridTemplateColumns: '1fr repeat(5, 3rem)' }}>
+                         style={{ gridTemplateColumns: '1fr repeat(9, 2.5rem)' }}>
                       <button
                         type="button"
                         onClick={() => setExpandedId(isExpanded ? null : product.id)}
@@ -902,23 +902,25 @@ function ProductsTab({ data, password }) {
                                         )}
                                       </label>
 
-                                      {/* Shopify variant ID */}
-                                      <label className="flex items-center gap-1 ml-2">
-                                        <span className="text-gray-400">VID</span>
-                                        <input
-                                          className="w-28 border border-gray-200 rounded px-1.5 py-0.5 text-xs font-mono"
-                                          value={vidDraft ?? v.shopify_variant_id}
-                                          onChange={e => setEditDraft(d => ({ ...d, [vidKey]: e.target.value }))}
-                                        />
-                                        {vidDraft !== undefined && (
-                                          <button
-                                            type="button"
-                                            disabled={savingKey === vidKey}
-                                            onClick={() => saveVariantField(v.id, product.id, region, 'shopify_variant_id')}
-                                            className="text-[#48C4B0] font-bold"
-                                          >✓</button>
-                                        )}
-                                      </label>
+                                      {/* Shopify variant ID — hidden for direct-link markets */}
+                                      {!regionsConfig[region]?.direct_link && (
+                                        <label className="flex items-center gap-1 ml-2">
+                                          <span className="text-gray-400">VID</span>
+                                          <input
+                                            className="w-28 border border-gray-200 rounded px-1.5 py-0.5 text-xs font-mono"
+                                            value={vidDraft ?? v.shopify_variant_id}
+                                            onChange={e => setEditDraft(d => ({ ...d, [vidKey]: e.target.value }))}
+                                          />
+                                          {vidDraft !== undefined && (
+                                            <button
+                                              type="button"
+                                              disabled={savingKey === vidKey}
+                                              onClick={() => saveVariantField(v.id, product.id, region, 'shopify_variant_id')}
+                                              className="text-[#48C4B0] font-bold"
+                                            >✓</button>
+                                          )}
+                                        </label>
+                                      )}
                                     </div>
                                   )
                                 })}

@@ -31,6 +31,7 @@ import PlanRightColumn from './PlanRightColumn.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+
 const ELEVATION_MODIFIER_PCT = {
   rolling:    5,
   hilly:      10,

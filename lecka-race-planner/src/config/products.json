@@ -61,6 +61,16 @@
           { "shopify_variant_id": "49101082493226", "units_per_pack": 6,  "price": 144.00 },
           { "shopify_variant_id": "49101082525994", "units_per_pack": 12, "price": 288.00 }
         ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.99 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.70 }
+        ]
       }
     }
   },
@@ -127,6 +137,16 @@
         "variants": [
           { "shopify_variant_id": "50051279520042", "units_per_pack": 6,  "price": 144.00 },
           { "shopify_variant_id": "50051279552810", "units_per_pack": 12, "price": 288.00 }
+        ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.99 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.70 }
         ]
       }
     }
@@ -195,6 +215,16 @@
           { "shopify_variant_id": "49101171032362", "units_per_pack": 6,  "price": 144.00 },
           { "shopify_variant_id": "49101171097898", "units_per_pack": 12, "price": 288.00 }
         ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.99 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.70 }
+        ]
       }
     }
   },
@@ -262,6 +292,16 @@
           { "shopify_variant_id": "50622014882090", "units_per_pack": 6,  "price": 144.00 },
           { "shopify_variant_id": "50622014914858", "units_per_pack": 12, "price": 288.00 }
         ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.99 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.70 }
+        ]
       }
     }
   },
@@ -327,6 +367,16 @@
         "variants": [
           { "shopify_variant_id": "50621994303786", "units_per_pack": 6,  "price": 144.00 },
           { "shopify_variant_id": "50621994336554", "units_per_pack": 12, "price": 288.00 }
+        ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.99 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.70 }
         ]
       }
     }
@@ -414,7 +464,9 @@
       },
       "hk": {
         "variants": []
-      }
+      },
+      "au": { "variants": [] },
+      "fr": { "variants": [] }
     }
   },
   {
@@ -452,7 +504,9 @@
       "ch": { "variants": [] },
       "vn": { "variants": [] },
       "sg": { "variants": [] },
-      "hk": { "variants": [] }
+      "hk": { "variants": [] },
+      "au": { "variants": [] },
+      "fr": { "variants": [] }
     }
   },
   {
@@ -491,7 +545,13 @@
           { "shopify_variant_id": "51518415438122", "units_per_pack": 3, "price": 145.00 },
           { "shopify_variant_id": "51518415470890", "units_per_pack": 6, "price": 278.00 }
         ]
-      }
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 7.99 }
+        ]
+      },
+      "fr": { "variants": [] }
     }
   },
   {
@@ -529,7 +589,9 @@
       "ch": { "variants": [] },
       "vn": { "variants": [] },
       "sg": { "variants": [] },
-      "hk": { "variants": [] }
+      "hk": { "variants": [] },
+      "au": { "variants": [] },
+      "fr": { "variants": [] }
     }
   },
   {
@@ -575,7 +637,9 @@
       },
       "hk": {
         "variants": []
-      }
+      },
+      "au": { "variants": [] },
+      "fr": { "variants": [] }
     }
   },
   {
@@ -633,6 +697,16 @@
           { "shopify_variant_id": "46364605120810", "units_per_pack": 6,  "price": 180.00 },
           { "shopify_variant_id": "46364605153578", "units_per_pack": 12, "price": 360.00 }
         ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.00 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.50 }
+        ]
       }
     }
   },
@@ -685,6 +759,16 @@
           { "shopify_variant_id": "46364390097194", "units_per_pack": 6,  "price": 180.00 },
           { "shopify_variant_id": "46364390129962", "units_per_pack": 12, "price": 360.00 }
         ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.00 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.50 }
+        ]
       }
     }
   },
@@ -730,6 +814,16 @@
         "variants": [
           { "shopify_variant_id": "46363724185898", "units_per_pack": 6,  "price": 180.00 },
           { "shopify_variant_id": "46363724218666", "units_per_pack": 12, "price": 360.00 }
+        ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.00 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.50 }
         ]
       }
     }
@@ -790,6 +884,16 @@
         "variants": [
           { "shopify_variant_id": "46364666462506", "units_per_pack": 6,  "price": 180.00 },
           { "shopify_variant_id": "46364666495274", "units_per_pack": 12, "price": 360.00 }
+        ]
+      },
+      "au": {
+        "variants": [
+          { "units_per_pack": 1, "price": 3.00 }
+        ]
+      },
+      "fr": {
+        "variants": [
+          { "units_per_pack": 1, "price": 2.50 }
         ]
       }
     }

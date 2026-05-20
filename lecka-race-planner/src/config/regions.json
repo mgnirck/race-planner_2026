@@ -51,6 +51,22 @@
     "label": "Hong Kong",
     "type": "distributor"
   },
+  "au": {
+    "store_url": "https://www.wildearth.com.au/brand/Lecka",
+    "currency": "AUD",
+    "currency_symbol": "A$",
+    "label": "Australia",
+    "type": "distributor",
+    "direct_link": true
+  },
+  "fr": {
+    "store_url": "https://www.audacesports.fr/brand/15-lecka",
+    "currency": "EUR",
+    "currency_symbol": "€",
+    "label": "France",
+    "type": "distributor",
+    "direct_link": true
+  },
   "international": {
     "store_url": "https://www.getlecka.com",
     "currency": null,

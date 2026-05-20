@@ -19,7 +19,7 @@ const _require = createRequire(import.meta.url)
 const PRODUCTS_JSON = _require('../../src/config/products.json')
 const REGIONS_JSON  = _require('../../src/config/regions.json')
 
-const PRODUCT_REGIONS = ['us', 'de', 'dk', 'ch', 'vn']
+const PRODUCT_REGIONS = ['us', 'de', 'dk', 'ch', 'vn', 'sg', 'hk', 'au', 'fr']
 
 function checkAuth(req) {
   const adminPassword = process.env.VITE_ADMIN_PASSWORD
@@ -292,7 +292,7 @@ async function seedProducts(req, res) {
         await sql`
           INSERT INTO product_variants
             (product_id, region, shopify_variant_id, units_per_pack, price, sort_order)
-          VALUES (${p.id}, ${region}, ${v.shopify_variant_id}, ${v.units_per_pack}, ${v.price}, ${j})
+          VALUES (${p.id}, ${region}, ${v.shopify_variant_id ?? ''}, ${v.units_per_pack}, ${v.price}, ${j})
         `
       }
     }
