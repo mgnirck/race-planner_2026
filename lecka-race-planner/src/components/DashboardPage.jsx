@@ -72,7 +72,7 @@ function AddDateInline({ planId, userId, onSaved }) {
     if (!value) return
     setSaving(true)
     try {
-      const res = await fetch('/api/plans/update', {
+      const res = await fetch('/api/plans', {
         method:  'PATCH',
         headers: {
           'Content-Type':  'application/json',
@@ -112,34 +112,165 @@ function AddDateInline({ planId, userId, onSaved }) {
   )
 }
 
-function PlanCard({ plan, userId, onDateSaved, showFeedback = false }) {
-  const [addingDate, setAddingDate] = useState(false)
+function PlanCard({ plan, userId, onDateSaved, onNameSaved, onDeleted, showFeedback = false }) {
+  const [addingDate,       setAddingDate]       = useState(false)
+  const [editingName,      setEditingName]      = useState(false)
+  const [nameValue,        setNameValue]        = useState(raceLabel(plan))
+  const [savingName,       setSavingName]       = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting,         setDeleting]         = useState(false)
 
   const goalTime = formatGoalTime(plan.goal_minutes)
   const dateStr  = formatRaceDate(plan.race_date)
+
+  const modeBadge = plan.mode === 'quick'
+    ? { label: 'Quick', className: 'bg-gray-100 text-gray-500' }
+    : plan.mode === 'pro'
+    ? { label: 'Pro', className: 'bg-[#48C4B0]/10 text-[#48C4B0]' }
+    : null
 
   function handleDateSaved(planId, newDate) {
     setAddingDate(false)
     onDateSaved(planId, newDate)
   }
 
+  async function handleNameSave() {
+    const trimmed = nameValue.trim()
+    setSavingName(true)
+    try {
+      const res = await fetch('/api/plans', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body:    JSON.stringify({ planId: plan.id, race_name: trimmed }),
+      })
+      if (!res.ok) throw new Error()
+      const updated = await res.json()
+      onNameSaved(plan.id, updated.race_name)
+      setEditingName(false)
+    } catch {
+      // keep input open on failure
+    } finally {
+      setSavingName(false)
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/plans', {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body:    JSON.stringify({ planId: plan.id }),
+      })
+      if (!res.ok) throw new Error()
+      onDeleted(plan.id)
+    } catch {
+      setDeleting(false)
+      setConfirmingDelete(false)
+    }
+  }
+
   return (
     <div className="border-2 border-gray-100 rounded-2xl p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-base font-bold text-[#1B1B1B] leading-tight truncate">
-            {raceLabel(plan)}
-          </p>
-          {dateStr && (
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                type="text"
+                value={nameValue}
+                onChange={e => setNameValue(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleNameSave()
+                  if (e.key === 'Escape') { setEditingName(false); setNameValue(raceLabel(plan)) }
+                }}
+                className="flex-1 min-w-0 border-2 border-[#48C4B0] rounded-xl px-3 py-1
+                           text-sm text-[#1B1B1B] focus:outline-none"
+              />
+              <button
+                onClick={handleNameSave}
+                disabled={savingName}
+                className="text-xs font-semibold text-white bg-[#48C4B0] rounded-lg px-2.5 py-1
+                           hover:bg-[#3db09d] disabled:opacity-40 transition-colors"
+              >
+                {savingName ? '…' : '✓'}
+              </button>
+              <button
+                onClick={() => { setEditingName(false); setNameValue(raceLabel(plan)) }}
+                className="text-xs text-gray-400 hover:text-[#1B1B1B] transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 min-w-0">
+              {modeBadge && (
+                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md flex-shrink-0 ${modeBadge.className}`}>
+                  {modeBadge.label}
+                </span>
+              )}
+              <p className="text-base font-bold text-[#1B1B1B] leading-tight truncate">
+                {raceLabel(plan)}
+              </p>
+            </div>
+          )}
+          {dateStr && !editingName && (
             <p className="text-sm text-[#48C4B0] font-medium mt-0.5">{dateStr}</p>
           )}
         </div>
-        <a
-          href={`/plan/${plan.id}`}
-          className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap flex-shrink-0 mt-0.5"
-        >
-          View plan →
-        </a>
+
+        {!editingName && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => { setEditingName(true); setNameValue(raceLabel(plan)) }}
+              title="Rename plan"
+              className="p-1 text-gray-300 hover:text-[#48C4B0] transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            {confirmingDelete ? (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-gray-500">Delete?</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
+                >
+                  {deleting ? '…' : 'Yes'}
+                </button>
+                <button
+                  onClick={() => setConfirmingDelete(false)}
+                  className="text-xs text-gray-400 hover:text-[#1B1B1B] transition-colors"
+                >
+                  No
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmingDelete(true)}
+                title="Delete plan"
+                className="p-1 text-gray-300 hover:text-red-400 transition-colors"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                </svg>
+              </button>
+            )}
+            <a
+              href={`/plan/${plan.id}`}
+              className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap mt-0.5"
+            >
+              View →
+            </a>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -198,13 +329,45 @@ export default function DashboardPage() {
   const userId = localStorage.getItem('lecka_user_id')
   const email  = localStorage.getItem('lecka_user_email')
 
+  // Auto-save a plan that was created before the user was logged in
+  useEffect(() => {
+    const needsSave = localStorage.getItem('lecka_plan_needs_save')
+    if (!needsSave || !userId) return
+    localStorage.removeItem('lecka_plan_needs_save')
+    try {
+      const raw = localStorage.getItem('lecka_current_plan')
+      if (!raw) return
+      const result = JSON.parse(raw)
+      if (!result?.targets || !result?.selection) return
+      const planMode = result.mode === 'simple' ? 'quick' : 'pro'
+      fetch('/api/plans', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body: JSON.stringify({
+          inputs:    { ...(result.form ?? {}), mode: planMode },
+          targets:   result.targets,
+          selection: result.selection,
+          region:    result.form?.region ?? 'us',
+          lang:      'en',
+        }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data?.planId) {
+            setPlans(prev => prev ? [{ id: data.planId, ...result.targets, race_name: result.form?.race_name ?? null, race_date: result.form?.race_date ?? null, mode: planMode, created_at: new Date().toISOString() }, ...prev] : prev)
+          }
+        })
+        .catch(() => {})
+    } catch {}
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!userId) {
       window.location.replace('/auth/login')
       return
     }
 
-    fetch('/api/plans/list', {
+    fetch('/api/plans', {
       headers: { 'Authorization': `Bearer ${userId}` },
     })
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -220,6 +383,14 @@ export default function DashboardPage() {
 
   function handleDateSaved(planId, newDate) {
     setPlans(prev => prev.map(p => p.id === planId ? { ...p, race_date: newDate } : p))
+  }
+
+  function handleNameSaved(planId, newName) {
+    setPlans(prev => prev.map(p => p.id === planId ? { ...p, race_name: newName } : p))
+  }
+
+  function handlePlanDeleted(planId) {
+    setPlans(prev => prev.filter(p => p.id !== planId))
   }
 
   if (!userId) return null
@@ -255,6 +426,29 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#1B1B1B]">Your race plans</h1>
         </div>
+
+        {/* ── Start a new plan ──────────────────────────────────────────────── */}
+        <section>
+          <SectionLabel>Start a new plan</SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            <a
+              href="/planner"
+              className="border-2 border-[#48C4B0] rounded-2xl p-5 block hover:bg-[#48C4B0]/5 transition-colors"
+            >
+              <p className="text-base font-bold text-[#1B1B1B] mb-1">Quick plan</p>
+              <p className="text-sm text-gray-500 mb-4">3 inputs, instant result</p>
+              <span className="text-sm font-semibold text-[#48C4B0]">Build quick plan →</span>
+            </a>
+            <a
+              href="/planner/pro"
+              className="bg-[#48C4B0] rounded-2xl p-5 block hover:bg-[#3db09d] transition-colors"
+            >
+              <p className="text-base font-bold text-white mb-1">Pro plan</p>
+              <p className="text-sm text-white/75 mb-4">Full personalisation + gut training, aid stations &amp; more</p>
+              <span className="text-sm font-semibold text-white">Build pro plan →</span>
+            </a>
+          </div>
+        </section>
 
         {/* ── Loading ──────────────────────────────────────────────────────── */}
         {loading && (
@@ -299,6 +493,8 @@ export default function DashboardPage() {
                   plan={plan}
                   userId={userId}
                   onDateSaved={handleDateSaved}
+                  onNameSaved={handleNameSaved}
+                  onDeleted={handlePlanDeleted}
                 />
               ))}
             </div>
@@ -316,6 +512,8 @@ export default function DashboardPage() {
                   plan={plan}
                   userId={userId}
                   onDateSaved={handleDateSaved}
+                  onNameSaved={handleNameSaved}
+                  onDeleted={handlePlanDeleted}
                   showFeedback
                 />
               ))}

@@ -23,6 +23,7 @@ export function buildCartURLFromAggregated(aggregated, discountCode = '', utmSou
         console.warn(`[Lecka] Non-numeric variant ID "${vid}" for "${row.product?.name}" — skipping`)
         continue
       }
+      if (!vid || !/^\d+$/.test(vid)) continue
       variantTotals[vid] = (variantTotals[vid] || 0) + item.quantity
     }
   }
@@ -81,13 +82,7 @@ export function buildCartURL(selectedProducts, discountCode = '', utmSource = ''
 
     for (const line of lines) {
       const vid = line.shopify_variant_id
-      if (!/^\d+$/.test(vid)) {
-        console.warn(
-          `[Lecka] Invalid Shopify variant ID for "${product.name}": "${vid}" — ` +
-          `expected numeric ID. Skipping from cart URL.`
-        )
-        continue
-      }
+      if (!vid || !/^\d+$/.test(vid)) continue
       variantTotals[vid] = (variantTotals[vid] || 0) + line.quantity
     }
   }

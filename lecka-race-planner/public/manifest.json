@@ -1,0 +1,12 @@
+{
+  "name": "Lecka Race Planner",
+  "short_name": "Lecka",
+  "description": "Race nutrition planning for endurance athletes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#48C4B0",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

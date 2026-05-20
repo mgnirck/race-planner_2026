@@ -1,32 +1,26 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import HttpBackend from 'i18next-http-backend'
-import regionsConfig from './config/regions.json'
-import { detectRegion } from './embed.js'
 
 const SUPPORTED_LANGS = ['en', 'de', 'da', 'fr', 'vi']
 
 /**
  * Determine the initial language using priority order:
- *   1. ?lang= URL param (explicit override — also persisted to localStorage)
- *   2. localStorage.lecka_lang (user's previous explicit choice)
- *   3. Region's defaultLanguage (from regions.json)
- *   4. 'en' fallback
+ *   1. ?lang= URL param (deeplink or embed override, also persisted to localStorage)
+ *   2. localStorage.lecka_lang (user's saved preference)
+ *   3. English default — language is independent of region
  */
 function getInitialLanguage() {
   try {
     const urlLang = new URLSearchParams(window.location.search).get('lang')
     if (urlLang && SUPPORTED_LANGS.includes(urlLang)) {
-      localStorage.setItem('lecka_lang', urlLang)
+      try { localStorage.setItem('lecka_lang', urlLang) } catch {}
       return urlLang
     }
     const stored = localStorage.getItem('lecka_lang')
     if (stored && SUPPORTED_LANGS.includes(stored)) return stored
-  } catch {
-    // localStorage blocked (Safari ITP in iframe) — continue to region default
-  }
-  const regionDefault = regionsConfig[detectRegion]?.defaultLanguage
-  return (regionDefault && SUPPORTED_LANGS.includes(regionDefault)) ? regionDefault : 'en'
+  } catch {}
+  return 'en'
 }
 
 export const initialLanguage = getInitialLanguage()

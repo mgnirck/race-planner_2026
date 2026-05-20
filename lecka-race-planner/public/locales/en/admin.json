@@ -27,6 +27,8 @@
   "region.dk": "Denmark",
   "region.ch": "Switzerland",
   "region.vn": "Vietnam",
+  "region.sg": "Singapore",
+  "region.hk": "Hong Kong",
   "region.unknown": "Unknown",
   "footer": "No personal data is recorded — only race type, region, and timestamp per plan."
 }

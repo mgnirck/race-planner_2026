@@ -34,6 +34,7 @@ export default function Nav({ backHref, backLabel }) {
 
         {/* Right — auth */}
         <div className="w-28 flex-shrink-0 flex items-center justify-end gap-2">
+          {/* Language switcher — re-enable when translations complete */}
           {userId ? (
             <>
               <a
@@ -42,6 +43,13 @@ export default function Nav({ backHref, backLabel }) {
                            transition-colors hidden sm:block"
               >
                 My plans
+              </a>
+              <a
+                href="/planner/pro"
+                className="text-sm font-medium text-[#1B1B1B] hover:text-[#48C4B0]
+                           transition-colors hidden sm:block"
+              >
+                Pro plan
               </a>
               <a
                 href="/dashboard"

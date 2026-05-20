@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import ResultsPage from './ResultsPage'
+import SimpleResultsPage from './SimpleResultsPage'
 import Nav from './Nav'
 
 const planId = window.location.pathname.split('/')[2]
@@ -15,7 +16,7 @@ export default function PlanViewPage() {
     // to determine whether this visitor is the owner (enables extra UI).
     const headers = userId ? { Authorization: `Bearer ${userId}` } : {}
 
-    fetch(`/api/plans/get?planId=${planId}`, { headers })
+    fetch(`/api/plans?planId=${planId}`, { headers })
       .then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json()
@@ -46,6 +47,20 @@ export default function PlanViewPage() {
     )
   }
 
+  const isQuickPlan = plan.inputs?.mode === 'quick' || plan.mode === 'quick'
+
+  if (isQuickPlan) {
+    return (
+      <SimpleResultsPage
+        targets={plan.targets}
+        selection={plan.selection}
+        form={plan.inputs}
+        region={plan.region}
+        onBack={isOwner ? () => window.location.replace('/dashboard') : null}
+      />
+    )
+  }
+
   return (
     <ResultsPage
       targets={plan.targets}
@@ -55,6 +70,7 @@ export default function PlanViewPage() {
       onBack={isOwner ? () => window.location.replace('/dashboard') : null}
       hideSave={!isOwner}
       isPublicView={!isOwner}
+      planId={isOwner ? planId : null}
     />
   )
 }

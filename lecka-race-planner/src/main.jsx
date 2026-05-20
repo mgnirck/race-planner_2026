@@ -8,6 +8,12 @@ import { initHeightSync } from './embed.js'
 
 inject()
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
 // ── Embed: keep parent iframe sized to our content ────────────────────────────
 // Sets up load, resize, and ResizeObserver triggers — no-op when not embedded.
 initHeightSync()
