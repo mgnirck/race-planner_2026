@@ -28,7 +28,7 @@ export default function PlanLeftColumn({ children }) {
   return (
     <aside
       ref={ref}
-      className="border-r border-gray-100 px-5 py-6 space-y-6"
+      className="border-r border-gray-100 px-4 py-4 space-y-4"
       style={{ position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' }}
     >
       {children}

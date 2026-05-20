@@ -22,7 +22,7 @@ export default function PlanRightColumn({ tabs, defaultTab }) {
           </button>
         ))}
       </div>
-      <div className="flex-1 px-6 py-6">
+      <div className="flex-1 px-5 py-4">
         {activeTab?.content}
       </div>
     </div>

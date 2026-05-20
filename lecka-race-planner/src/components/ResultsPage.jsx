@@ -1730,63 +1730,112 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         />
       )}
 
-      {/* ── Desktop Nav bar ─────────────────────────────────────────────────── */}
-      <div className="hidden lg:block">
-        {isEmbedded
-          ? null
-          : <Nav backHref="/planner" backLabel="Back to planner" />
-        }
-      </div>
-
-      {/* ── Desktop sticky breadcrumb bar (≥1024px) ─────────────────────────── */}
-      <div className="hidden lg:flex sticky top-0 z-20 bg-white border-b border-gray-100 h-12 px-6 items-center justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-bold text-[#1B1B1B] text-sm">lecka</span>
-          <span className="text-gray-300">/</span>
-          <span className="text-sm text-gray-500 truncate max-w-xs">{heroTitle}</span>
+      {/* ── Desktop teal hero header ─────────────────────────────────────────── */}
+      <div className="hidden lg:flex sticky top-0 z-20 bg-[#48C4B0] px-5 py-3
+                      items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-[10px] font-medium text-white/70 uppercase tracking-[.06em] mb-1">
+            Lecka Pro Plan
+          </p>
+          <h1 className="text-base font-bold text-white leading-tight">{heroTitle}</h1>
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            {(() => {
+              const km = form.custom_race_km > 0
+                ? form.custom_race_km
+                : RACE_DISTANCE_KM[targets.race_type] ?? null
+              return km ? (
+                <span className="bg-black/15 text-white rounded-full px-2.5 py-0.5 text-[10px] font-medium">
+                  {km} km
+                </span>
+              ) : null
+            })()}
+            <span className="bg-black/15 text-white rounded-full px-2.5 py-0.5 text-[10px]">
+              {form.goal_time ? `Target ${formatDuration(targets.total_duration_minutes)}`
+                              : formatDuration(targets.total_duration_minutes)}
+            </span>
+            {conditionLabel && (
+              <span className="bg-black/15 text-white rounded-full px-2.5 py-0.5 text-[10px]">
+                {conditionLabel}
+              </span>
+            )}
+            {effortLabel && (
+              <span className="bg-black/15 text-white rounded-full px-2.5 py-0.5 text-[10px]">
+                {effortLabel}
+              </span>
+            )}
+            {form.race_date && daysUntilRace(form.race_date) > 0 && (
+              <span className="bg-white/20 text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold">
+                {new Date(form.race_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {daysUntilRace(form.race_date)}d to go
+              </span>
+            )}
+            {form.race_date && daysUntilRace(form.race_date) === 0 && (
+              <span className="bg-[#F64866] text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold">
+                Race day! 🎉
+              </span>
+            )}
+            {form.training_mode && (
+              <span className="bg-amber-400/80 text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold">
+                Training mode
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
           <button
             type="button"
             onClick={handleCopyPlan}
-            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
+            className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors"
           >
             {copyPlanState === 'copied' ? '✓ Copied' : 'Copy'}
           </button>
           <button
             type="button"
-            onClick={() => window.print()}
-            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
-          >
-            PDF
-          </button>
-          <button
-            type="button"
-            onClick={() => emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:border-[#48C4B0] hover:text-[#48C4B0] transition-colors"
+            onClick={() => emailRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors"
           >
             Email
           </button>
+          <button
+            type="button"
+            onClick={() => setShowShareModal(true)}
+            className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors"
+          >
+            Share
+          </button>
           {regionType === 'international' ? (
-            <a
-              href="https://www.getlecka.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-1.5 text-xs font-bold bg-[#F64866] text-white rounded-lg hover:bg-[#e03558] transition-colors"
-            >
+            <a href="https://www.getlecka.com" target="_blank" rel="noopener noreferrer"
+               className="bg-[#F64866] hover:bg-[#e03558] rounded-lg px-3 py-1.5 text-white text-xs font-semibold transition-colors">
               Find Lecka →
             </a>
           ) : (
-            <a
-              href={cartURL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-1.5 text-xs font-bold bg-[#F64866] text-white rounded-lg hover:bg-[#e03558] transition-colors"
-            >
+            <a href={cartURL} target="_blank" rel="noopener noreferrer"
+               className="bg-[#F64866] hover:bg-[#e03558] rounded-lg px-3 py-1.5 text-white text-xs font-semibold transition-colors">
               Buy plan →
             </a>
           )}
         </div>
+      </div>
+
+      {/* ── Desktop 3-stat strip ─────────────────────────────────────────────── */}
+      <div className="hidden lg:grid grid-cols-3 border-b border-gray-100">
+        {[
+          { value: targets.carb_per_hour,     unit: 'g',  label: 'carbs / hour',   sub: `${targets.total_carbs}g total` },
+          { value: targets.sodium_per_hour,   unit: 'mg', label: 'sodium / hour',  sub: `${targets.total_sodium}mg total` },
+          { value: targets.fluid_ml_per_hour, unit: 'ml', label: 'fluid / hour',   sub: null },
+        ].map((m, i) => (
+          <div key={m.label} className={`px-4 py-3 text-center ${i < 2 ? 'border-r border-gray-100' : ''}`}>
+            <p className="text-[10px] font-medium uppercase tracking-[.07em] text-gray-400 mb-1">
+              {m.label}
+            </p>
+            <p className="text-2xl font-bold text-[#1B1B1B] leading-none">
+              {m.value}
+              <span className="text-sm text-gray-400 font-normal">{m.unit}</span>
+            </p>
+            {m.sub && (
+              <p className="text-[10px] text-gray-300 mt-1">{m.sub}</p>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* ── Mobile view (<1024px) ───────────────────────────────────────────── */}
@@ -1992,106 +2041,18 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       </div>
 
       {/* ── Desktop two-column layout (≥1024px) ─────────────────────────────── */}
-      <div className="hidden lg:grid" style={{ gridTemplateColumns: '320px 1fr' }}>
+      <div className="hidden lg:grid" style={{ gridTemplateColumns: '224px 1fr' }}>
 
         {/* Left column */}
         <PlanLeftColumn>
-          {/* Race hero */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-1">
-              {t('results:hero.plan')}
-            </p>
-            <h1 className="font-bold text-[#1B1B1B]" style={{ fontSize: '18px' }}>{heroTitle}</h1>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {(() => {
-                const km = form.custom_race_km > 0
-                  ? form.custom_race_km
-                  : RACE_DISTANCE_KM[targets.race_type] ?? null
-                return km ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
-                    {km} km
-                  </span>
-                ) : null
-              })()}
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
-                {form.goal_time ? 'Target ' : ''}{formatDuration(targets.total_duration_minutes)}
-              </span>
-              {conditionLabel && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
-                  {conditionLabel}
-                </span>
-              )}
-              {effortLabel && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
-                  {effortLabel}
-                </span>
-              )}
-              {surfaceLabel && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-xs text-gray-500">
-                  {surfaceLabel}
-                </span>
-              )}
-            </div>
-            {targets.elevation_gain_m > 0 && (
-              <span className="inline-flex items-center mt-2 px-2.5 py-0.5 rounded-full bg-[#48C4B0]/10 text-[#48C4B0] text-xs font-semibold">
-                {targets.elevation_gain_m} m gain · {targets.elevation_tier.split('_').map((w, i) => i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(' ')}
-              </span>
-            )}
-            {form.race_date && (
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="text-xs text-gray-500">📅 {formatRaceDate(form.race_date)}</span>
-                {daysUntilRace(form.race_date) > 0 && (
-                  <span className="text-xs font-semibold text-white bg-[#48C4B0] px-2 py-0.5 rounded-full">
-                    {daysUntilRace(form.race_date)}d to go
-                  </span>
-                )}
-                {daysUntilRace(form.race_date) === 0 && (
-                  <span className="text-xs font-semibold text-white bg-[#F64866] px-2 py-0.5 rounded-full">
-                    Race day! 🎉
-                  </span>
-                )}
-              </div>
-            )}
-            {form.training_mode === true && (
-              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-full">
-                <span className="text-xs font-semibold text-amber-700">Training mode</span>
-              </div>
-            )}
-          </div>
-
-          {/* Compact nutrition targets */}
-          <section>
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
-              Nutrition targets
-            </p>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {[
-                { value: targets.carb_per_hour,     unit: 'g',  label: 'carbs/h',  total: `${targets.total_carbs}g total` },
-                { value: targets.sodium_per_hour,   unit: 'mg', label: 'sodium/h', total: `${targets.total_sodium}mg total` },
-                { value: targets.fluid_ml_per_hour, unit: 'ml', label: 'fluid/h',  total: null },
-              ].map(m => (
-                <div key={m.label} className="bg-gray-50 rounded-xl py-2.5 px-1">
-                  <p className="text-xl font-bold text-[#1B1B1B] leading-none">
-                    {m.value}
-                    <span className="text-xs text-gray-400 font-normal">{m.unit}</span>
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{m.label}</p>
-                  {m.total && (
-                    <p className="text-[9px] text-gray-300 mt-0.5">{m.total}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* What to take */}
           <section>
-            <SectionLabel>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
               {form.fuelling_style === 'gels_only'       ? 'Your gels'
                : form.fuelling_style === 'gels_and_bars'  ? 'Your gels and bars'
-               : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
+               : form.fuelling_style === 'drink_mix_base' ? 'Your gels'
                : 'What to take'}
-            </SectionLabel>
+            </p>
             <PlanProductEditor
               region={region}
               regionType={regionType}
