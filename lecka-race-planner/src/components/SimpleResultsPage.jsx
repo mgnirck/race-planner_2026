@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { buildCartURLFromAggregated } from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice } from '../engine/region-utils.js'
-import { isEmbedded, embedCartURL, getSavedRegion, saveRegion, getRegionConfig } from '../embed.js'
+import { embedCartURL, getSavedRegion, saveRegion, getRegionConfig } from '../embed.js'
 import { useProducts } from '../hooks/useProducts.js'
 import FALLBACK_PRODUCTS from '../config/products.json'
 import regionsConfig from '../config/regions.json'
