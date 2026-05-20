@@ -168,7 +168,7 @@ const ZALO_ORDER_URL = 'https://zalo.me/0988440434'
 /** Builds an optimised Shopify cart URL, using variety packs when cheaper.
  *  For VN, returns the Zalo order URL directly (Haravan store, no /cart/ path).
  *  Discount code is only applied for the US region. */
-function buildCartURL(selectedProducts, region = 'us', discountCode = region === 'us' ? 'NUTRIPLAN10' : '') {
+function buildCartURL(selectedProducts, region = 'us', allProducts = [], discountCode = region === 'us' ? 'NUTRIPLAN10' : '') {
   if (region === 'vn') return ZALO_ORDER_URL
   const storeUrl = REGION_STORE_URLS[region] ?? REGION_STORE_URLS.us
   if (!selectedProducts?.length) return storeUrl
@@ -194,7 +194,7 @@ function buildCartURL(selectedProducts, region = 'us', discountCode = region ===
   // Apply variety-pack optimisation for gel rows
   const gelRows   = allRows.filter(r => r.product.type === 'gel')
   const otherRows = allRows.filter(r => r.product.type !== 'gel')
-  const { rows: optimalGelRows } = computeOptimalGelCart(gelRows, region, allProductsCatalog)
+  const { rows: optimalGelRows } = computeOptimalGelCart(gelRows, region, allProducts)
   const optimisedRows = [...optimalGelRows, ...otherRows]
 
   // Build variant totals from optimised rows
@@ -296,9 +296,9 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
   const summaryItems = [
     [t('pdf.summary.race'),       raceLabel(inputs, t)],
     [t('pdf.summary.goalTime'),   inputs.goal_time],
-    [t('pdf.summary.conditions'), t(`conditions.${inputs.conditions}`, { defaultValue: inputs.conditions })],
-    [t('pdf.summary.effort'),     t(`effort.${inputs.effort}`,         { defaultValue: inputs.effort })],
-    [t('pdf.summary.weight'),     `${inputs.weight_value}\u202f${inputs.weight_unit}`],
+    [t('pdf.summary.conditions'), inputs.conditions ? t(`conditions.${inputs.conditions}`, { defaultValue: inputs.conditions }) : null],
+    [t('pdf.summary.effort'),     inputs.effort     ? t(`effort.${inputs.effort}`,         { defaultValue: inputs.effort })     : null],
+    [t('pdf.summary.weight'),     inputs.weight_value ? `${inputs.weight_value}\u202f${inputs.weight_unit}` : null],
     [t('pdf.summary.caffeine'),   inputs.caffeine_ok ? t('pdf.summary.yes') : t('pdf.summary.no')],
   ]
   if (hasAddonSummary) {
@@ -309,7 +309,7 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
   }
 
   const colW = CW / 3
-  summaryItems.forEach((item, i) => {
+  summaryItems.filter(item => item[1] != null).forEach((item, i) => {
     const col  = i % 3
     const row  = Math.floor(i / 3)
     const x    = ML + 5 + col * colW
@@ -1021,7 +1021,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ success: false, error: 'Failed to generate PDF.' })
   }
 
-  const cartUrl = buildCartURL(selectedProducts, region)
+  const cartUrl = buildCartURL(selectedProducts, region, allProductsCatalog)
 
   // ── Send email (priority — failure aborts the request) ────────────────────
   try {
