@@ -1730,8 +1730,13 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         />
       )}
 
+      {/* ── Desktop Nav bar ─────────────────────────────────────────────────── */}
+      <div className="hidden lg:block">
+        {isEmbedded ? null : <Nav backHref="/planner" backLabel="Back to planner" />}
+      </div>
+
       {/* ── Desktop teal hero header ─────────────────────────────────────────── */}
-      <div className="hidden lg:flex sticky top-0 z-20 bg-[#48C4B0] px-5 py-3
+      <div className="hidden lg:flex bg-[#48C4B0] px-5 py-3
                       items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-[10px] font-medium text-white/70 uppercase tracking-[.06em] mb-1">
@@ -2041,7 +2046,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       </div>
 
       {/* ── Desktop two-column layout (≥1024px) ─────────────────────────────── */}
-      <div className="hidden lg:grid" style={{ gridTemplateColumns: '224px 1fr' }}>
+      <div className="hidden lg:grid" style={{ gridTemplateColumns: '1fr 2fr' }}>
 
         {/* Left column */}
         <PlanLeftColumn>
