@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import Nav from './Nav.jsx'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -401,24 +402,7 @@ export default function DashboardPage() {
   return (
     <div className="bg-white min-h-screen">
 
-      {/* ── Top bar ───────────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
-        <div className="max-w-lg mx-auto px-5 py-3 flex items-center justify-between gap-3">
-          <img src="/logo.svg" alt="Lecka" className="h-6 flex-shrink-0" />
-          <div className="flex-1 min-w-0 text-right">
-            {email && (
-              <p className="text-xs text-gray-400 truncate">{email}</p>
-            )}
-          </div>
-          <button
-            onClick={logout}
-            className="text-sm text-gray-400 hover:text-[#1B1B1B] transition-colors
-                       whitespace-nowrap flex-shrink-0"
-          >
-            Log out
-          </button>
-        </div>
-      </div>
+      <Nav />
 
       <div className="max-w-lg mx-auto px-5 py-6 space-y-8">
 

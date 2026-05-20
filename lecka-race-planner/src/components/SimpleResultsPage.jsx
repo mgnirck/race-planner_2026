@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
+import Nav from './Nav.jsx'
 import { buildCartURLFromAggregated } from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice } from '../engine/region-utils.js'
 import { embedCartURL, getSavedRegion, saveRegion, getRegionConfig } from '../embed.js'
@@ -352,51 +353,35 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
         />
       )}
 
-      {/* ── Sticky top bar ──────────────────────────────────────────────────── */}
-      <div
-        className="sticky top-0 z-20 bg-white border-b border-gray-100"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52, padding: '0 16px' }}
-      >
-        <span style={{ fontSize: 20, fontWeight: 800, color: '#48C4B0', letterSpacing: '-0.5px' }}>
-          lecka
-        </span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {/* Email icon */}
-          <button
-            type="button"
-            onClick={() => emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            style={{
-              width: 36, height: 36, borderRadius: 8, border: '1.5px solid #e5e7eb',
-              background: 'transparent', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-            aria-label="Email plan"
-          >
-            <svg width="16" height="16" fill="none" stroke="#6b7280" strokeWidth="1.8" viewBox="0 0 24 24">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <polyline points="2,4 12,13 22,4"/>
-            </svg>
-          </button>
-          {/* Share icon */}
-          <button
-            type="button"
-            onClick={() => setShowShareModal(true)}
-            style={{
-              width: 36, height: 36, borderRadius: 8, border: '1.5px solid #e5e7eb',
-              background: 'transparent', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-            aria-label="Share plan"
-          >
-            <svg width="16" height="16" fill="none" stroke="#6b7280" strokeWidth="1.8" viewBox="0 0 24 24">
-              <circle cx="18" cy="5" r="3"/>
-              <circle cx="6" cy="12" r="3"/>
-              <circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-          </button>
-        </div>
+      <Nav />
+
+      {/* ── Action bar ──────────────────────────────────────────────────────── */}
+      <div className="sticky top-[53px] z-10 bg-white border-b border-gray-100 flex items-center justify-end gap-2 px-4 py-2">
+        <button
+          type="button"
+          onClick={() => emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid #e5e7eb', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          aria-label="Email plan"
+        >
+          <svg width="16" height="16" fill="none" stroke="#6b7280" strokeWidth="1.8" viewBox="0 0 24 24">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <polyline points="2,4 12,13 22,4"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowShareModal(true)}
+          style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid #e5e7eb', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          aria-label="Share plan"
+        >
+          <svg width="16" height="16" fill="none" stroke="#6b7280" strokeWidth="1.8" viewBox="0 0 24 24">
+            <circle cx="18" cy="5" r="3"/>
+            <circle cx="6" cy="12" r="3"/>
+            <circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+        </button>
       </div>
 
       {/* ── Single column content ────────────────────────────────────────────── */}
