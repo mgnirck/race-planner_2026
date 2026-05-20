@@ -1875,7 +1875,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               >
                 {t('common:nav.back')}
               </button>
-              <img src="/lecka%20logo%20green.svg" alt="Lecka" className="h-6" />
+              <img src="/Lecka-Logo-New%20Green%20Font.png" alt="Lecka" className="h-6" />
               <LanguageSwitcher compact />
             </div>
           </div>
