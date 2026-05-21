@@ -63,6 +63,7 @@ async function getAllProducts() {
   }
 }
 import { getServerT } from './i18n-server.js'
+import { sql, ensureMigrated } from './db.js'
 
 const _validateLocale = (() => {
   const t = getServerT('en')
@@ -994,7 +995,46 @@ export default async function handler(req, res) {
     return res.status(204).end()
   }
 
-  // Only accept POST
+  // ── GET ?planId=xxx — download plan as PDF (requires auth + ownership) ──────
+  if (req.method === 'GET') {
+    const { planId } = req.query ?? {}
+    if (!planId) return res.status(400).json({ error: 'planId required' })
+
+    const auth   = req.headers.authorization ?? ''
+    const userId = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' })
+
+    try {
+      await ensureMigrated()
+      const { rows } = await sql`
+        SELECT p.inputs, p.targets, p.selection, p.region, p.lang
+        FROM plans p
+        WHERE p.id = ${planId} AND p.user_id = ${userId}
+        LIMIT 1
+      `
+      if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
+
+      const { inputs = {}, targets = {}, selection = [], region = 'us', lang = 'en' } = rows[0]
+      const allProducts = await getAllProducts()
+      const resolvedSelection = (selection ?? []).map(item => {
+        const product = allProducts.find(p => p.id === (item.product_id ?? item.product?.id ?? item.id))
+        return product ? { ...item, product } : item
+      }).filter(i => i.product)
+
+      const pdfBuffer = generatePDF(inputs, targets, resolvedSelection, [], region, lang)
+
+      const raceName = (inputs.race_name || inputs.race_type || 'plan').toLowerCase().replace(/\s+/g, '-')
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="lecka-${raceName}.pdf"`)
+      res.setHeader('Content-Length', pdfBuffer.length)
+      return res.status(200).send(pdfBuffer)
+    } catch (err) {
+      console.error('[send-plan/GET] PDF download failed:', err)
+      return res.status(500).json({ error: 'Failed to generate PDF' })
+    }
+  }
+
+  // Only accept POST for email sends
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' })
   }

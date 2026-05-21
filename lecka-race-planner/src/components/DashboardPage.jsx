@@ -358,6 +358,28 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
   const [alertDismissed,  setAlertDismissed]  = useState(false)
   const [appliedTargets,  setAppliedTargets]  = useState(null)
   const [applyingWeather, setApplyingWeather] = useState(false)
+  const [downloading,     setDownloading]     = useState(false)
+
+  async function handleDownloadPdf() {
+    setDownloading(true)
+    try {
+      const res = await fetch(`/api/send-plan?planId=${hero.id}`, {
+        headers: { 'Authorization': `Bearer ${userId}` },
+      })
+      if (!res.ok) throw new Error('failed')
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `lecka-${(hero.race_name || hero.race_type || 'plan').toLowerCase().replace(/\s+/g, '-')}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Could not generate PDF. Please try again.')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   // Recalculate targets with live weather conditions (client-side, pure)
   const pendingTargets = useMemo(() => {
@@ -570,11 +592,16 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             View full plan
           </a>
           <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors"
+            onClick={handleDownloadPdf}
+            disabled={downloading || !heroDetail}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors disabled:opacity-40"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
-            Print
+            {downloading ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3M3 7V4a1 1 0 011-1h5l2 2h7a1 1 0 011 1v3"/></svg>
+            )}
+            {downloading ? 'Generating…' : 'Download PDF'}
           </button>
           <a
             href={`/plan/${hero.id}`}
