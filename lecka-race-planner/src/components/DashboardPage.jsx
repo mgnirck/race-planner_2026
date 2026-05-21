@@ -154,6 +154,77 @@ function handleUpgrade(heroDetail) {
   window.location.href = '/planner/pro'
 }
 
+// ── Edit / Delete modal ───────────────────────────────────────────────────────
+
+function EditPlanModal({ plan, userId, onSave, onClose }) {
+  const [name, setName]   = useState(plan.race_name ?? '')
+  const [date, setDate]   = useState(plan.race_date ?? '')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await fetch('/api/plans', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body:    JSON.stringify({ planId: plan.id, race_name: name }),
+      })
+      await fetch('/api/plans', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body:    JSON.stringify({ planId: plan.id, race_date: date || null }),
+      })
+      onSave({ ...plan, race_name: name || null, race_date: date || null })
+    } catch {}
+    setSaving(false)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
+        <p className="text-base font-bold text-gray-900">Edit race</p>
+        <div>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Race name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="e.g. Berlin Marathon"
+            className="w-full border-2 rounded-lg px-3 py-2 text-sm focus:outline-none"
+            style={{ borderColor: TEAL }}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Race date</label>
+          <input
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
+            className="w-full border-2 rounded-lg px-3 py-2 text-sm focus:outline-none"
+            style={{ borderColor: TEAL }}
+          />
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white disabled:opacity-50"
+            style={{ background: TEAL }}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 text-sm font-semibold rounded-xl border-2 border-gray-200 text-gray-600"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Primitive UI ──────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }) {
@@ -217,7 +288,7 @@ function StatTile({ label, value, badge = null, highlighted = false }) {
 
 // ── Hero Card ─────────────────────────────────────────────────────────────────
 
-function HeroCard({ hero, heroDetail, userId }) {
+function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
   const isPro    = hero.mode === 'pro'
   const days     = daysUntil(hero.race_date)
   const dateStr  = formatRaceDateLong(hero.race_date)
@@ -359,6 +430,12 @@ function HeroCard({ hero, heroDetail, userId }) {
                 Next race
               </span>
               {isPro && <PlanPill mode="pro" />}
+              <button onClick={() => onEdit(hero)} title="Edit" className="ml-1 text-gray-300 hover:text-gray-500 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l-4 1 1-4 9.293-9.293a1 1 0 011.414 0l2.586 2.586a1 1 0 010 1.414L9 13z"/></svg>
+              </button>
+              <button onClick={() => onDelete(hero.id)} title="Delete" className="text-gray-300 hover:text-red-400 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v1a1 1 0 01-1 1H9z"/></svg>
+              </button>
             </div>
             {metaLine && (
               <p className="text-xs text-gray-400 mb-1 leading-tight">{metaLine}</p>
@@ -629,7 +706,7 @@ function HeroCard({ hero, heroDetail, userId }) {
 
 // ── Upcoming row ──────────────────────────────────────────────────────────────
 
-function UpcomingRow({ plan }) {
+function UpcomingRow({ plan, onEdit, onDelete }) {
   const { month, day } = formatMonthDay(plan.race_date)
   const goalTime = formatGoalTime(plan.goal_minutes)
   const tempLabel = plan.display_temp_c
@@ -660,16 +737,24 @@ function UpcomingRow({ plan }) {
           )}
         </div>
       </div>
-      <a href={`/plan/${plan.id}`} className="text-sm font-bold flex-shrink-0" style={{ color: TEAL }}>
-        View →
-      </a>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <button onClick={() => onEdit(plan)} title="Edit" className="text-gray-300 hover:text-gray-500 transition-colors p-0.5">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l-4 1 1-4 9.293-9.293a1 1 0 011.414 0l2.586 2.586a1 1 0 010 1.414L9 13z"/></svg>
+        </button>
+        <button onClick={() => onDelete(plan.id)} title="Delete" className="text-gray-300 hover:text-red-400 transition-colors p-0.5">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v1a1 1 0 01-1 1H9z"/></svg>
+        </button>
+        <a href={`/plan/${plan.id}`} className="text-sm font-bold" style={{ color: TEAL }}>
+          View →
+        </a>
+      </div>
     </div>
   )
 }
 
 // ── Past row ──────────────────────────────────────────────────────────────────
 
-function PastRow({ plan, compact = false }) {
+function PastRow({ plan, compact = false, onEdit, onDelete }) {
   const { month, day } = formatMonthDay(plan.race_date)
   const monthYear = formatMonthYear(plan.race_date)
   const goalTime  = formatGoalTime(plan.goal_minutes)
@@ -685,10 +770,18 @@ function PastRow({ plan, compact = false }) {
             <span className="text-[10px] text-gray-400">{compactMeta}</span>
           )}
         </div>
-        {plan.has_feedback
-          ? <span className="text-xs text-green-500 flex-shrink-0">✓</span>
-          : <a href={`/feedback/${plan.id}`} className="text-xs font-bold flex-shrink-0" style={{ color: CORAL }}>Log →</a>
-        }
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button onClick={() => onEdit(plan)} title="Edit" className="text-gray-300 hover:text-gray-500 transition-colors p-0.5">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l-4 1 1-4 9.293-9.293a1 1 0 011.414 0l2.586 2.586a1 1 0 010 1.414L9 13z"/></svg>
+          </button>
+          <button onClick={() => onDelete(plan.id)} title="Delete" className="text-gray-300 hover:text-red-400 transition-colors p-0.5">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v1a1 1 0 01-1 1H9z"/></svg>
+          </button>
+          {plan.has_feedback
+            ? <span className="text-xs text-green-500">✓</span>
+            : <a href={`/feedback/${plan.id}`} className="text-xs font-bold" style={{ color: CORAL }}>Log →</a>
+          }
+        </div>
       </div>
     )
   }
@@ -725,10 +818,18 @@ function PastRow({ plan, compact = false }) {
           <p className="text-[11px] italic mt-0.5 truncate" style={{ color: GREY_MID }}>{plan.feedback_note}</p>
         )}
       </div>
-      {plan.has_feedback
-        ? <a href={`/plan/${plan.id}`}    className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: TEAL }}>View →</a>
-        : <a href={`/feedback/${plan.id}`} className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: CORAL }}>Log →</a>
-      }
+      <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+        <button onClick={() => onEdit(plan)} title="Edit" className="text-gray-300 hover:text-gray-500 transition-colors p-0.5">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l-4 1 1-4 9.293-9.293a1 1 0 011.414 0l2.586 2.586a1 1 0 010 1.414L9 13z"/></svg>
+        </button>
+        <button onClick={() => onDelete(plan.id)} title="Delete" className="text-gray-300 hover:text-red-400 transition-colors p-0.5">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v1a1 1 0 01-1 1H9z"/></svg>
+        </button>
+        {plan.has_feedback
+          ? <a href={`/plan/${plan.id}`}     className="text-sm font-bold" style={{ color: TEAL }}>View →</a>
+          : <a href={`/feedback/${plan.id}`} className="text-sm font-bold" style={{ color: CORAL }}>Log →</a>
+        }
+      </div>
     </div>
   )
 }
@@ -736,13 +837,41 @@ function PastRow({ plan, compact = false }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [plans,      setPlans]      = useState(null)
-  const [heroDetail, setHeroDetail] = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState(false)
-  const [showOlder,  setShowOlder]  = useState(false)
+  const [plans,         setPlans]         = useState(null)
+  const [heroDetail,    setHeroDetail]    = useState(null)
+  const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState(false)
+  const [showOlder,     setShowOlder]     = useState(false)
+  const [editingPlan,   setEditingPlan]   = useState(null)
+  const [deletingId,    setDeletingId]    = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   const userId = localStorage.getItem('lecka_user_id')
+
+  function handleEditSave(updated) {
+    setPlans(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p))
+    setEditingPlan(null)
+  }
+
+  function handleDeleteRequest(planId) {
+    setDeletingId(planId)
+    setDeleteConfirm(true)
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deletingId) return
+    setDeleteConfirm(false)
+    try {
+      await fetch('/api/plans', {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body:    JSON.stringify({ planId: deletingId }),
+      })
+    } catch {}
+    setPlans(prev => prev ? prev.filter(p => p.id !== deletingId) : prev)
+    if (heroDetail?.id === deletingId) setHeroDetail(null)
+    setDeletingId(null)
+  }
 
   // Auto-save a plan that was created before the user was logged in
   useEffect(() => {
@@ -807,9 +936,8 @@ export default function DashboardPage() {
   if (!userId) return null
 
   const { upcoming, past } = plans ? splitPlans(plans) : { upcoming: [], past: [] }
-  const hero         = upcoming[0] ?? null
-  const restUpcoming = upcoming.slice(1)
-  const empty        = plans && plans.length === 0
+  const hero    = upcoming[0] ?? null
+  const empty   = plans && plans.length === 0
 
   const recentPast = past.slice(0, 3)
   const olderPast  = past.slice(3)
@@ -856,7 +984,13 @@ export default function DashboardPage() {
 
         {/* Hero card */}
         {!loading && !error && hero && (
-          <HeroCard hero={hero} heroDetail={heroDetail} userId={userId} />
+          <HeroCard
+            hero={hero}
+            heroDetail={heroDetail}
+            userId={userId}
+            onEdit={setEditingPlan}
+            onDelete={handleDeleteRequest}
+          />
         )}
 
         {/* Two-column: Upcoming + Past */}
@@ -866,14 +1000,16 @@ export default function DashboardPage() {
             <section>
               <SectionLabel>Upcoming races</SectionLabel>
               <div className="rounded-2xl border border-gray-100 overflow-hidden">
-                {restUpcoming.length > 0 ? (
+                {upcoming.length > 0 ? (
                   <div className="divide-y divide-gray-100">
-                    {restUpcoming.map(plan => (
-                      <div key={plan.id} className="px-4"><UpcomingRow plan={plan} /></div>
+                    {upcoming.map(plan => (
+                      <div key={plan.id} className="px-4">
+                        <UpcomingRow plan={plan} onEdit={setEditingPlan} onDelete={handleDeleteRequest} />
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="px-4 py-3 text-sm text-gray-400">No other upcoming races.</p>
+                  <p className="px-4 py-3 text-sm text-gray-400">No upcoming races.</p>
                 )}
                 <div className="px-4 py-3 border-t border-gray-100">
                   <a href="/" className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: TEAL }}>
@@ -889,7 +1025,9 @@ export default function DashboardPage() {
                 <div className="rounded-2xl border border-gray-100 overflow-hidden">
                   <div className="divide-y divide-gray-100">
                     {recentPast.map(plan => (
-                      <div key={plan.id} className="px-4"><PastRow plan={plan} /></div>
+                      <div key={plan.id} className="px-4">
+                        <PastRow plan={plan} onEdit={setEditingPlan} onDelete={handleDeleteRequest} />
+                      </div>
                     ))}
                   </div>
                   {olderPast.length > 0 && (
@@ -911,7 +1049,9 @@ export default function DashboardPage() {
                               <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50">{year}</p>
                               <div className="divide-y divide-gray-100">
                                 {olderByYear[year].map(plan => (
-                                  <div key={plan.id} className="px-4"><PastRow plan={plan} compact /></div>
+                                  <div key={plan.id} className="px-4">
+                                    <PastRow plan={plan} compact onEdit={setEditingPlan} onDelete={handleDeleteRequest} />
+                                  </div>
                                 ))}
                               </div>
                             </div>
@@ -928,6 +1068,41 @@ export default function DashboardPage() {
         )}
 
       </div>
+
+      {/* Edit modal */}
+      {editingPlan && (
+        <EditPlanModal
+          plan={editingPlan}
+          userId={userId}
+          onSave={handleEditSave}
+          onClose={() => setEditingPlan(null)}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4">
+            <p className="text-base font-bold text-gray-900">Delete this plan?</p>
+            <p className="text-sm text-gray-500">This can't be undone.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white bg-red-500"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => { setDeleteConfirm(false); setDeletingId(null) }}
+                className="flex-1 py-2.5 text-sm font-semibold rounded-xl border-2 border-gray-200 text-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

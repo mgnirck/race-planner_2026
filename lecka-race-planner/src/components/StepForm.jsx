@@ -364,18 +364,18 @@ function StepOne({ form, setForm }) {
         <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceName.hint')}</p>
       </div>
 
-      {/* Race date */}
+      {/* Race date — required for pro plan */}
       <div>
-        <FieldLabel>{t('form:field.raceDate')}</FieldLabel>
+        <FieldLabel>{t('form:field.raceDate')} <span className="text-red-400">*</span></FieldLabel>
         <input
           type="date"
           value={form.race_date}
           onChange={e => setForm(f => ({ ...f, race_date: e.target.value }))}
           min={new Date().toISOString().split('T')[0]}
+          required
           className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
                      focus:outline-none focus:border-[#48C4B0]"
         />
-        <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceDate.hint')}</p>
       </div>
 
       {/* Race city / location */}
@@ -1434,9 +1434,10 @@ function StepFour({ form, setForm, previewTargets }) {
 function isStep1Valid(form) {
   const goalMinutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
   if (form.sport === 'triathlon') {
-    return form.triathlon_type !== '' && goalMinutes !== null
+    return form.triathlon_type !== '' && goalMinutes !== null && form.race_date !== ''
   }
   return (
+    form.race_date !== '' &&
     form.custom_km !== '' &&
     form.race_type !== '' &&
     form.surface_type !== '' &&
