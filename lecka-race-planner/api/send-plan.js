@@ -33,7 +33,21 @@ import 'jspdf-autotable'
 import { Resend }  from 'resend'
 import { computeCartItems, computeLinePrice, computeOptimalGelCart } from '../src/engine/region-utils.js'
 import { createRequire } from 'module'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { join, dirname } from 'path'
 const _require = createRequire(import.meta.url)
+
+// Load the white Lecka logo PNG at startup for embedding in PDF headers
+const __filename = fileURLToPath(import.meta.url)
+const __dirname  = dirname(__filename)
+let LECKA_LOGO_WHITE_B64 = null
+try {
+  const logoPath = join(__dirname, '..', 'public', 'Lecka-Logo-Lecka White.png')
+  LECKA_LOGO_WHITE_B64 = readFileSync(logoPath).toString('base64')
+} catch (err) {
+  console.warn('[send-plan] Could not load Lecka white logo PNG:', err.message)
+}
 
 async function getAllProducts() {
   try {
@@ -257,11 +271,15 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
   doc.setFillColor(C.green)
   doc.rect(0, 0, W, 38, 'F')
 
-  // Wordmark — lowercase bold, white on teal, matching the Lecka brand
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(30)
-  doc.setTextColor(C.white)
-  doc.text('lecka', ML, 20)
+  // Wordmark — real Lecka white PNG logo; falls back to text if image unavailable
+  if (LECKA_LOGO_WHITE_B64) {
+    doc.addImage(LECKA_LOGO_WHITE_B64, 'PNG', ML, 7, 56, 17)
+  } else {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(30)
+    doc.setTextColor(C.white)
+    doc.text('lecka', ML, 20)
+  }
 
   // Small brand tagline
   doc.setFont('helvetica', 'normal')
@@ -759,14 +777,11 @@ ${plainTextProductList}
 
       `) : ''}
 
-      <p style="font-size:13px;color:#6b7280;margin:20px 0 0;">
-        Ready to get your products? Visit
-        <a href="https://www.getlecka.com"
-           style="color:#48C4B0;text-decoration:none;">
-          getlecka.com
-        </a>
-        or return to your plan page to order.
-      </p>
+      ${hasProducts ? `<a href="${cartUrl}" class="cta">
+        ${isVN ? 'Order on Zalo →' : 'Buy your plan →'}
+      </a>` : `<p style="font-size:13px;color:#6b7280;margin:20px 0 0;">
+        Visit <a href="https://www.getlecka.com" style="color:#48C4B0;text-decoration:none;">getlecka.com</a> to shop.
+      </p>`}
 
       <p class="note">
         ${t('email.note')}
