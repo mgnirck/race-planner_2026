@@ -383,7 +383,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
     setApplyingWeather(false)
   }
 
-  // Fuel card state
+  // Fuel card state — initialised from DB value once heroDetail loads
   const gelCount = (() => {
     if (isPro && heroDetail?.selection) {
       const gels = heroDetail.selection.filter?.(i => i?.type === 'gel' || i?.product?.type === 'gel')
@@ -392,24 +392,55 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
     return null
   })()
 
-  const [remindState,          setRemindState]          = useState('idle')
-  const [remindDate,           setRemindDate]           = useState('')
-  const [remindConfirmedDate,  setRemindConfirmedDate]  = useState('')
-  const [fuelDismissed,        setFuelDismissed]        = useState(false)
+  // fuelDismissed persists in localStorage so "Done" survives a reload
+  const dismissKey = `lecka_fuel_dismissed_${hero.id}`
+  const [fuelDismissed, setFuelDismissed] = useState(() => {
+    try { return localStorage.getItem(dismissKey) === '1' } catch { return false }
+  })
 
-  async function handleSetReminder() {
-    if (!remindDate) return
+  function dismissFuel() {
+    try { localStorage.setItem(dismissKey, '1') } catch {}
+    setFuelDismissed(true)
+  }
+
+  // savedReminderDate: the date string already in DB (ISO yyyy-mm-dd or null)
+  const savedReminderDate = heroDetail?.fuel_reminder_date
+    ? String(heroDetail.fuel_reminder_date).split('T')[0]
+    : null
+
+  // Editing state — only for when user wants to change an existing reminder
+  const [editingReminder, setEditingReminder] = useState(false)
+  const [pickDate,        setPickDate]        = useState('')
+  // Live reminder date — may be updated after save without a full reload
+  const [liveReminderDate, setLiveReminderDate] = useState(savedReminderDate)
+
+  // Sync when heroDetail arrives (async)
+  React.useEffect(() => {
+    if (savedReminderDate && !liveReminderDate) setLiveReminderDate(savedReminderDate)
+  }, [savedReminderDate]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function formatReminderDate(isoDate) {
+    if (!isoDate) return ''
+    return new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  // Idle picking state (when no reminder set yet)
+  const [pickingNew, setPickingNew] = useState(false)
+  const [newPickDate, setNewPickDate] = useState('')
+
+  async function handleSetReminder(dateStr) {
+    if (!dateStr) return
     try {
       await fetch('/api/plans', {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
-        body:    JSON.stringify({ planId: hero.id, fuel_reminder_date: remindDate }),
+        body:    JSON.stringify({ planId: hero.id, fuel_reminder_date: dateStr }),
       })
     } catch {}
-    setRemindConfirmedDate(
-      new Date(remindDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    )
-    setRemindState('confirmed')
+    setLiveReminderDate(dateStr)
+    setEditingReminder(false)
+    setPickingNew(false)
+    setNewPickDate('')
   }
 
   return (
@@ -571,12 +602,64 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
         </div>
       )}
 
-      {/* Fuel ordered? card */}
-      {!fuelDismissed && (
-        <div className="mx-5 my-4 rounded-xl p-4" style={{ background: AMBER_LIGHT }}>
+      {/* Fuel section — two modes: reminder set (persistent strip) vs not set (dismissable card) */}
 
-          {/* idle: text left, stacked buttons right */}
-          {remindState === 'idle' && (
+      {/* ── Reminder already set: compact persistent strip ── */}
+      {liveReminderDate && !editingReminder && (
+        <div className="mx-5 my-4 rounded-xl px-4 py-3 flex items-center gap-2" style={{ background: AMBER_LIGHT }}>
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <p className="flex-1 text-xs font-medium" style={{ color: AMBER_MID }}>
+            Fuel reminder: {formatReminderDate(liveReminderDate)}
+          </p>
+          <button
+            onClick={() => { setPickDate(liveReminderDate); setEditingReminder(true) }}
+            title="Edit reminder date"
+            className="text-amber-400 hover:text-amber-600 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l-4 1 1-4 9.293-9.293a1 1 0 011.414 0l2.586 2.586a1 1 0 010 1.414L9 13z"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* ── Editing existing reminder: date picker inline ── */}
+      {liveReminderDate && editingReminder && (
+        <div className="mx-5 my-4 rounded-xl p-4 space-y-3" style={{ background: AMBER_LIGHT }}>
+          <p className="text-xs font-semibold" style={{ color: AMBER_DARK }}>Change reminder date</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={pickDate}
+              onChange={e => setPickDate(e.target.value)}
+              className="flex-1 min-w-0 border-2 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white"
+              style={{ borderColor: AMBER }}
+            />
+            <button
+              onClick={() => handleSetReminder(pickDate)}
+              disabled={!pickDate}
+              className="px-4 py-2 text-sm font-semibold rounded-lg text-white disabled:opacity-40 flex-shrink-0"
+              style={{ background: AMBER }}
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setEditingReminder(false)}
+              className="px-3 py-2 text-sm font-semibold rounded-lg border-2 bg-white"
+              style={{ borderColor: AMBER, color: AMBER }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── No reminder set yet: dismissable card ── */}
+      {!liveReminderDate && !fuelDismissed && (
+        <div className="mx-5 my-4 rounded-xl p-4" style={{ background: AMBER_LIGHT }}>
+          {!pickingNew ? (
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-center gap-2">
@@ -593,14 +676,14 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
               </div>
               <div className="flex flex-col gap-1.5 flex-shrink-0">
                 <button
-                  onClick={() => setFuelDismissed(true)}
+                  onClick={dismissFuel}
                   className="px-4 py-1.5 text-xs font-bold rounded-lg text-white whitespace-nowrap"
                   style={{ background: AMBER }}
                 >
                   Done
                 </button>
                 <button
-                  onClick={() => setRemindState('picking')}
+                  onClick={() => setPickingNew(true)}
                   className="px-4 py-1.5 text-xs font-semibold rounded-lg border-2 bg-white whitespace-nowrap"
                   style={{ borderColor: AMBER, color: AMBER }}
                 >
@@ -608,74 +691,35 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
                 </button>
               </div>
             </div>
-          )}
-
-          {/* picking: full-width date picker */}
-          {remindState === 'picking' && (
+          ) : (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Set a fuel reminder</p>
-              </div>
-              <p className="text-xs font-medium" style={{ color: AMBER_MID }}>Remind me on:</p>
+              <p className="text-xs font-semibold" style={{ color: AMBER_DARK }}>Set a fuel reminder</p>
               <div className="flex items-center gap-2">
                 <input
                   type="date"
-                  value={remindDate}
-                  onChange={e => setRemindDate(e.target.value)}
+                  value={newPickDate}
+                  onChange={e => setNewPickDate(e.target.value)}
                   className="flex-1 min-w-0 border-2 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white"
                   style={{ borderColor: AMBER }}
                 />
                 <button
-                  onClick={handleSetReminder}
-                  disabled={!remindDate}
+                  onClick={() => handleSetReminder(newPickDate)}
+                  disabled={!newPickDate}
                   className="px-4 py-2 text-sm font-semibold rounded-lg text-white disabled:opacity-40 flex-shrink-0"
                   style={{ background: AMBER }}
                 >
                   Set
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* confirmed: calendar + text left, Done + Cancel right */}
-          {remindState === 'confirmed' && (
-            <div className="flex items-start gap-3">
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                  </svg>
-                  <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
-                </div>
-                <div className="flex items-center gap-1.5" style={{ color: AMBER_MID }}>
-                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                  </svg>
-                  <p className="text-xs font-medium">Reminder set for {remindConfirmedDate}</p>
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5 flex-shrink-0">
                 <button
-                  onClick={() => setFuelDismissed(true)}
-                  className="px-4 py-1.5 text-xs font-bold rounded-lg text-white whitespace-nowrap"
-                  style={{ background: AMBER }}
-                >
-                  Done
-                </button>
-                <button
-                  onClick={() => { setRemindState('idle'); setRemindDate('') }}
-                  className="px-4 py-1.5 text-xs font-semibold rounded-lg border-2 bg-white whitespace-nowrap"
+                  onClick={() => { setPickingNew(false); setNewPickDate('') }}
+                  className="px-3 py-2 text-sm font-semibold rounded-lg border-2 bg-white"
                   style={{ borderColor: AMBER, color: AMBER }}
                 >
-                  × Cancel
+                  ×
                 </button>
               </div>
             </div>
           )}
-
         </div>
       )}
 

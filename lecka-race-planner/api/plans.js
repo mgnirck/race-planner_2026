@@ -30,7 +30,8 @@ export default async function handler(req, res) {
                  conditions, effort, inputs, targets, selection,
                  region, lang, user_id,
                  race_city, weather_live_temp_c, weather_last_fetched,
-                 weather_confirmed, weather_estimated_temp
+                 weather_confirmed, weather_estimated_temp,
+                 fuel_reminder_date
           FROM plans
           WHERE id = ${planId}
           LIMIT 1
