@@ -51,7 +51,10 @@ export default async function handler(req, res) {
             p.inputs->>'mode',
             CASE WHEN p.targets->>'effort' IS NOT NULL THEN 'pro' ELSE 'quick' END
           ) AS mode,
-          EXISTS(SELECT 1 FROM feedback f WHERE f.plan_id = p.id) AS has_feedback
+          EXISTS(SELECT 1 FROM feedback f WHERE f.plan_id = p.id) AS has_feedback,
+          p.inputs->>'custom_km' AS custom_km,
+          COALESCE(p.weather_live_temp_c::text, p.weather_estimated_temp) AS display_temp_c,
+          (SELECT f.notes FROM feedback f WHERE f.plan_id = p.id LIMIT 1) AS feedback_note
         FROM plans p
         WHERE p.user_id = ${user.id}
         ORDER BY p.created_at DESC

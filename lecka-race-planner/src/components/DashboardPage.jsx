@@ -44,6 +44,12 @@ function formatMonthDay(dateStr) {
   }
 }
 
+function formatMonthYear(dateStr) {
+  if (!dateStr) return null
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
+
 function daysUntil(dateStr) {
   if (!dateStr) return null
   const now = new Date()
@@ -490,27 +496,52 @@ function HeroCard({ hero, heroDetail, userId }) {
 
       {/* Fuel ordered? card */}
       {!fuelDismissed && (
-        <div className="mx-5 my-4 rounded-xl p-4 space-y-3" style={{ background: AMBER_LIGHT }}>
+        <div className="mx-5 my-4 rounded-xl p-4" style={{ background: AMBER_LIGHT }}>
 
-          {/* Heading row */}
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
-          </div>
-
-          {/* Body — varies by state */}
+          {/* idle: text left, stacked buttons right */}
           {remindState === 'idle' && (
-            <p className="text-xs leading-relaxed" style={{ color: AMBER_MID }}>
-              {isPro
-                ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
-                : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
-            </p>
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                  <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
+                </div>
+                <p className="text-xs leading-relaxed" style={{ color: AMBER_MID }}>
+                  {isPro
+                    ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
+                    : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
+                </p>
+              </div>
+              <div className="flex flex-col gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => setFuelDismissed(true)}
+                  className="px-4 py-1.5 text-xs font-bold rounded-lg text-white whitespace-nowrap"
+                  style={{ background: AMBER }}
+                >
+                  Done
+                </button>
+                <button
+                  onClick={() => setRemindState('picking')}
+                  className="px-4 py-1.5 text-xs font-semibold rounded-lg border-2 bg-white whitespace-nowrap"
+                  style={{ borderColor: AMBER, color: AMBER }}
+                >
+                  Remind me
+                </button>
+              </div>
+            </div>
           )}
 
+          {/* picking: full-width date picker */}
           {remindState === 'picking' && (
-            <>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Set a fuel reminder</p>
+              </div>
               <p className="text-xs font-medium" style={{ color: AMBER_MID }}>Remind me on:</p>
               <div className="flex items-center gap-2">
                 <input
@@ -529,54 +560,42 @@ function HeroCard({ hero, heroDetail, userId }) {
                   Set
                 </button>
               </div>
-            </>
-          )}
-
-          {remindState === 'confirmed' && (
-            <div className="flex items-center gap-1.5" style={{ color: AMBER_MID }}>
-              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-              <p className="text-xs font-medium">Reminder set for {remindConfirmedDate}</p>
             </div>
           )}
 
-          {/* Action buttons — always a horizontal row at bottom */}
-          {remindState === 'idle' && (
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setFuelDismissed(true)}
-                className="flex-1 py-2 text-sm font-semibold rounded-lg text-white"
-                style={{ background: AMBER }}
-              >
-                Done
-              </button>
-              <button
-                onClick={() => setRemindState('picking')}
-                className="flex-1 py-2 text-sm font-semibold rounded-lg border-2 bg-white"
-                style={{ borderColor: AMBER, color: AMBER }}
-              >
-                Remind me
-              </button>
-            </div>
-          )}
-
+          {/* confirmed: calendar + text left, Done + Cancel right */}
           {remindState === 'confirmed' && (
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setFuelDismissed(true)}
-                className="flex-1 py-2 text-sm font-semibold rounded-lg text-white"
-                style={{ background: AMBER }}
-              >
-                Done
-              </button>
-              <button
-                onClick={() => { setRemindState('idle'); setRemindDate('') }}
-                className="flex-1 py-2 text-sm font-semibold rounded-lg border-2 bg-white"
-                style={{ borderColor: AMBER, color: AMBER }}
-              >
-                × Cancel
-              </button>
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                  <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
+                </div>
+                <div className="flex items-center gap-1.5" style={{ color: AMBER_MID }}>
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <p className="text-xs font-medium">Reminder set for {remindConfirmedDate}</p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5 flex-shrink-0">
+                <button
+                  onClick={() => setFuelDismissed(true)}
+                  className="px-4 py-1.5 text-xs font-bold rounded-lg text-white whitespace-nowrap"
+                  style={{ background: AMBER }}
+                >
+                  Done
+                </button>
+                <button
+                  onClick={() => { setRemindState('idle'); setRemindDate('') }}
+                  className="px-4 py-1.5 text-xs font-semibold rounded-lg border-2 bg-white whitespace-nowrap"
+                  style={{ borderColor: AMBER, color: AMBER }}
+                >
+                  × Cancel
+                </button>
+              </div>
             </div>
           )}
 
@@ -612,10 +631,11 @@ function HeroCard({ hero, heroDetail, userId }) {
 
 function UpcomingRow({ plan }) {
   const { month, day } = formatMonthDay(plan.race_date)
-  const goalTime  = formatGoalTime(plan.goal_minutes)
-  const condLabel = plan.conditions
-    ? `~${plan.conditions.charAt(0).toUpperCase() + plan.conditions.slice(1)}`
+  const goalTime = formatGoalTime(plan.goal_minutes)
+  const tempLabel = plan.display_temp_c
+    ? `${Math.round(parseFloat(plan.display_temp_c))}°C`
     : null
+  const kmLabel = plan.custom_km ? `${plan.custom_km} km` : null
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0">
@@ -632,8 +652,11 @@ function UpcomingRow({ plan }) {
           {goalTime && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Goal {goalTime}</span>
           )}
-          {plan.mode === 'pro' && condLabel && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: GREY_LIGHT, color: GREY_MID }}>{condLabel}</span>
+          {kmLabel && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{kmLabel}</span>
+          )}
+          {plan.mode === 'pro' && tempLabel && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: GREY_LIGHT, color: GREY_MID }}>{tempLabel}</span>
           )}
         </div>
       </div>
@@ -648,22 +671,33 @@ function UpcomingRow({ plan }) {
 
 function PastRow({ plan, compact = false }) {
   const { month, day } = formatMonthDay(plan.race_date)
+  const monthYear = formatMonthYear(plan.race_date)
+  const goalTime  = formatGoalTime(plan.goal_minutes)
+  const kmLabel   = plan.custom_km ? `${plan.custom_km} km` : null
 
   if (compact) {
+    const compactMeta = [month, goalTime].filter(Boolean).join(' · ')
     return (
       <div className="flex items-center gap-2 py-2 border-b border-gray-100 last:border-0">
-        <div className="flex flex-col items-center w-8 flex-shrink-0">
-          <span className="text-[10px] uppercase tracking-wide text-gray-400 leading-none">{month}</span>
-          <span className="text-sm font-bold text-gray-500 leading-tight">{day}</span>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm text-gray-600 truncate block">{raceLabel(plan)}</span>
+          {compactMeta && (
+            <span className="text-[10px] text-gray-400">{compactMeta}</span>
+          )}
         </div>
-        <span className="flex-1 text-sm text-gray-500 truncate">{raceLabel(plan)}</span>
         {plan.has_feedback
-          ? <a href={`/plan/${plan.id}`}    className="text-xs font-bold flex-shrink-0" style={{ color: TEAL }}>View →</a>
+          ? <span className="text-xs text-green-500 flex-shrink-0">✓</span>
           : <a href={`/feedback/${plan.id}`} className="text-xs font-bold flex-shrink-0" style={{ color: CORAL }}>Log →</a>
         }
       </div>
     )
   }
+
+  // detail line varies: logged = "Jan 2025 · 1:34 finish"; unlogged = "Oct 2024 · 42.2 km"
+  const detailParts = plan.has_feedback
+    ? [monthYear, goalTime ? `${goalTime} finish` : null].filter(Boolean)
+    : [monthYear, kmLabel].filter(Boolean)
+  const detailLine = detailParts.join(' · ')
 
   return (
     <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
@@ -684,6 +718,12 @@ function PastRow({ plan, compact = false }) {
             </span>
           )}
         </div>
+        {detailLine && (
+          <p className="text-[11px] text-gray-400 mt-0.5">{detailLine}</p>
+        )}
+        {plan.has_feedback && plan.feedback_note && (
+          <p className="text-[11px] italic mt-0.5 truncate" style={{ color: GREY_MID }}>{plan.feedback_note}</p>
+        )}
       </div>
       {plan.has_feedback
         ? <a href={`/plan/${plan.id}`}    className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: TEAL }}>View →</a>
