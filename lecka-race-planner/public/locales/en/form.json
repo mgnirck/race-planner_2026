@@ -7,6 +7,9 @@
   "field.raceName.placeholder": "e.g. Boston Marathon 2026",
   "field.raceName.hint": "Optional — shown on your plan",
 
+  "field.raceDate": "Race date",
+  "field.raceDate.hint": "Optional — helps us track your countdown",
+
   "field.sport": "Sport",
   "field.sport.running": "Running",
   "field.sport.triathlon": "Triathlon",
@@ -71,5 +74,12 @@
 
   "product.carbs": "{{value}}g carbs",
   "product.sodium": "{{value}}mg sodium",
-  "product.caffeine": "{{value}}mg caffeine"
+  "product.caffeine": "{{value}}mg caffeine",
+  "steps.region": "Where are you based?",
+  "field.region.hint": "We use this to show you available products and local pricing.",
+  "field.region.directStore": "Direct stores",
+  "field.region.distributor": "Distributor partners",
+  "field.region.other": "Other",
+  "field.region.distributorNote": "via distributor",
+  "field.region.internationalNote": "Shows full product range"
 }

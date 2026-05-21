@@ -37,7 +37,7 @@ export default function VerifyPage() {
           setStatus('saving')
           try {
             const { inputs, targets, selection, region, lang } = JSON.parse(pending)
-            const saveRes = await fetch('/api/plans/save', {
+            const saveRes = await fetch('/api/plans', {
               method:  'POST',
               headers: {
                 'Content-Type':  'application/json',
@@ -71,7 +71,7 @@ export default function VerifyPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
-        <img src="/logo.svg" alt="Lecka" className="h-8 mx-auto mb-8" />
+        <img src="/Lecka-Logo-New%20Green%20Font.png" alt="Lecka" className="h-8 mx-auto mb-8" />
 
         {status === 'verifying' && (
           <>

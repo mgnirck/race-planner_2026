@@ -21,6 +21,11 @@ export async function ensureMigrated() {
     )
   `
   await sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS preferred_region TEXT DEFAULT NULL,
+      ADD COLUMN IF NOT EXISTS preferred_lang TEXT DEFAULT 'en'
+  `
+  await sql`
     CREATE TABLE IF NOT EXISTS plans (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -68,6 +73,74 @@ export async function ensureMigrated() {
       region TEXT DEFAULT 'us'
     )
   `
+  await sql`
+    ALTER TABLE plan_events
+      ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'simple'
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS product_catalog (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      carbs_per_unit NUMERIC,
+      sodium_per_unit NUMERIC,
+      caffeine BOOLEAN DEFAULT false,
+      caffeine_mg INTEGER DEFAULT 0,
+      dual_transporter BOOLEAN DEFAULT false,
+      net_weight_g NUMERIC,
+      ideal_time TEXT[],
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS product_regions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      product_id TEXT NOT NULL REFERENCES product_catalog(id) ON DELETE CASCADE,
+      region TEXT NOT NULL,
+      available BOOLEAN DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (product_id, region)
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS product_variants (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      product_id TEXT NOT NULL REFERENCES product_catalog(id) ON DELETE CASCADE,
+      region TEXT NOT NULL,
+      shopify_variant_id TEXT NOT NULL,
+      units_per_pack INTEGER NOT NULL,
+      price NUMERIC NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `
+  await sql`
+    CREATE TABLE IF NOT EXISTS product_audit (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      changed_at TIMESTAMPTZ DEFAULT NOW(),
+      product_id TEXT NOT NULL,
+      region TEXT,
+      field_changed TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      changed_by TEXT DEFAULT 'admin'
+    )
+  `
+
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS race_city TEXT`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS race_lat NUMERIC`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS race_lng NUMERIC`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS race_start_time TEXT`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_estimated_temp TEXT`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_live_temp_c NUMERIC`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_last_fetched TIMESTAMPTZ`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_confirmed BOOLEAN DEFAULT false`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS fuel_reminder_date DATE`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS fuel_reminder_sent BOOLEAN DEFAULT FALSE`
 
   migrated = true
 }

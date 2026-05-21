@@ -1,25 +1,46 @@
-import React, { useState } from 'react'
-import StepForm      from './components/StepForm'
-import ResultsPage   from './components/ResultsPage'
-import AdminPage     from './components/AdminPage'
-import VerifyPage    from './components/VerifyPage'
-import DashboardPage from './components/DashboardPage'
-import FeedbackPage  from './components/FeedbackPage'
-import HomePage      from './components/HomePage'
-import LoginPage     from './components/LoginPage'
-import PlanViewPage  from './components/PlanViewPage'
-import { isEmbedded, detectRegion } from './embed.js'
+import React, { useState, useEffect } from 'react'
+import StepForm         from './components/StepForm'
+import ResultsPage      from './components/ResultsPage'
+import SimpleForm       from './components/SimpleForm'
+import SimpleResultsPage from './components/SimpleResultsPage'
+import AdminPage        from './components/AdminPage'
+import VerifyPage       from './components/VerifyPage'
+import DashboardPage    from './components/DashboardPage'
+import FeedbackPage     from './components/FeedbackPage'
+import HomePage         from './components/HomePage'
+import LoginPage        from './components/LoginPage'
+import PlanViewPage     from './components/PlanViewPage'
+import CheckpointPage   from './components/CheckpointPage'
+import { isEmbedded, getSavedRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
 
-const STATS_KEY  = 'lecka_plans_v1'
-const MAX_STORED = 1000
+const STATS_KEY        = 'lecka_plans_v1'
+const MAX_STORED       = 1000
+const CURRENT_PLAN_KEY = 'lecka_current_plan'
 
-function recordPlan(race_type, region) {
+function saveCurrentPlan(result) {
+  try {
+    localStorage.setItem(CURRENT_PLAN_KEY, JSON.stringify(result))
+  } catch {
+    // storage full or unavailable — silently skip
+  }
+}
+
+function loadCurrentPlan() {
+  try {
+    const raw = localStorage.getItem(CURRENT_PLAN_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function recordPlan(race_type, region, mode = 'simple') {
   fetch('/api/record-plan', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ race_type, region }),
+    body:    JSON.stringify({ race_type, region, mode }),
   }).catch(() => {})
 
   try {
@@ -37,7 +58,19 @@ function recordPlan(race_type, region) {
 const PATH = window.location.pathname
 
 export default function App() {
-  const [plan, setPlan] = useState(null)
+  const [plan,           setPlan]           = useState(null)
+  const [offlineBanner,  setOfflineBanner]  = useState(false)
+  const [savedPlan,      setSavedPlan]      = useState(null)
+
+  useEffect(() => {
+    if (!navigator.onLine) {
+      const stored = loadCurrentPlan()
+      if (stored) {
+        setSavedPlan(stored)
+        setOfflineBanner(true)
+      }
+    }
+  }, [])
 
   if (PATH === '/admin')        return <AdminPage />
   if (PATH === '/auth/verify')  return <VerifyPage />
@@ -46,6 +79,10 @@ export default function App() {
   if (PATH.startsWith('/feedback/')) {
     return <FeedbackPage planId={PATH.split('/')[2]} />
   }
+  if (PATH.startsWith('/plan/') && PATH.endsWith('/checkpoints')) {
+    const planId = PATH.split('/')[2]
+    return <CheckpointPage planId={planId} />
+  }
   if (PATH.startsWith('/plan/')) {
     return <PlanViewPage />
   }
@@ -53,28 +90,88 @@ export default function App() {
   // Standalone homepage — only when not in Shopify embed
   if (PATH === '/' && !isEmbedded) return <HomePage />
 
-  // Planner flow — /planner (standalone) and / (embedded)
-  function handleComplete(result) {
+  // ── Pro planner — existing full form ─────────────────────────────────────
+  if (PATH === '/planner/pro') {
+    function handleComplete(result) {
+      recordPlan(
+        result.targets?.race_type ?? result.form?.race_type ?? 'unknown',
+        getSavedRegion(),
+        'pro',
+      )
+      saveCurrentPlan(result)
+      setPlan(result)
+    }
+
+    if (plan) {
+      return (
+        <ResultsPage
+          targets={plan.targets}
+          foundationTargets={plan.foundationTargets ?? plan.targets}
+          selection={plan.selection}
+          addonCoverage={plan.addonCoverage ?? null}
+          resolvedAddonItems={plan.resolvedAddonItems ?? []}
+          form={plan.form}
+          onBack={() => {
+            try { sessionStorage.removeItem('lecka_form_draft') } catch {}
+            window.location.replace('/planner/pro')
+          }}
+        />
+      )
+    }
+
+    return <StepForm onComplete={handleComplete} />
+  }
+
+  // ── Simple planner — lightweight form at /planner and embedded / ──────────
+  function handleSimpleComplete(result) {
     recordPlan(
       result.targets?.race_type ?? result.form?.race_type ?? 'unknown',
-      detectRegion,
+      getSavedRegion(),
+      'simple',
     )
+    saveCurrentPlan(result)
     setPlan(result)
   }
 
-  if (plan) {
+  if (plan && plan.mode === 'simple') {
     return (
-      <ResultsPage
+      <SimpleResultsPage
         targets={plan.targets}
         selection={plan.selection}
         form={plan.form}
         onBack={() => {
           try { sessionStorage.removeItem('lecka_form_draft') } catch {}
-          isEmbedded ? setPlan(null) : window.location.replace('/planner')
+          setPlan(null)
         }}
       />
     )
   }
 
-  return <StepForm onComplete={handleComplete} />
+  return (
+    <>
+      {offlineBanner && savedPlan && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#1B1B1B] text-white
+                        px-4 py-3 flex items-center justify-between gap-3 text-sm shadow-lg">
+          <span>You&apos;re offline. Want to view your last saved plan?</span>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { setPlan(savedPlan); setOfflineBanner(false) }}
+              className="px-3 py-1.5 bg-[#48C4B0] text-white rounded-lg font-semibold text-xs"
+            >
+              Restore plan
+            </button>
+            <button
+              type="button"
+              onClick={() => setOfflineBanner(false)}
+              className="px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+      <SimpleForm onComplete={handleSimpleComplete} />
+    </>
+  )
 }

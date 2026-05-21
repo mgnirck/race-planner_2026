@@ -1,62 +1,78 @@
 import React from 'react'
 import { isEmbedded } from '../embed.js'
 
-export default function Nav({ backHref, backLabel }) {
+const TEAL = '#1D9E75'
+
+function LeckaIcon() {
+  return (
+    <svg viewBox="0 0 32 32" className="w-8 h-8 flex-shrink-0" fill="none">
+      <rect width="32" height="32" rx="7" fill={TEAL} />
+      <rect x="7.5" y="7.5" width="17" height="17" rx="3" stroke="white" strokeWidth="2.5" />
+    </svg>
+  )
+}
+
+export default function Nav() {
   if (isEmbedded) return null
 
   const userId  = localStorage.getItem('lecka_user_id')
   const email   = localStorage.getItem('lecka_user_email')
-  const initial = email ? email[0].toUpperCase() : null
+  const initial = email ? email[0].toUpperCase() : '?'
 
   return (
     <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
-      <div className="max-w-lg mx-auto px-5 py-3 flex items-center">
+      <div className="max-w-4xl mx-auto flex items-center gap-4 px-5 py-3">
 
-        {/* Left — back link or spacer */}
-        <div className="w-28 flex-shrink-0">
-          {backHref && (
-            <a
-              href={backHref}
-              className="text-sm text-[#48C4B0] font-medium hover:underline
-                         min-h-[44px] flex items-center"
-            >
-              ← {backLabel || 'Back'}
-            </a>
-          )}
-        </div>
+        {/* Left — logo */}
+        <a href="/" className="flex items-center gap-2 flex-shrink-0">
+          <LeckaIcon />
+          <span className="text-base font-bold text-gray-900 tracking-tight">Lecka</span>
+        </a>
 
-        {/* Centre — logo */}
-        <div className="flex-1 flex justify-center">
-          <a href="/">
-            <img src="/logo.svg" alt="Lecka" className="h-6" />
+        {/* Centre — navigation links */}
+        <div className="flex-1 flex items-center justify-center gap-6">
+          <a
+            href="/dashboard"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
+          >
+            My Plans
+          </a>
+          <a
+            href="/dashboard"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
+          >
+            History
           </a>
         </div>
 
-        {/* Right — auth */}
-        <div className="w-28 flex-shrink-0 flex items-center justify-end gap-2">
+        {/* Right — plan CTAs + avatar */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <a
+            href="/planner"
+            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-gray-400 transition-colors whitespace-nowrap"
+          >
+            Quick plan
+          </a>
+          <a
+            href="/planner/pro"
+            className="text-xs font-semibold px-3 py-1.5 rounded-full text-white whitespace-nowrap"
+            style={{ background: TEAL }}
+          >
+            Pro plan
+          </a>
           {userId ? (
-            <>
-              <a
-                href="/dashboard"
-                className="text-sm font-medium text-[#1B1B1B] hover:text-[#48C4B0]
-                           transition-colors hidden sm:block"
-              >
-                My plans
-              </a>
-              <a
-                href="/dashboard"
-                aria-label="My plans"
-                className="w-8 h-8 rounded-full bg-[#48C4B0] text-white flex items-center
-                           justify-center text-xs font-bold flex-shrink-0 hover:bg-[#3db09d]
-                           transition-colors"
-              >
-                {initial}
-              </a>
-            </>
+            <a
+              href="/dashboard"
+              aria-label="My plans"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white ml-1"
+              style={{ background: TEAL }}
+            >
+              {initial}
+            </a>
           ) : (
             <a
               href="/auth/login"
-              className="text-sm font-medium text-[#1B1B1B] hover:text-[#48C4B0] transition-colors"
+              className="text-xs font-medium text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap ml-1"
             >
               Log in
             </a>
