@@ -40,12 +40,8 @@
   ],
   "crons": [
     {
-      "path": "/api/weather-update",
+      "path": "/api/cron",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/send-reminder",
-      "schedule": "0 7 * * *"
     }
   ]
 }

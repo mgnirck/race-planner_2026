@@ -3,18 +3,18 @@ import Nav from './Nav.jsx'
 
 // ── Colour constants ──────────────────────────────────────────────────────────
 
-const TEAL      = '#1D9E75'
-const TEAL_LIGHT  = '#E1F5EE'
-const TEAL_DARK   = '#085041'
-const TEAL_MID    = '#0F6E56'
-const GREY        = '#888780'
-const GREY_LIGHT  = '#F1EFE8'
-const GREY_MID    = '#5F5E5A'
-const AMBER       = '#BA7517'
+const TEAL       = '#1D9E75'
+const TEAL_LIGHT = '#E1F5EE'
+const TEAL_DARK  = '#085041'
+const TEAL_MID   = '#0F6E56'
+const GREY       = '#888780'
+const GREY_LIGHT = '#F1EFE8'
+const GREY_MID   = '#5F5E5A'
+const AMBER      = '#BA7517'
 const AMBER_LIGHT = '#FAEEDA'
 const AMBER_DARK  = '#633806'
 const AMBER_MID   = '#854F0B'
-const CORAL       = '#993C1D'
+const CORAL      = '#993C1D'
 const CORAL_LIGHT = '#FAECE7'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -55,6 +55,11 @@ function raceLabel(plan) {
   return plan.race_name || (plan.race_type
     ? plan.race_type.charAt(0).toUpperCase() + plan.race_type.slice(1).replace(/_/g, ' ')
     : 'Race plan')
+}
+
+function raceTypeLabel(raceType) {
+  if (!raceType) return null
+  return raceType.charAt(0).toUpperCase() + raceType.slice(1).replace(/_/g, ' ')
 }
 
 function today() {
@@ -144,7 +149,7 @@ function LockedTile({ label }) {
       className="flex-1 flex flex-col items-center justify-center rounded-xl px-2 py-3 min-w-0"
       style={{ border: '1.5px dashed #D1D0CB', opacity: 0.6 }}
     >
-      <span className="text-base">🔒</span>
+      <span className="text-sm">🔒</span>
       <span className="text-[10px] uppercase tracking-[.04em] text-gray-400 mt-1 text-center leading-tight">{label}</span>
     </div>
   )
@@ -154,10 +159,10 @@ function StatTile({ label, value }) {
   return (
     <div
       className="flex-1 flex flex-col items-center justify-center rounded-xl px-2 py-3 min-w-0"
-      style={{ background: TEAL_LIGHT }}
+      style={{ background: '#F5F4F0' }}
     >
-      <span className="text-[15px] font-medium" style={{ color: TEAL_DARK }}>{value ?? '—'}</span>
-      <span className="text-[10px] uppercase tracking-[.04em] mt-1 text-center leading-tight" style={{ color: TEAL_MID }}>{label}</span>
+      <span className="text-[15px] font-medium text-gray-900">{value ?? '—'}</span>
+      <span className="text-[10px] uppercase tracking-[.04em] text-gray-400 mt-1 text-center leading-tight">{label}</span>
     </div>
   )
 }
@@ -168,11 +173,19 @@ function HeroCard({ hero, heroDetail, userId }) {
   const isPro    = hero.mode === 'pro'
   const days     = daysUntil(hero.race_date)
   const dateStr  = formatRaceDateLong(hero.race_date)
+
+  // Meta line: "April 21, 2025 · Marathon · 42.2 km · Berlin"
+  const typeName = raceTypeLabel(hero.race_type)
+  const distKm   = heroDetail?.inputs?.custom_km ? `${heroDetail.inputs.custom_km} km` : null
+  const city     = heroDetail?.inputs?.race_city || null
+  const metaParts = [dateStr, typeName, distKm, city].filter(Boolean)
+  const metaLine  = metaParts.join(' · ')
+
   const goalTime = formatGoalTime(hero.goal_minutes)
 
   const targets = heroDetail?.targets ?? {}
-  const carbPerHour   = targets.carb_per_hour   ?? null
-  const sodiumPerHour = targets.sodium_per_hour  ?? null
+  const carbPerHour   = targets.carb_per_hour    ?? null
+  const sodiumPerHour = targets.sodium_per_hour   ?? null
   const fluidPerHour  = targets.fluid_ml_per_hour ?? null
   const condLabel     = hero.conditions
     ? hero.conditions.charAt(0).toUpperCase() + hero.conditions.slice(1)
@@ -189,10 +202,10 @@ function HeroCard({ hero, heroDetail, userId }) {
     return null
   })()
 
-  const [remindState, setRemindState] = useState('idle')
-  const [remindDate,  setRemindDate]  = useState('')
+  const [remindState, setRemindState]           = useState('idle')
+  const [remindDate,  setRemindDate]            = useState('')
   const [remindConfirmedDate, setRemindConfirmedDate] = useState('')
-  const [fuelDismissed, setFuelDismissed] = useState(false)
+  const [fuelDismissed, setFuelDismissed]       = useState(false)
 
   async function handleSetReminder() {
     if (!remindDate) return
@@ -203,7 +216,9 @@ function HeroCard({ hero, heroDetail, userId }) {
         body:    JSON.stringify({ planId: hero.id, fuel_reminder_date: remindDate }),
       })
     } catch {}
-    setRemindConfirmedDate(new Date(remindDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' }))
+    setRemindConfirmedDate(
+      new Date(remindDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    )
     setRemindState('confirmed')
   }
 
@@ -217,6 +232,7 @@ function HeroCard({ hero, heroDetail, userId }) {
         {/* Header row */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
+            {/* Badges row */}
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span
                 className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
@@ -224,12 +240,14 @@ function HeroCard({ hero, heroDetail, userId }) {
               >
                 Next race
               </span>
-              <PlanPill mode={hero.mode} />
-              {dateStr && (
-                <span className="text-xs text-gray-400">{dateStr}</span>
-              )}
+              {isPro && <PlanPill mode="pro" />}
             </div>
-            <p className="leading-tight truncate" style={{ fontSize: 19, fontWeight: 500, color: '#1B1B1B' }}>
+            {/* Meta line */}
+            {metaLine && (
+              <p className="text-xs text-gray-400 mb-1 leading-tight">{metaLine}</p>
+            )}
+            {/* Race name */}
+            <p className="leading-tight font-bold" style={{ fontSize: 20, color: '#1B1B1B' }}>
               {raceLabel(hero)}
             </p>
           </div>
@@ -238,8 +256,8 @@ function HeroCard({ hero, heroDetail, userId }) {
           <div className="flex-shrink-0 text-right">
             {days !== null ? (
               <>
-                <p className="text-4xl font-bold" style={{ color: TEAL_DARK }}>{days}</p>
-                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: TEAL }}> days to go</p>
+                <p className="text-4xl font-bold leading-none" style={{ color: TEAL_DARK }}>{days}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: TEAL }}>days to go</p>
               </>
             ) : (
               <p className="text-4xl font-bold" style={{ color: GREY }}>—</p>
@@ -249,7 +267,7 @@ function HeroCard({ hero, heroDetail, userId }) {
 
         {/* Stat tiles */}
         <div className="flex gap-1.5">
-          <StatTile label="Target time" value={goalTime} />
+          <StatTile label="Target" value={goalTime} />
           <StatTile label="Carbs/hr" value={carbPerHour !== null ? `${carbPerHour}g` : '—'} />
           {isPro ? (
             <StatTile label="Sodium/hr" value={sodiumPerHour !== null ? `${sodiumPerHour}mg` : '—'} />
@@ -277,14 +295,13 @@ function HeroCard({ hero, heroDetail, userId }) {
           >
             View full plan
           </a>
-          <a
-            href={`/plan/${hero.id}#print`}
-            onClick={e => { e.preventDefault(); window.print() }}
+          <button
+            onClick={() => window.print()}
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
             Print
-          </a>
+          </button>
           <a
             href={`/plan/${hero.id}`}
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors"
@@ -308,81 +325,95 @@ function HeroCard({ hero, heroDetail, userId }) {
 
       {/* TODO: weather alert card */}
 
-      {/* Fuel ordered? card */}
+      {/* Fuel ordered? card — buttons on right, text on left */}
       {!fuelDismissed && (
-        <div className="mx-5 my-4 rounded-xl p-4 space-y-3" style={{ background: AMBER_LIGHT }}>
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
+        <div className="mx-5 my-4 rounded-xl p-4" style={{ background: AMBER_LIGHT }}>
+          <div className="flex items-start gap-3">
+            {/* Left: icon + text */}
+            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
-            <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold mb-1" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
+
+              {remindState === 'idle' && (
+                <>
+                  <p className="text-xs leading-relaxed mb-0" style={{ color: AMBER_MID }}>
+                    {isPro
+                      ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
+                      : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
+                  </p>
+                </>
+              )}
+
+              {remindState === 'picking' && (
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="date"
+                    value={remindDate}
+                    onChange={e => setRemindDate(e.target.value)}
+                    className="flex-1 min-w-0 border-2 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
+                    style={{ borderColor: AMBER }}
+                  />
+                  <button
+                    onClick={handleSetReminder}
+                    disabled={!remindDate}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white disabled:opacity-40 flex-shrink-0"
+                    style={{ background: AMBER }}
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
+              {remindState === 'confirmed' && (
+                <p className="text-xs font-medium mt-1" style={{ color: AMBER_MID }}>
+                  Reminder set for {remindConfirmedDate}
+                </p>
+              )}
+            </div>
+
+            {/* Right: action buttons */}
+            <div className="flex flex-col gap-1.5 flex-shrink-0">
+              {remindState === 'idle' && (
+                <>
+                  <button
+                    onClick={() => setFuelDismissed(true)}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white whitespace-nowrap"
+                    style={{ background: AMBER }}
+                  >
+                    Done
+                  </button>
+                  <button
+                    onClick={() => setRemindState('picking')}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border-2 whitespace-nowrap"
+                    style={{ borderColor: AMBER, color: AMBER }}
+                  >
+                    Remind me
+                  </button>
+                </>
+              )}
+
+              {remindState === 'confirmed' && (
+                <>
+                  <button
+                    onClick={() => setFuelDismissed(true)}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white whitespace-nowrap"
+                    style={{ background: AMBER }}
+                  >
+                    Done
+                  </button>
+                  <button
+                    onClick={() => { setRemindState('idle'); setRemindDate('') }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border-2 whitespace-nowrap"
+                    style={{ borderColor: AMBER, color: AMBER }}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <p className="text-xs leading-relaxed" style={{ color: AMBER_MID }}>
-            {isPro
-              ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
-              : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
-          </p>
-
-          {remindState === 'idle' && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFuelDismissed(true)}
-                className="flex-1 py-2 text-sm font-semibold rounded-lg text-white transition-colors"
-                style={{ background: AMBER }}
-              >
-                Done
-              </button>
-              <button
-                onClick={() => setRemindState('picking')}
-                className="flex-1 py-2 text-sm font-semibold rounded-lg border-2 transition-colors"
-                style={{ borderColor: AMBER, color: AMBER }}
-              >
-                Remind me
-              </button>
-            </div>
-          )}
-
-          {remindState === 'picking' && (
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={remindDate}
-                onChange={e => setRemindDate(e.target.value)}
-                className="flex-1 border-2 rounded-lg px-3 py-2 text-sm focus:outline-none"
-                style={{ borderColor: AMBER }}
-              />
-              <button
-                onClick={handleSetReminder}
-                disabled={!remindDate}
-                className="px-4 py-2 text-sm font-semibold rounded-lg text-white transition-colors disabled:opacity-40"
-                style={{ background: AMBER }}
-              >
-                Set
-              </button>
-            </div>
-          )}
-
-          {remindState === 'confirmed' && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium" style={{ color: AMBER_MID }}>Reminder set for {remindConfirmedDate}</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFuelDismissed(true)}
-                  className="flex-1 py-2 text-sm font-semibold rounded-lg text-white"
-                  style={{ background: AMBER }}
-                >
-                  Done
-                </button>
-                <button
-                  onClick={() => { setRemindState('idle'); setRemindDate('') }}
-                  className="flex-1 py-2 text-sm font-semibold rounded-lg border-2"
-                  style={{ borderColor: AMBER, color: AMBER }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -391,7 +422,7 @@ function HeroCard({ hero, heroDetail, userId }) {
         <div className="mx-5 mb-5 rounded-xl p-4 border-2 space-y-2" style={{ borderColor: TEAL }}>
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={TEAL} strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
             <p className="text-sm font-semibold" style={{ color: TEAL_DARK }}>Upgrade to pro plan</p>
           </div>
@@ -415,36 +446,36 @@ function HeroCard({ hero, heroDetail, userId }) {
 
 function UpcomingRow({ plan }) {
   const { month, day } = formatMonthDay(plan.race_date)
-  const goalTime = formatGoalTime(plan.goal_minutes)
+  const goalTime  = formatGoalTime(plan.goal_minutes)
   const condLabel = plan.conditions
-    ? plan.conditions.charAt(0).toUpperCase() + plan.conditions.slice(1)
+    ? `~${plan.conditions.charAt(0).toUpperCase() + plan.conditions.slice(1)}`
     : null
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0">
-      {/* Date column */}
+      {/* Date */}
       <div className="flex flex-col items-center w-8 flex-shrink-0">
         <span className="text-[10px] uppercase tracking-wide text-gray-400 leading-none">{month}</span>
         <span className="text-base font-bold text-gray-700 leading-tight">{day}</span>
       </div>
 
-      {/* Name + pills */}
+      {/* Name + chips */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-medium text-gray-800 truncate">{raceLabel(plan)}</span>
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+          <span className="text-sm font-semibold text-gray-800 truncate">{raceLabel(plan)}</span>
           <PlanPill mode={plan.mode} />
         </div>
         <div className="flex gap-1.5 mt-0.5 flex-wrap">
           {goalTime && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Goal {goalTime}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Goal {goalTime}</span>
           )}
           {plan.mode === 'pro' && condLabel && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: TEAL_LIGHT, color: TEAL_MID }}>{condLabel}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: GREY_LIGHT, color: GREY_MID }}>{condLabel}</span>
           )}
         </div>
       </div>
 
-      <a href={`/plan/${plan.id}`} className="text-sm font-semibold flex-shrink-0" style={{ color: TEAL }}>
+      <a href={`/plan/${plan.id}`} className="text-sm font-bold flex-shrink-0" style={{ color: TEAL }}>
         View →
       </a>
     </div>
@@ -458,15 +489,15 @@ function PastRow({ plan, compact = false }) {
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+      <div className="flex items-center gap-2 py-2 border-b border-gray-100 last:border-0">
         <div className="flex flex-col items-center w-8 flex-shrink-0">
           <span className="text-[10px] uppercase tracking-wide text-gray-400 leading-none">{month}</span>
           <span className="text-sm font-bold text-gray-500 leading-tight">{day}</span>
         </div>
         <span className="flex-1 text-sm text-gray-500 truncate">{raceLabel(plan)}</span>
         {plan.has_feedback
-          ? <a href={`/plan/${plan.id}`} className="text-xs font-semibold flex-shrink-0" style={{ color: TEAL }}>View →</a>
-          : <a href={`/feedback/${plan.id}`} className="text-xs font-semibold flex-shrink-0" style={{ color: CORAL }}>Log →</a>
+          ? <a href={`/plan/${plan.id}`}   className="text-xs font-bold flex-shrink-0" style={{ color: TEAL }}>View →</a>
+          : <a href={`/feedback/${plan.id}`} className="text-xs font-bold flex-shrink-0" style={{ color: CORAL }}>Log →</a>
         }
       </div>
     )
@@ -481,13 +512,13 @@ function PastRow({ plan, compact = false }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-medium text-gray-800 truncate">{raceLabel(plan)}</span>
+          <span className="text-sm font-semibold text-gray-800 truncate">{raceLabel(plan)}</span>
           <PlanPill mode={plan.mode} />
           {plan.has_feedback ? (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600">✓ Logged</span>
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-600">✓ Logged</span>
           ) : (
             <span
-              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
               style={{ background: CORAL_LIGHT, color: CORAL }}
             >
               Log due
@@ -497,8 +528,8 @@ function PastRow({ plan, compact = false }) {
       </div>
 
       {plan.has_feedback
-        ? <a href={`/plan/${plan.id}`} className="text-sm font-semibold flex-shrink-0" style={{ color: TEAL }}>View →</a>
-        : <a href={`/feedback/${plan.id}`} className="text-sm font-semibold flex-shrink-0" style={{ color: CORAL }}>Log →</a>
+        ? <a href={`/plan/${plan.id}`}    className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: TEAL }}>View →</a>
+        : <a href={`/feedback/${plan.id}`} className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: CORAL }}>Log →</a>
       }
     </div>
   )
@@ -558,7 +589,6 @@ export default function DashboardPage() {
       .then(data => {
         setPlans(data)
         setLoading(false)
-        // Fetch hero detail
         const { upcoming } = splitPlans(data)
         const hero = upcoming[0]
         if (hero) {
@@ -574,14 +604,13 @@ export default function DashboardPage() {
   if (!userId) return null
 
   const { upcoming, past } = plans ? splitPlans(plans) : { upcoming: [], past: [] }
-  const hero  = upcoming[0] ?? null
-  const rest  = upcoming.slice(1)
-  const empty = plans && plans.length === 0
+  const hero       = upcoming[0] ?? null
+  const restUpcoming = upcoming.slice(1)
+  const empty      = plans && plans.length === 0
 
   const recentPast = past.slice(0, 3)
   const olderPast  = past.slice(3)
 
-  // Group older past by year
   const olderByYear = olderPast.reduce((acc, p) => {
     const year = new Date(p.race_date + 'T00:00:00').getFullYear()
     if (!acc[year]) acc[year] = []
@@ -593,7 +622,7 @@ export default function DashboardPage() {
     <div className="bg-white min-h-screen">
       <Nav />
 
-      <div className="max-w-lg mx-auto px-5 py-6 space-y-8">
+      <div className="max-w-2xl mx-auto px-5 py-6 space-y-8">
 
         {/* Loading */}
         {loading && (
@@ -627,79 +656,86 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Hero card */}
+        {/* Hero card — full width */}
         {!loading && !error && hero && (
-          <section>
-            <SectionLabel>Your next race</SectionLabel>
-            <HeroCard hero={hero} heroDetail={heroDetail} userId={userId} />
-          </section>
+          <HeroCard hero={hero} heroDetail={heroDetail} userId={userId} />
         )}
 
-        {/* Upcoming list */}
-        {!loading && !error && (rest.length > 0 || hero) && (
-          <section>
-            <SectionLabel>Upcoming races</SectionLabel>
-            <div className="rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
-              {rest.map(plan => (
-                <div key={plan.id} className="px-4">
-                  <UpcomingRow plan={plan} />
-                </div>
-              ))}
-              {rest.length === 0 && (
-                <div className="px-4 py-3 text-sm text-gray-400">No other upcoming races.</div>
-              )}
-              <div className="px-4 py-3">
-                <a href="/" className="text-sm font-semibold" style={{ color: TEAL }}>+ Add a race</a>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* Two-column: Upcoming (left) + Past (right) */}
+        {!loading && !error && plans && plans.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-        {/* Past races */}
-        {!loading && !error && past.length > 0 && (
-          <section>
-            <SectionLabel>Past races</SectionLabel>
-            <div className="rounded-2xl border border-gray-100 overflow-hidden">
-              <div className="divide-y divide-gray-100">
-                {recentPast.map(plan => (
-                  <div key={plan.id} className="px-4">
-                    <PastRow plan={plan} />
+            {/* ── Upcoming ── */}
+            <section>
+              <SectionLabel>Upcoming races</SectionLabel>
+              <div className="rounded-2xl border border-gray-100 overflow-hidden">
+                {restUpcoming.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {restUpcoming.map(plan => (
+                      <div key={plan.id} className="px-4">
+                        <UpcomingRow plan={plan} />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <p className="px-4 py-3 text-sm text-gray-400">No other upcoming races.</p>
+                )}
+                <div className="px-4 py-3 border-t border-gray-100">
+                  <a href="/" className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: TEAL }}>
+                    <span className="text-base leading-none">+</span> Add a race
+                  </a>
+                </div>
               </div>
+            </section>
 
-              {olderPast.length > 0 && (
-                <>
-                  <button
-                    onClick={() => setShowOlder(v => !v)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-gray-400 hover:text-gray-600 border-t border-gray-100 transition-colors"
-                  >
-                    <span>{showOlder ? 'Show less' : `Show ${olderPast.length} older races`}</span>
-                    <svg className={`w-4 h-4 transition-transform ${showOlder ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+            {/* ── Past ── */}
+            {past.length > 0 && (
+              <section>
+                <SectionLabel>Past races</SectionLabel>
+                <div className="rounded-2xl border border-gray-100 overflow-hidden">
+                  <div className="divide-y divide-gray-100">
+                    {recentPast.map(plan => (
+                      <div key={plan.id} className="px-4">
+                        <PastRow plan={plan} />
+                      </div>
+                    ))}
+                  </div>
 
-                  {showOlder && (
-                    <div className="border-t border-gray-100">
-                      {Object.keys(olderByYear).sort((a, b) => b - a).map(year => (
-                        <div key={year}>
-                          <p className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50">{year}</p>
-                          <div className="divide-y divide-gray-100">
-                            {olderByYear[year].map(plan => (
-                              <div key={plan.id} className="px-4">
-                                <PastRow plan={plan} compact />
+                  {olderPast.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => setShowOlder(v => !v)}
+                        className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-gray-400 hover:text-gray-600 border-t border-gray-100 transition-colors"
+                      >
+                        <span>{showOlder ? 'Show less' : `Show ${olderPast.length} older`}</span>
+                        <svg className={`w-4 h-4 transition-transform ${showOlder ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {showOlder && (
+                        <div className="border-t border-gray-100">
+                          {Object.keys(olderByYear).sort((a, b) => b - a).map(year => (
+                            <div key={year}>
+                              <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50">{year}</p>
+                              <div className="divide-y divide-gray-100">
+                                {olderByYear[year].map(plan => (
+                                  <div key={plan.id} className="px-4">
+                                    <PastRow plan={plan} compact />
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
                   )}
-                </>
-              )}
-            </div>
-          </section>
+                </div>
+              </section>
+            )}
+
+          </div>
         )}
 
       </div>
