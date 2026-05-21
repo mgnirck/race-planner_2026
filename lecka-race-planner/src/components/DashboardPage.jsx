@@ -20,6 +20,23 @@ const CORAL_LIGHT = '#FAECE7'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// Normalize a race_date value to a plain 'YYYY-MM-DD' string, regardless of
+// whether the DB driver returned a Date object, an ISO datetime string, or a
+// bare date string. Returns null for any falsy / unparseable input.
+function normalizeDateStr(raw) {
+  if (!raw) return null
+  let s
+  if (raw instanceof Date) {
+    s = raw.toISOString()
+  } else {
+    s = String(raw)
+  }
+  // Strip any time/timezone component
+  const bare = s.split('T')[0]
+  // Validate it's actually a date before returning
+  return /^\d{4}-\d{2}-\d{2}$/.test(bare) ? bare : null
+}
+
 function formatGoalTime(minutes) {
   if (!minutes) return null
   const h = Math.floor(minutes / 60)
@@ -30,31 +47,33 @@ function formatGoalTime(minutes) {
 }
 
 function formatRaceDateLong(dateStr) {
-  if (!dateStr) return null
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  const d = normalizeDateStr(dateStr)
+  if (!d) return null
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function formatMonthDay(dateStr) {
-  if (!dateStr) return { month: '—', day: '—' }
-  const d = new Date(dateStr + 'T00:00:00')
+  const d = normalizeDateStr(dateStr)
+  if (!d) return { month: '—', day: '—' }
+  const dt = new Date(d + 'T00:00:00')
   return {
-    month: d.toLocaleDateString('en-US', { month: 'short' }),
-    day:   d.getDate(),
+    month: dt.toLocaleDateString('en-US', { month: 'short' }),
+    day:   dt.getDate(),
   }
 }
 
 function formatMonthYear(dateStr) {
-  if (!dateStr) return null
-  const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  const d = normalizeDateStr(dateStr)
+  if (!d) return null
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 }
 
 function daysUntil(dateStr) {
-  if (!dateStr) return null
+  const d = normalizeDateStr(dateStr)
+  if (!d) return null
   const now = new Date()
   now.setHours(0, 0, 0, 0)
-  const race = new Date(dateStr + 'T00:00:00')
+  const race = new Date(d + 'T00:00:00')
   return Math.round((race - now) / (1000 * 60 * 60 * 24))
 }
 
@@ -78,16 +97,28 @@ function today() {
 function splitPlans(plans) {
   const now = today()
   const upcoming = plans
-    .filter(p => !p.race_date || new Date(p.race_date + 'T00:00:00') >= now)
+    .filter(p => {
+      const d = normalizeDateStr(p.race_date)
+      return !d || new Date(d + 'T00:00:00') >= now
+    })
     .sort((a, b) => {
-      if (!a.race_date && !b.race_date) return 0
-      if (!a.race_date) return 1
-      if (!b.race_date) return -1
-      return new Date(a.race_date) - new Date(b.race_date)
+      const da = normalizeDateStr(a.race_date)
+      const db = normalizeDateStr(b.race_date)
+      if (!da && !db) return 0
+      if (!da) return 1
+      if (!db) return -1
+      return new Date(da + 'T00:00:00') - new Date(db + 'T00:00:00')
     })
   const past = plans
-    .filter(p => p.race_date && new Date(p.race_date + 'T00:00:00') < now)
-    .sort((a, b) => new Date(b.race_date) - new Date(a.race_date))
+    .filter(p => {
+      const d = normalizeDateStr(p.race_date)
+      return d && new Date(d + 'T00:00:00') < now
+    })
+    .sort((a, b) => {
+      const da = normalizeDateStr(a.race_date)
+      const db = normalizeDateStr(b.race_date)
+      return new Date(db + 'T00:00:00') - new Date(da + 'T00:00:00')
+    })
   return { upcoming, past }
 }
 
@@ -315,8 +346,9 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
   const hasSigChange       = liveTemp !== null && Math.abs(tempDiff) > 4
 
   // Days until the 14-day forecast window opens
-  const weatherWindowDate = hero.race_date
-    ? new Date(new Date(hero.race_date + 'T00:00:00').getTime() - 14 * 24 * 60 * 60 * 1000)
+  const _heroDateStr = normalizeDateStr(hero.race_date)
+  const weatherWindowDate = _heroDateStr
+    ? new Date(new Date(_heroDateStr + 'T00:00:00').getTime() - 14 * 24 * 60 * 60 * 1000)
     : null
   const weatherWindowStr = weatherWindowDate
     ? weatherWindowDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -965,14 +997,17 @@ export default function DashboardPage() {
       .then(data => {
         setPlans(data)
         setLoading(false)
-        const { upcoming } = splitPlans(data)
-        const hero = upcoming[0]
-        if (hero) {
-          fetch(`/api/plans?planId=${hero.id}`, { headers: { 'Authorization': `Bearer ${userId}` } })
-            .then(r => r.ok ? r.json() : null)
-            .then(detail => { if (detail) setHeroDetail(detail) })
-            .catch(() => {})
-        }
+        // Hero fetch is isolated — never lets an error bubble to the outer .catch
+        try {
+          const { upcoming } = splitPlans(data)
+          const hero = upcoming[0]
+          if (hero) {
+            fetch(`/api/plans?planId=${hero.id}`, { headers: { 'Authorization': `Bearer ${userId}` } })
+              .then(r => r.ok ? r.json() : null)
+              .then(detail => { if (detail) setHeroDetail(detail) })
+              .catch(() => {})
+          }
+        } catch {}
       })
       .catch(() => { setError(true); setLoading(false) })
   }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -987,7 +1022,8 @@ export default function DashboardPage() {
   const olderPast  = past.slice(3)
 
   const olderByYear = olderPast.reduce((acc, p) => {
-    const year = new Date(p.race_date + 'T00:00:00').getFullYear()
+    const d = normalizeDateStr(p.race_date)
+    const year = d ? new Date(d + 'T00:00:00').getFullYear() : 'Unknown'
     if (!acc[year]) acc[year] = []
     acc[year].push(p)
     return acc
