@@ -85,6 +85,29 @@ export default async function handler(req, res) {
         )
         RETURNING id
       `
+      if (inputs.race_city && inputs.race_city.trim()) {
+        try {
+          const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(inputs.race_city)}&format=json&limit=1`
+          const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'LeckaRacePlanner/1.0 (info@getlecka.com)' } })
+          if (geoRes.ok) {
+            const geoData = await geoRes.json()
+            if (geoData.length > 0) {
+              const { lat, lon } = geoData[0]
+              await sql`
+                UPDATE plans SET
+                  race_city = ${inputs.race_city.trim()},
+                  race_lat  = ${parseFloat(lat)},
+                  race_lng  = ${parseFloat(lon)},
+                  race_start_time = ${inputs.race_start_time ?? null}
+                WHERE id = ${rows[0].id}
+              `
+            }
+          }
+        } catch (geoErr) {
+          console.error('[plans/POST] geocoding failed (non-fatal):', geoErr.message)
+        }
+      }
+
       return res.status(201).json({ planId: rows[0].id })
     }
 
@@ -93,7 +116,7 @@ export default async function handler(req, res) {
       const user = await getUser(req)
       if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
-      const { planId, race_date, race_name, checkpoints, segmentData } = req.body ?? {}
+      const { planId, race_date, race_name, checkpoints, segmentData, fuel_reminder_date, weather_confirmed } = req.body ?? {}
       if (!planId) return res.status(400).json({ error: 'planId is required' })
 
       // Checkpoint save action
@@ -109,6 +132,29 @@ export default async function handler(req, res) {
         `
         if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
         return res.status(200).json({ ok: true, planId: rows[0].id })
+      }
+
+      if (fuel_reminder_date !== undefined) {
+        const { rows } = await sql`
+          UPDATE plans
+          SET fuel_reminder_date = ${fuel_reminder_date ?? null},
+              fuel_reminder_sent = false
+          WHERE id = ${planId} AND user_id = ${user.id}
+          RETURNING id, fuel_reminder_date
+        `
+        if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
+        return res.status(200).json(rows[0])
+      }
+
+      if (weather_confirmed !== undefined) {
+        const { rows } = await sql`
+          UPDATE plans
+          SET weather_confirmed = ${Boolean(weather_confirmed)}
+          WHERE id = ${planId} AND user_id = ${user.id}
+          RETURNING id, weather_confirmed
+        `
+        if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
+        return res.status(200).json(rows[0])
       }
 
       if (race_name !== undefined) {

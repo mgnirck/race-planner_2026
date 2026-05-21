@@ -37,5 +37,15 @@
   ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/weather-update",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/send-reminder",
+      "schedule": "0 7 * * *"
+    }
   ]
 }

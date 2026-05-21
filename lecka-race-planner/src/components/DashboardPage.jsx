@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react'
 import Nav from './Nav.jsx'
 
+// ── Colour constants ──────────────────────────────────────────────────────────
+
+const TEAL      = '#1D9E75'
+const TEAL_LIGHT  = '#E1F5EE'
+const TEAL_DARK   = '#085041'
+const TEAL_MID    = '#0F6E56'
+const GREY        = '#888780'
+const GREY_LIGHT  = '#F1EFE8'
+const GREY_MID    = '#5F5E5A'
+const AMBER       = '#BA7517'
+const AMBER_LIGHT = '#FAEEDA'
+const AMBER_DARK  = '#633806'
+const AMBER_MID   = '#854F0B'
+const CORAL       = '#993C1D'
+const CORAL_LIGHT = '#FAECE7'
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatGoalTime(minutes) {
@@ -9,13 +25,30 @@ function formatGoalTime(minutes) {
   const m = minutes % 60
   if (h === 0) return `${m}m`
   if (m === 0) return `${h}h`
-  return `${h}h ${m}m`
+  return `${h}:${String(m).padStart(2, '0')}`
 }
 
-function formatRaceDate(dateStr) {
+function formatRaceDateLong(dateStr) {
   if (!dateStr) return null
-  const d = new Date(dateStr)
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function formatMonthDay(dateStr) {
+  if (!dateStr) return { month: '—', day: '—' }
+  const d = new Date(dateStr + 'T00:00:00')
+  return {
+    month: d.toLocaleDateString('en-US', { month: 'short' }),
+    day:   d.getDate(),
+  }
+}
+
+function daysUntil(dateStr) {
+  if (!dateStr) return null
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const race = new Date(dateStr + 'T00:00:00')
+  return Math.round((race - now) / (1000 * 60 * 60 * 24))
 }
 
 function raceLabel(plan) {
@@ -33,7 +66,7 @@ function today() {
 function splitPlans(plans) {
   const now = today()
   const upcoming = plans
-    .filter(p => !p.race_date || new Date(p.race_date) >= now)
+    .filter(p => !p.race_date || new Date(p.race_date + 'T00:00:00') >= now)
     .sort((a, b) => {
       if (!a.race_date && !b.race_date) return 0
       if (!a.race_date) return 1
@@ -41,12 +74,46 @@ function splitPlans(plans) {
       return new Date(a.race_date) - new Date(b.race_date)
     })
   const past = plans
-    .filter(p => p.race_date && new Date(p.race_date) < now)
+    .filter(p => p.race_date && new Date(p.race_date + 'T00:00:00') < now)
     .sort((a, b) => new Date(b.race_date) - new Date(a.race_date))
   return { upcoming, past }
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+function getHeroCoachMessage(plan, heroDetail, days) {
+  const name = plan.race_name || 'your race'
+  if (plan.mode === 'quick') {
+    if (days > 60) return `Good base plan for ${name}. For a race this important, upgrading to Pro will dial in your sodium and fluid targets and add weather-aware pacing. Plenty of time to build on this.`
+    if (days > 14) return `${days} days to ${name} — solid foundation. Upgrade to Pro for aid station timing and live weather targets.`
+    return `Race week. Your quick plan gives you carb targets. Pro adds sodium, fluid, and a race-day timeline.`
+  }
+  if (days > 60) return `${days} days to ${name} — plenty of time. Focus on gut training with your plan targets from week 8 out.`
+  if (days > 14) return `${days} days out. Weather integration active — we'll update your plan if conditions shift significantly.`
+  return `Race week for ${name}. Stick exactly to your plan. No new products, no changes.`
+}
+
+function handleUpgrade(heroDetail) {
+  const inputs = heroDetail?.inputs ?? {}
+  const draft = {
+    race_name:    inputs.race_name ?? '',
+    race_date:    inputs.race_date ?? '',
+    race_type:    inputs.race_type ?? '',
+    goal_time_h:  inputs.goal_time_h ?? '',
+    goal_time_m:  inputs.goal_time_m ?? '',
+    conditions:   inputs.conditions ?? 'mild',
+    temperature:  inputs.temperature ?? 'mild',
+    humidity:     inputs.humidity ?? 'dry',
+    surface_type: inputs.surface_type ?? '',
+    weight_value: inputs.weight_value ?? '',
+    weight_unit:  inputs.weight_unit ?? 'kg',
+    gender:       inputs.gender ?? '',
+    caffeine_ok:  inputs.caffeine_ok ?? null,
+    _from_simple: true,
+  }
+  try { sessionStorage.setItem('lecka_form_draft', JSON.stringify(draft)) } catch {}
+  window.location.href = '/planner/pro'
+}
+
+// ── Primitive UI ──────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }) {
   return (
@@ -56,266 +123,383 @@ function SectionLabel({ children }) {
   )
 }
 
-function MetaChip({ children }) {
+function PlanPill({ mode }) {
+  const isPro = mode === 'pro'
   return (
-    <span className="inline-block text-xs text-gray-400 bg-gray-50 border border-gray-100
-                     px-2 py-0.5 rounded-full">
-      {children}
+    <span
+      className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full flex-shrink-0"
+      style={{
+        background: isPro ? TEAL_LIGHT : GREY_LIGHT,
+        color:      isPro ? TEAL_MID   : GREY_MID,
+      }}
+    >
+      {isPro ? 'Pro' : 'Quick'}
     </span>
   )
 }
 
-function AddDateInline({ planId, userId, onSaved }) {
-  const [value,  setValue]  = useState('')
-  const [saving, setSaving] = useState(false)
-
-  async function handleSave() {
-    if (!value) return
-    setSaving(true)
-    try {
-      const res = await fetch('/api/plans', {
-        method:  'PATCH',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${userId}`,
-        },
-        body: JSON.stringify({ planId, race_date: value }),
-      })
-      if (!res.ok) throw new Error()
-      const updated = await res.json()
-      onSaved(planId, updated.race_date)
-    } catch {
-      // silently keep the input open on failure
-    } finally {
-      setSaving(false)
-    }
-  }
-
+function LockedTile({ label }) {
   return (
-    <div className="flex items-center gap-2 mt-3">
-      <input
-        type="date"
-        value={value}
-        onChange={e => setValue(e.target.value)}
-        className="border-2 border-gray-200 rounded-xl px-3 py-1.5 text-sm
-                   focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
-      />
-      <button
-        onClick={handleSave}
-        disabled={!value || saving}
-        className="text-sm font-semibold text-white bg-[#48C4B0] rounded-xl
-                   px-3 py-1.5 hover:bg-[#3db09d] transition-colors
-                   disabled:opacity-40"
-      >
-        {saving ? 'Saving…' : 'Save'}
-      </button>
+    <div
+      className="flex-1 flex flex-col items-center justify-center rounded-xl px-2 py-3 min-w-0"
+      style={{ border: '1.5px dashed #D1D0CB', opacity: 0.6 }}
+    >
+      <span className="text-base">🔒</span>
+      <span className="text-[10px] uppercase tracking-[.04em] text-gray-400 mt-1 text-center leading-tight">{label}</span>
     </div>
   )
 }
 
-function PlanCard({ plan, userId, onDateSaved, onNameSaved, onDeleted, showFeedback = false }) {
-  const [addingDate,       setAddingDate]       = useState(false)
-  const [editingName,      setEditingName]      = useState(false)
-  const [nameValue,        setNameValue]        = useState(raceLabel(plan))
-  const [savingName,       setSavingName]       = useState(false)
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [deleting,         setDeleting]         = useState(false)
+function StatTile({ label, value }) {
+  return (
+    <div
+      className="flex-1 flex flex-col items-center justify-center rounded-xl px-2 py-3 min-w-0"
+      style={{ background: TEAL_LIGHT }}
+    >
+      <span className="text-[15px] font-medium" style={{ color: TEAL_DARK }}>{value ?? '—'}</span>
+      <span className="text-[10px] uppercase tracking-[.04em] mt-1 text-center leading-tight" style={{ color: TEAL_MID }}>{label}</span>
+    </div>
+  )
+}
 
-  const goalTime = formatGoalTime(plan.goal_minutes)
-  const dateStr  = formatRaceDate(plan.race_date)
+// ── Hero Card ─────────────────────────────────────────────────────────────────
 
-  const modeBadge = plan.mode === 'quick'
-    ? { label: 'Quick', className: 'bg-gray-100 text-gray-500' }
-    : plan.mode === 'pro'
-    ? { label: 'Pro', className: 'bg-[#48C4B0]/10 text-[#48C4B0]' }
+function HeroCard({ hero, heroDetail, userId }) {
+  const isPro    = hero.mode === 'pro'
+  const days     = daysUntil(hero.race_date)
+  const dateStr  = formatRaceDateLong(hero.race_date)
+  const goalTime = formatGoalTime(hero.goal_minutes)
+
+  const targets = heroDetail?.targets ?? {}
+  const carbPerHour   = targets.carb_per_hour   ?? null
+  const sodiumPerHour = targets.sodium_per_hour  ?? null
+  const fluidPerHour  = targets.fluid_ml_per_hour ?? null
+  const condLabel     = hero.conditions
+    ? hero.conditions.charAt(0).toUpperCase() + hero.conditions.slice(1)
     : null
 
-  function handleDateSaved(planId, newDate) {
-    setAddingDate(false)
-    onDateSaved(planId, newDate)
-  }
+  const coachMsg = getHeroCoachMessage(hero, heroDetail, days ?? 0)
 
-  async function handleNameSave() {
-    const trimmed = nameValue.trim()
-    setSavingName(true)
+  // gel count for fuel card
+  const gelCount = (() => {
+    if (isPro && heroDetail?.selection) {
+      const gels = heroDetail.selection.filter?.(i => i?.type === 'gel' || i?.product?.type === 'gel')
+      if (gels.length > 0) return gels.reduce((s, i) => s + (i.quantity ?? i.count ?? 1), 0)
+    }
+    return null
+  })()
+
+  const [remindState, setRemindState] = useState('idle')
+  const [remindDate,  setRemindDate]  = useState('')
+  const [remindConfirmedDate, setRemindConfirmedDate] = useState('')
+  const [fuelDismissed, setFuelDismissed] = useState(false)
+
+  async function handleSetReminder() {
+    if (!remindDate) return
     try {
-      const res = await fetch('/api/plans', {
+      await fetch('/api/plans', {
         method:  'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
-        body:    JSON.stringify({ planId: plan.id, race_name: trimmed }),
+        body:    JSON.stringify({ planId: hero.id, fuel_reminder_date: remindDate }),
       })
-      if (!res.ok) throw new Error()
-      const updated = await res.json()
-      onNameSaved(plan.id, updated.race_name)
-      setEditingName(false)
-    } catch {
-      // keep input open on failure
-    } finally {
-      setSavingName(false)
-    }
-  }
-
-  async function handleDelete() {
-    setDeleting(true)
-    try {
-      const res = await fetch('/api/plans', {
-        method:  'DELETE',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
-        body:    JSON.stringify({ planId: plan.id }),
-      })
-      if (!res.ok) throw new Error()
-      onDeleted(plan.id)
-    } catch {
-      setDeleting(false)
-      setConfirmingDelete(false)
-    }
+    } catch {}
+    setRemindConfirmedDate(new Date(remindDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' }))
+    setRemindState('confirmed')
   }
 
   return (
-    <div className="border-2 border-gray-100 rounded-2xl p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          {editingName ? (
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                type="text"
-                value={nameValue}
-                onChange={e => setNameValue(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleNameSave()
-                  if (e.key === 'Escape') { setEditingName(false); setNameValue(raceLabel(plan)) }
-                }}
-                className="flex-1 min-w-0 border-2 border-[#48C4B0] rounded-xl px-3 py-1
-                           text-sm text-[#1B1B1B] focus:outline-none"
-              />
-              <button
-                onClick={handleNameSave}
-                disabled={savingName}
-                className="text-xs font-semibold text-white bg-[#48C4B0] rounded-lg px-2.5 py-1
-                           hover:bg-[#3db09d] disabled:opacity-40 transition-colors"
+    <div
+      className="border-l-4 rounded-2xl bg-white border border-gray-100 overflow-hidden"
+      style={{ borderLeftColor: isPro ? TEAL : GREY }}
+    >
+      <div className="p-5 space-y-4">
+
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span
+                className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+                style={{ background: TEAL_LIGHT, color: TEAL_MID }}
               >
-                {savingName ? '…' : '✓'}
-              </button>
-              <button
-                onClick={() => { setEditingName(false); setNameValue(raceLabel(plan)) }}
-                className="text-xs text-gray-400 hover:text-[#1B1B1B] transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 min-w-0">
-              {modeBadge && (
-                <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-md flex-shrink-0 ${modeBadge.className}`}>
-                  {modeBadge.label}
-                </span>
+                Next race
+              </span>
+              <PlanPill mode={hero.mode} />
+              {dateStr && (
+                <span className="text-xs text-gray-400">{dateStr}</span>
               )}
-              <p className="text-base font-bold text-[#1B1B1B] leading-tight truncate">
-                {raceLabel(plan)}
-              </p>
             </div>
+            <p className="leading-tight truncate" style={{ fontSize: 19, fontWeight: 500, color: '#1B1B1B' }}>
+              {raceLabel(hero)}
+            </p>
+          </div>
+
+          {/* Countdown */}
+          <div className="flex-shrink-0 text-right">
+            {days !== null ? (
+              <>
+                <p className="text-4xl font-bold" style={{ color: TEAL_DARK }}>{days}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: TEAL }}> days to go</p>
+              </>
+            ) : (
+              <p className="text-4xl font-bold" style={{ color: GREY }}>—</p>
+            )}
+          </div>
+        </div>
+
+        {/* Stat tiles */}
+        <div className="flex gap-1.5">
+          <StatTile label="Target time" value={goalTime} />
+          <StatTile label="Carbs/hr" value={carbPerHour !== null ? `${carbPerHour}g` : '—'} />
+          {isPro ? (
+            <StatTile label="Sodium/hr" value={sodiumPerHour !== null ? `${sodiumPerHour}mg` : '—'} />
+          ) : (
+            <LockedTile label="Sodium/hr" />
           )}
-          {dateStr && !editingName && (
-            <p className="text-sm text-[#48C4B0] font-medium mt-0.5">{dateStr}</p>
+          {isPro ? (
+            <StatTile label="Fluid/hr" value={fluidPerHour !== null ? `${Math.round(fluidPerHour)}ml` : '—'} />
+          ) : (
+            <LockedTile label="Fluid/hr" />
+          )}
+          {isPro ? (
+            <StatTile label="Temp" value={condLabel ?? '—'} />
+          ) : (
+            <LockedTile label="Temp" />
           )}
         </div>
 
-        {!editingName && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => { setEditingName(true); setNameValue(raceLabel(plan)) }}
-              title="Rename plan"
-              className="p-1 text-gray-300 hover:text-[#48C4B0] transition-colors"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-            {confirmingDelete ? (
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-gray-500">Delete?</span>
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <a
+            href={`/plan/${hero.id}`}
+            className="flex-1 text-center text-sm font-semibold rounded-xl py-2.5 text-white transition-colors"
+            style={{ background: TEAL }}
+          >
+            View full plan
+          </a>
+          <a
+            href={`/plan/${hero.id}#print`}
+            onClick={e => { e.preventDefault(); window.print() }}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"/></svg>
+            Print
+          </a>
+          <a
+            href={`/plan/${hero.id}`}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Email
+          </a>
+        </div>
+      </div>
+
+      {/* Coach says strip */}
+      <div className="px-5 py-3 flex items-start gap-3" style={{ background: TEAL_LIGHT }}>
+        <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke={TEAL} strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide mb-0.5" style={{ color: TEAL_MID }}>Coach says</p>
+          <p className="text-sm leading-relaxed" style={{ color: TEAL_DARK }}>{coachMsg}</p>
+        </div>
+      </div>
+
+      {/* TODO: weather alert card */}
+
+      {/* Fuel ordered? card */}
+      {!fuelDismissed && (
+        <div className="mx-5 my-4 rounded-xl p-4 space-y-3" style={{ background: AMBER_LIGHT }}>
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
+          </div>
+          <p className="text-xs leading-relaxed" style={{ color: AMBER_MID }}>
+            {isPro
+              ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
+              : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
+          </p>
+
+          {remindState === 'idle' && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFuelDismissed(true)}
+                className="flex-1 py-2 text-sm font-semibold rounded-lg text-white transition-colors"
+                style={{ background: AMBER }}
+              >
+                Done
+              </button>
+              <button
+                onClick={() => setRemindState('picking')}
+                className="flex-1 py-2 text-sm font-semibold rounded-lg border-2 transition-colors"
+                style={{ borderColor: AMBER, color: AMBER }}
+              >
+                Remind me
+              </button>
+            </div>
+          )}
+
+          {remindState === 'picking' && (
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={remindDate}
+                onChange={e => setRemindDate(e.target.value)}
+                className="flex-1 border-2 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                style={{ borderColor: AMBER }}
+              />
+              <button
+                onClick={handleSetReminder}
+                disabled={!remindDate}
+                className="px-4 py-2 text-sm font-semibold rounded-lg text-white transition-colors disabled:opacity-40"
+                style={{ background: AMBER }}
+              >
+                Set
+              </button>
+            </div>
+          )}
+
+          {remindState === 'confirmed' && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium" style={{ color: AMBER_MID }}>Reminder set for {remindConfirmedDate}</p>
+              <div className="flex gap-2">
                 <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors disabled:opacity-40"
+                  onClick={() => setFuelDismissed(true)}
+                  className="flex-1 py-2 text-sm font-semibold rounded-lg text-white"
+                  style={{ background: AMBER }}
                 >
-                  {deleting ? '…' : 'Yes'}
+                  Done
                 </button>
                 <button
-                  onClick={() => setConfirmingDelete(false)}
-                  className="text-xs text-gray-400 hover:text-[#1B1B1B] transition-colors"
+                  onClick={() => { setRemindState('idle'); setRemindDate('') }}
+                  className="flex-1 py-2 text-sm font-semibold rounded-lg border-2"
+                  style={{ borderColor: AMBER, color: AMBER }}
                 >
-                  No
+                  Cancel
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => setConfirmingDelete(true)}
-                title="Delete plan"
-                className="p-1 text-gray-300 hover:text-red-400 transition-colors"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-                  <path d="M10 11v6M14 11v6"/>
-                  <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-                </svg>
-              </button>
-            )}
-            <a
-              href={`/plan/${plan.id}`}
-              className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap mt-0.5"
-            >
-              View →
-            </a>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Upgrade card (quick plans only) */}
+      {!isPro && (
+        <div className="mx-5 mb-5 rounded-xl p-4 border-2 space-y-2" style={{ borderColor: TEAL }}>
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={TEAL} strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
+            </svg>
+            <p className="text-sm font-semibold" style={{ color: TEAL_DARK }}>Upgrade to pro plan</p>
           </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap gap-1.5">
-        {goalTime && <MetaChip>Goal {goalTime}</MetaChip>}
-        {plan.conditions && (
-          <MetaChip>
-            {plan.conditions.charAt(0).toUpperCase() + plan.conditions.slice(1).replace(/_/g, ' ')}
-          </MetaChip>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between pt-0.5">
-        {!plan.race_date && !addingDate && (
+          <p className="text-xs leading-relaxed" style={{ color: GREY_MID }}>
+            Get sodium &amp; fluid targets, live race-day weather, aid station plan, and gut training schedule — built on what you've already entered.
+          </p>
           <button
-            onClick={() => setAddingDate(true)}
-            className="text-xs font-semibold text-gray-400 hover:text-[#48C4B0]
-                       transition-colors underline underline-offset-2"
+            onClick={() => handleUpgrade(heroDetail)}
+            className="w-full py-2.5 text-sm font-semibold rounded-lg text-white mt-1 transition-colors"
+            style={{ background: TEAL }}
           >
-            + Add race date
+            Upgrade →
           </button>
-        )}
-        {addingDate && (
-          <AddDateInline planId={plan.id} userId={userId} onSaved={handleDateSaved} />
-        )}
+        </div>
+      )}
+    </div>
+  )
+}
 
-        {showFeedback && (
-          plan.has_feedback
-            ? (
-              <span className="ml-auto text-xs font-semibold text-green-600 bg-green-50
-                               border border-green-100 px-2.5 py-0.5 rounded-full">
-                ✓ Feedback logged
-              </span>
-            )
-            : (
-              <a
-                href={`/feedback/${plan.id}`}
-                className="ml-auto text-sm font-semibold text-[#48C4B0]
-                           hover:underline"
-              >
-                How did it go? →
-              </a>
-            )
-        )}
+// ── Upcoming row ──────────────────────────────────────────────────────────────
+
+function UpcomingRow({ plan }) {
+  const { month, day } = formatMonthDay(plan.race_date)
+  const goalTime = formatGoalTime(plan.goal_minutes)
+  const condLabel = plan.conditions
+    ? plan.conditions.charAt(0).toUpperCase() + plan.conditions.slice(1)
+    : null
+
+  return (
+    <div className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0">
+      {/* Date column */}
+      <div className="flex flex-col items-center w-8 flex-shrink-0">
+        <span className="text-[10px] uppercase tracking-wide text-gray-400 leading-none">{month}</span>
+        <span className="text-base font-bold text-gray-700 leading-tight">{day}</span>
       </div>
+
+      {/* Name + pills */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-medium text-gray-800 truncate">{raceLabel(plan)}</span>
+          <PlanPill mode={plan.mode} />
+        </div>
+        <div className="flex gap-1.5 mt-0.5 flex-wrap">
+          {goalTime && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Goal {goalTime}</span>
+          )}
+          {plan.mode === 'pro' && condLabel && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: TEAL_LIGHT, color: TEAL_MID }}>{condLabel}</span>
+          )}
+        </div>
+      </div>
+
+      <a href={`/plan/${plan.id}`} className="text-sm font-semibold flex-shrink-0" style={{ color: TEAL }}>
+        View →
+      </a>
+    </div>
+  )
+}
+
+// ── Past row ──────────────────────────────────────────────────────────────────
+
+function PastRow({ plan, compact = false }) {
+  const { month, day } = formatMonthDay(plan.race_date)
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+        <div className="flex flex-col items-center w-8 flex-shrink-0">
+          <span className="text-[10px] uppercase tracking-wide text-gray-400 leading-none">{month}</span>
+          <span className="text-sm font-bold text-gray-500 leading-tight">{day}</span>
+        </div>
+        <span className="flex-1 text-sm text-gray-500 truncate">{raceLabel(plan)}</span>
+        {plan.has_feedback
+          ? <a href={`/plan/${plan.id}`} className="text-xs font-semibold flex-shrink-0" style={{ color: TEAL }}>View →</a>
+          : <a href={`/feedback/${plan.id}`} className="text-xs font-semibold flex-shrink-0" style={{ color: CORAL }}>Log →</a>
+        }
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+      <div className="flex flex-col items-center w-8 flex-shrink-0 mt-0.5">
+        <span className="text-[10px] uppercase tracking-wide text-gray-400 leading-none">{month}</span>
+        <span className="text-base font-bold text-gray-700 leading-tight">{day}</span>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-medium text-gray-800 truncate">{raceLabel(plan)}</span>
+          <PlanPill mode={plan.mode} />
+          {plan.has_feedback ? (
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600">✓ Logged</span>
+          ) : (
+            <span
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: CORAL_LIGHT, color: CORAL }}
+            >
+              Log due
+            </span>
+          )}
+        </div>
+      </div>
+
+      {plan.has_feedback
+        ? <a href={`/plan/${plan.id}`} className="text-sm font-semibold flex-shrink-0" style={{ color: TEAL }}>View →</a>
+        : <a href={`/feedback/${plan.id}`} className="text-sm font-semibold flex-shrink-0" style={{ color: CORAL }}>Log →</a>
+      }
     </div>
   )
 }
@@ -323,12 +507,13 @@ function PlanCard({ plan, userId, onDateSaved, onNameSaved, onDeleted, showFeedb
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [plans,   setPlans]   = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState(false)
+  const [plans,      setPlans]      = useState(null)
+  const [heroDetail, setHeroDetail] = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState(false)
+  const [showOlder,  setShowOlder]  = useState(false)
 
   const userId = localStorage.getItem('lecka_user_id')
-  const email  = localStorage.getItem('lecka_user_email')
 
   // Auto-save a plan that was created before the user was logged in
   useEffect(() => {
@@ -368,153 +553,153 @@ export default function DashboardPage() {
       return
     }
 
-    fetch('/api/plans', {
-      headers: { 'Authorization': `Bearer ${userId}` },
-    })
+    fetch('/api/plans', { headers: { 'Authorization': `Bearer ${userId}` } })
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => { setPlans(data); setLoading(false) })
+      .then(data => {
+        setPlans(data)
+        setLoading(false)
+        // Fetch hero detail
+        const { upcoming } = splitPlans(data)
+        const hero = upcoming[0]
+        if (hero) {
+          fetch(`/api/plans?planId=${hero.id}`, { headers: { 'Authorization': `Bearer ${userId}` } })
+            .then(r => r.ok ? r.json() : null)
+            .then(detail => { if (detail) setHeroDetail(detail) })
+            .catch(() => {})
+        }
+      })
       .catch(() => { setError(true); setLoading(false) })
-  }, [userId])
-
-  function logout() {
-    localStorage.removeItem('lecka_user_id')
-    localStorage.removeItem('lecka_user_email')
-    window.location.replace('/')
-  }
-
-  function handleDateSaved(planId, newDate) {
-    setPlans(prev => prev.map(p => p.id === planId ? { ...p, race_date: newDate } : p))
-  }
-
-  function handleNameSaved(planId, newName) {
-    setPlans(prev => prev.map(p => p.id === planId ? { ...p, race_name: newName } : p))
-  }
-
-  function handlePlanDeleted(planId) {
-    setPlans(prev => prev.filter(p => p.id !== planId))
-  }
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!userId) return null
 
   const { upcoming, past } = plans ? splitPlans(plans) : { upcoming: [], past: [] }
+  const hero  = upcoming[0] ?? null
+  const rest  = upcoming.slice(1)
   const empty = plans && plans.length === 0
+
+  const recentPast = past.slice(0, 3)
+  const olderPast  = past.slice(3)
+
+  // Group older past by year
+  const olderByYear = olderPast.reduce((acc, p) => {
+    const year = new Date(p.race_date + 'T00:00:00').getFullYear()
+    if (!acc[year]) acc[year] = []
+    acc[year].push(p)
+    return acc
+  }, {})
 
   return (
     <div className="bg-white min-h-screen">
-
       <Nav />
 
       <div className="max-w-lg mx-auto px-5 py-6 space-y-8">
 
-        {/* ── Page heading ─────────────────────────────────────────────────── */}
-        <div>
-          <h1 className="text-2xl font-bold text-[#1B1B1B]">Your race plans</h1>
-        </div>
-
-        {/* ── Start a new plan ──────────────────────────────────────────────── */}
-        <section>
-          <SectionLabel>Start a new plan</SectionLabel>
-          <div className="grid grid-cols-2 gap-3">
-            <a
-              href="/planner"
-              className="border-2 border-[#48C4B0] rounded-2xl p-5 block hover:bg-[#48C4B0]/5 transition-colors"
-            >
-              <p className="text-base font-bold text-[#1B1B1B] mb-1">Quick plan</p>
-              <p className="text-sm text-gray-500 mb-4">3 inputs, instant result</p>
-              <span className="text-sm font-semibold text-[#48C4B0]">Build quick plan →</span>
-            </a>
-            <a
-              href="/planner/pro"
-              className="bg-[#48C4B0] rounded-2xl p-5 block hover:bg-[#3db09d] transition-colors"
-            >
-              <p className="text-base font-bold text-white mb-1">Pro plan</p>
-              <p className="text-sm text-white/75 mb-4">Full personalisation + gut training, aid stations &amp; more</p>
-              <span className="text-sm font-semibold text-white">Build pro plan →</span>
-            </a>
-          </div>
-        </section>
-
-        {/* ── Loading ──────────────────────────────────────────────────────── */}
+        {/* Loading */}
         {loading && (
           <div className="flex justify-center py-12">
-            <div className="w-7 h-7 border-2 border-[#48C4B0] border-t-transparent
-                            rounded-full animate-spin" />
+            <div className="w-7 h-7 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: TEAL, borderTopColor: 'transparent' }} />
           </div>
         )}
 
-        {/* ── Error ────────────────────────────────────────────────────────── */}
+        {/* Error */}
         {error && (
           <div className="border-2 border-red-100 rounded-2xl p-5 text-center">
             <p className="text-sm text-red-500">Couldn't load your plans. Please refresh.</p>
+            <button onClick={() => window.location.reload()} className="mt-3 text-sm font-semibold text-red-400 underline">
+              Retry
+            </button>
           </div>
         )}
 
-        {/* ── Empty state ───────────────────────────────────────────────────── */}
+        {/* Empty state */}
         {empty && (
           <div className="border-2 border-gray-100 rounded-2xl p-8 text-center">
-            <p className="text-base font-semibold text-[#1B1B1B] mb-1">No plans yet</p>
-            <p className="text-sm text-gray-400 mb-5">
-              Build your first race nutrition plan.
-            </p>
+            <p className="text-base font-semibold text-gray-800 mb-1">No plans yet</p>
+            <p className="text-sm text-gray-400 mb-5">Build your first race nutrition plan.</p>
             <a
               href="/"
-              className="inline-block px-6 py-3 bg-[#48C4B0] text-white rounded-xl
-                         text-sm font-semibold hover:bg-[#3db09d] transition-colors"
+              className="inline-block px-6 py-3 rounded-xl text-sm font-semibold text-white"
+              style={{ background: TEAL }}
             >
               Build your first race plan →
             </a>
           </div>
         )}
 
-        {/* ── Upcoming ─────────────────────────────────────────────────────── */}
-        {!loading && !error && upcoming.length > 0 && (
+        {/* Hero card */}
+        {!loading && !error && hero && (
+          <section>
+            <SectionLabel>Your next race</SectionLabel>
+            <HeroCard hero={hero} heroDetail={heroDetail} userId={userId} />
+          </section>
+        )}
+
+        {/* Upcoming list */}
+        {!loading && !error && (rest.length > 0 || hero) && (
           <section>
             <SectionLabel>Upcoming races</SectionLabel>
-            <div className="space-y-3">
-              {upcoming.map(plan => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  userId={userId}
-                  onDateSaved={handleDateSaved}
-                  onNameSaved={handleNameSaved}
-                  onDeleted={handlePlanDeleted}
-                />
+            <div className="rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-100">
+              {rest.map(plan => (
+                <div key={plan.id} className="px-4">
+                  <UpcomingRow plan={plan} />
+                </div>
               ))}
+              {rest.length === 0 && (
+                <div className="px-4 py-3 text-sm text-gray-400">No other upcoming races.</div>
+              )}
+              <div className="px-4 py-3">
+                <a href="/" className="text-sm font-semibold" style={{ color: TEAL }}>+ Add a race</a>
+              </div>
             </div>
           </section>
         )}
 
-        {/* ── Past ─────────────────────────────────────────────────────────── */}
+        {/* Past races */}
         {!loading && !error && past.length > 0 && (
           <section>
             <SectionLabel>Past races</SectionLabel>
-            <div className="space-y-3">
-              {past.map(plan => (
-                <PlanCard
-                  key={plan.id}
-                  plan={plan}
-                  userId={userId}
-                  onDateSaved={handleDateSaved}
-                  onNameSaved={handleNameSaved}
-                  onDeleted={handlePlanDeleted}
-                  showFeedback
-                />
-              ))}
+            <div className="rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="divide-y divide-gray-100">
+                {recentPast.map(plan => (
+                  <div key={plan.id} className="px-4">
+                    <PastRow plan={plan} />
+                  </div>
+                ))}
+              </div>
+
+              {olderPast.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setShowOlder(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-gray-400 hover:text-gray-600 border-t border-gray-100 transition-colors"
+                  >
+                    <span>{showOlder ? 'Show less' : `Show ${olderPast.length} older races`}</span>
+                    <svg className={`w-4 h-4 transition-transform ${showOlder ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {showOlder && (
+                    <div className="border-t border-gray-100">
+                      {Object.keys(olderByYear).sort((a, b) => b - a).map(year => (
+                        <div key={year}>
+                          <p className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50">{year}</p>
+                          <div className="divide-y divide-gray-100">
+                            {olderByYear[year].map(plan => (
+                              <div key={plan.id} className="px-4">
+                                <PastRow plan={plan} compact />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </section>
-        )}
-
-        {/* ── Footer ───────────────────────────────────────────────────────── */}
-        {!loading && !error && !empty && (
-          <div className="pb-10 text-center">
-            <a
-              href="/"
-              className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
-            >
-              + Plan another race
-            </a>
-          </div>
         )}
 
       </div>

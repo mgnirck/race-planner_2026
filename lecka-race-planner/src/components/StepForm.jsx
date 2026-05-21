@@ -82,6 +82,8 @@ const DEFAULT_FORM = {
   // Step 1
   race_name:         '',
   race_date:         '',
+  race_city:         '',
+  race_start_time:   '',
   custom_km:         '',
   custom_km_display: '',
   dist_unit:         'km',
@@ -374,6 +376,31 @@ function StepOne({ form, setForm }) {
                      focus:outline-none focus:border-[#48C4B0]"
         />
         <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceDate.hint')}</p>
+      </div>
+
+      {/* Race city / location */}
+      <div>
+        <FieldLabel>Race city / location</FieldLabel>
+        <input
+          type="text"
+          placeholder="e.g. Berlin, Germany"
+          value={form.race_city ?? ''}
+          onChange={e => setForm(f => ({ ...f, race_city: e.target.value }))}
+          className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
+        />
+        <p className="text-xs text-gray-400 mt-1.5">Used to fetch live race-day weather (Pro plans only)</p>
+      </div>
+
+      {/* Race start time */}
+      <div>
+        <FieldLabel>Race start time (optional)</FieldLabel>
+        <input
+          type="time"
+          value={form.race_start_time ?? ''}
+          onChange={e => setForm(f => ({ ...f, race_start_time: e.target.value }))}
+          className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
+        />
+        <p className="text-xs text-gray-400 mt-1.5">Improves hourly forecast accuracy</p>
       </div>
 
       {/* Sport selector */}

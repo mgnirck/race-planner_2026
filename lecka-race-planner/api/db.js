@@ -131,5 +131,16 @@ export async function ensureMigrated() {
     )
   `
 
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS race_city TEXT`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS race_lat NUMERIC`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS race_lng NUMERIC`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS race_start_time TEXT`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_estimated_temp TEXT`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_live_temp_c NUMERIC`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_last_fetched TIMESTAMPTZ`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_confirmed BOOLEAN DEFAULT false`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS fuel_reminder_date DATE`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS fuel_reminder_sent BOOLEAN DEFAULT FALSE`
+
   migrated = true
 }
