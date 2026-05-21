@@ -55,7 +55,7 @@ export default function FeedbackWidget() {
     if (!message.trim() || status === 'sending') return
     setStatus('sending')
     try {
-      const res = await fetch('/api/send-feedback-email', {
+      const res = await fetch('/api/feedback', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
