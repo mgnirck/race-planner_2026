@@ -490,84 +490,96 @@ function HeroCard({ hero, heroDetail, userId }) {
 
       {/* Fuel ordered? card */}
       {!fuelDismissed && (
-        <div className="mx-5 my-4 rounded-xl p-4" style={{ background: AMBER_LIGHT }}>
-          <div className="flex items-start gap-3">
-            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
+        <div className="mx-5 my-4 rounded-xl p-4 space-y-3" style={{ background: AMBER_LIGHT }}>
+
+          {/* Heading row */}
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold mb-1" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
-              {remindState === 'idle' && (
-                <p className="text-xs leading-relaxed" style={{ color: AMBER_MID }}>
-                  {isPro
-                    ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
-                    : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
-                </p>
-              )}
-              {remindState === 'picking' && (
-                <div className="flex items-center gap-2 mt-1">
-                  <input
-                    type="date"
-                    value={remindDate}
-                    onChange={e => setRemindDate(e.target.value)}
-                    className="flex-1 min-w-0 border-2 rounded-lg px-2 py-1.5 text-xs focus:outline-none"
-                    style={{ borderColor: AMBER }}
-                  />
-                  <button
-                    onClick={handleSetReminder}
-                    disabled={!remindDate}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white disabled:opacity-40 flex-shrink-0"
-                    style={{ background: AMBER }}
-                  >
-                    Set
-                  </button>
-                </div>
-              )}
-              {remindState === 'confirmed' && (
-                <p className="text-xs font-medium mt-1" style={{ color: AMBER_MID }}>
-                  Reminder set for {remindConfirmedDate}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-1.5 flex-shrink-0">
-              {remindState === 'idle' && (
-                <>
-                  <button
-                    onClick={() => setFuelDismissed(true)}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white whitespace-nowrap"
-                    style={{ background: AMBER }}
-                  >
-                    Done
-                  </button>
-                  <button
-                    onClick={() => setRemindState('picking')}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border-2 whitespace-nowrap"
-                    style={{ borderColor: AMBER, color: AMBER }}
-                  >
-                    Remind me
-                  </button>
-                </>
-              )}
-              {remindState === 'confirmed' && (
-                <>
-                  <button
-                    onClick={() => setFuelDismissed(true)}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg text-white whitespace-nowrap"
-                    style={{ background: AMBER }}
-                  >
-                    Done
-                  </button>
-                  <button
-                    onClick={() => { setRemindState('idle'); setRemindDate('') }}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border-2 whitespace-nowrap"
-                    style={{ borderColor: AMBER, color: AMBER }}
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
-            </div>
+            <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
           </div>
+
+          {/* Body — varies by state */}
+          {remindState === 'idle' && (
+            <p className="text-xs leading-relaxed" style={{ color: AMBER_MID }}>
+              {isPro
+                ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
+                : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
+            </p>
+          )}
+
+          {remindState === 'picking' && (
+            <>
+              <p className="text-xs font-medium" style={{ color: AMBER_MID }}>Remind me on:</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={remindDate}
+                  onChange={e => setRemindDate(e.target.value)}
+                  className="flex-1 min-w-0 border-2 rounded-lg px-3 py-2 text-sm focus:outline-none bg-white"
+                  style={{ borderColor: AMBER }}
+                />
+                <button
+                  onClick={handleSetReminder}
+                  disabled={!remindDate}
+                  className="px-4 py-2 text-sm font-semibold rounded-lg text-white disabled:opacity-40 flex-shrink-0"
+                  style={{ background: AMBER }}
+                >
+                  Set
+                </button>
+              </div>
+            </>
+          )}
+
+          {remindState === 'confirmed' && (
+            <div className="flex items-center gap-1.5" style={{ color: AMBER_MID }}>
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              <p className="text-xs font-medium">Reminder set for {remindConfirmedDate}</p>
+            </div>
+          )}
+
+          {/* Action buttons — always a horizontal row at bottom */}
+          {remindState === 'idle' && (
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setFuelDismissed(true)}
+                className="flex-1 py-2 text-sm font-semibold rounded-lg text-white"
+                style={{ background: AMBER }}
+              >
+                Done
+              </button>
+              <button
+                onClick={() => setRemindState('picking')}
+                className="flex-1 py-2 text-sm font-semibold rounded-lg border-2 bg-white"
+                style={{ borderColor: AMBER, color: AMBER }}
+              >
+                Remind me
+              </button>
+            </div>
+          )}
+
+          {remindState === 'confirmed' && (
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setFuelDismissed(true)}
+                className="flex-1 py-2 text-sm font-semibold rounded-lg text-white"
+                style={{ background: AMBER }}
+              >
+                Done
+              </button>
+              <button
+                onClick={() => { setRemindState('idle'); setRemindDate('') }}
+                className="flex-1 py-2 text-sm font-semibold rounded-lg border-2 bg-white"
+                style={{ borderColor: AMBER, color: AMBER }}
+              >
+                × Cancel
+              </button>
+            </div>
+          )}
+
         </div>
       )}
 
