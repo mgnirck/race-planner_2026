@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import Nav from './Nav.jsx'
+import { calculateTargets } from '../engine/nutrition-engine'
 
 // ── Colour constants ──────────────────────────────────────────────────────────
 
@@ -84,8 +85,37 @@ function splitPlans(plans) {
   return { upcoming, past }
 }
 
-function getHeroCoachMessage(plan, heroDetail, days) {
+// Maps a conditions label to a representative °C value for comparison
+function conditionsToEstimatedTemp(conditions) {
+  const map = { cool: 8, mild: 15, warm: 22, hot: 30 }
+  return map[conditions] ?? 15
+}
+
+// Maps a live °C value back to the nearest conditions label
+function tempToConditions(tempC) {
+  if (tempC === null || tempC === undefined) return 'mild'
+  if (tempC < 10) return 'cool'
+  if (tempC < 20) return 'mild'
+  if (tempC < 28) return 'warm'
+  return 'hot'
+}
+
+function formatLastFetched(isoString) {
+  if (!isoString) return null
+  const d = new Date(isoString)
+  const diffDays = Math.floor((Date.now() - d) / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return 'updated today'
+  if (diffDays === 1) return 'updated yesterday'
+  return `updated ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+}
+
+function getHeroCoachMessage(plan, heroDetail, days, liveTemp) {
   const name = plan.race_name || 'your race'
+  if (liveTemp !== null && days !== null && days <= 14) {
+    const cond = tempToConditions(liveTemp)
+    if (cond === 'hot')  return `${name} is looking hot — ${Math.round(liveTemp)}°C at race start. Pre-hydrate the morning before. Carry fluid to every aid station, don't skip any. Your carbs stay the same but sodium and fluid are up. Adjust your kit accordingly.`
+    if (cond === 'cool') return `Good news for ${name} — ${Math.round(liveTemp)}°C is ideal running weather. Your fluid targets drop slightly. Stick to the plan.`
+  }
   if (plan.mode === 'quick') {
     if (days > 60) return `Good base plan for ${name}. For a race this important, upgrading to Pro will dial in your sodium and fluid targets and add weather-aware pacing. Plenty of time to build on this.`
     if (days > 14) return `${days} days to ${name} — solid foundation. Upgrade to Pro for aid station timing and live weather targets.`
@@ -133,10 +163,7 @@ function PlanPill({ mode }) {
   return (
     <span
       className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full flex-shrink-0"
-      style={{
-        background: isPro ? TEAL_LIGHT : GREY_LIGHT,
-        color:      isPro ? TEAL_MID   : GREY_MID,
-      }}
+      style={{ background: isPro ? TEAL_LIGHT : GREY_LIGHT, color: isPro ? TEAL_MID : GREY_MID }}
     >
       {isPro ? 'Pro' : 'Quick'}
     </span>
@@ -155,12 +182,27 @@ function LockedTile({ label }) {
   )
 }
 
-function StatTile({ label, value }) {
+// badge: null | 'live' | 'updated'
+// highlighted: show amber border
+function StatTile({ label, value, badge = null, highlighted = false }) {
   return (
     <div
-      className="flex-1 flex flex-col items-center justify-center rounded-xl px-2 py-3 min-w-0"
-      style={{ background: '#F5F4F0' }}
+      className="flex-1 flex flex-col items-center justify-center rounded-xl px-2 min-w-0 relative"
+      style={{
+        background: '#F5F4F0',
+        border: highlighted ? `1.5px solid ${AMBER}` : '1.5px solid transparent',
+        paddingTop:    badge ? 20 : 12,
+        paddingBottom: 12,
+      }}
     >
+      {badge && (
+        <span
+          className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+          style={{ background: badge === 'live' ? TEAL : AMBER, color: '#fff' }}
+        >
+          {badge === 'live' ? 'live' : '↑ updated'}
+        </span>
+      )}
       <span className="text-[15px] font-medium text-gray-900">{value ?? '—'}</span>
       <span className="text-[10px] uppercase tracking-[.04em] text-gray-400 mt-1 text-center leading-tight">{label}</span>
     </div>
@@ -177,23 +219,94 @@ function HeroCard({ hero, heroDetail, userId }) {
   // Meta line: "April 21, 2025 · Marathon · 42.2 km · Berlin"
   const typeName = raceTypeLabel(hero.race_type)
   const distKm   = heroDetail?.inputs?.custom_km ? `${heroDetail.inputs.custom_km} km` : null
-  const city     = heroDetail?.inputs?.race_city || null
+  const city     = heroDetail?.race_city || heroDetail?.inputs?.race_city || null
   const metaParts = [dateStr, typeName, distKm, city].filter(Boolean)
   const metaLine  = metaParts.join(' · ')
 
   const goalTime = formatGoalTime(hero.goal_minutes)
+  const baseTargets = heroDetail?.targets ?? {}
+  const carbPerHour   = baseTargets.carb_per_hour    ?? null
+  const sodiumPerHour = baseTargets.sodium_per_hour   ?? null
+  const fluidPerHour  = baseTargets.fluid_ml_per_hour ?? null
 
-  const targets = heroDetail?.targets ?? {}
-  const carbPerHour   = targets.carb_per_hour    ?? null
-  const sodiumPerHour = targets.sodium_per_hour   ?? null
-  const fluidPerHour  = targets.fluid_ml_per_hour ?? null
-  const condLabel     = hero.conditions
-    ? hero.conditions.charAt(0).toUpperCase() + hero.conditions.slice(1)
+  // ── Weather state ──────────────────────────────────────────────────────────
+  const liveTemp           = heroDetail?.weather_live_temp_c ?? null
+  const weatherLastFetched = heroDetail?.weather_last_fetched ?? null
+  const weatherConfirmedDB = heroDetail?.weather_confirmed ?? false
+  const estimatedTempC     = conditionsToEstimatedTemp(hero.conditions)
+  const tempDiff           = liveTemp !== null ? liveTemp - estimatedTempC : 0
+  const hasSigChange       = liveTemp !== null && Math.abs(tempDiff) > 4
+
+  // Days until the 14-day forecast window opens
+  const weatherWindowDate = hero.race_date
+    ? new Date(new Date(hero.race_date + 'T00:00:00').getTime() - 14 * 24 * 60 * 60 * 1000)
     : null
+  const weatherWindowStr = weatherWindowDate
+    ? weatherWindowDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : null
+  const outsideWindow = days !== null && days > 14
 
-  const coachMsg = getHeroCoachMessage(hero, heroDetail, days ?? 0)
+  const [alertDismissed,  setAlertDismissed]  = useState(false)
+  const [appliedTargets,  setAppliedTargets]  = useState(null)
+  const [applyingWeather, setApplyingWeather] = useState(false)
 
-  // gel count for fuel card
+  // Recalculate targets with live weather conditions (client-side, pure)
+  const pendingTargets = useMemo(() => {
+    if (!hasSigChange || !heroDetail?.inputs || weatherConfirmedDB) return null
+    const inp = heroDetail.inputs
+    const weight_kg = parseFloat(inp.weight_value) * (inp.weight_unit === 'lb' ? 0.453592 : 1)
+    if (!weight_kg || isNaN(weight_kg)) return null
+    try {
+      return calculateTargets({
+        race_type:        hero.race_type,
+        goal_minutes:     hero.goal_minutes,
+        weight_kg,
+        gender:           inp.gender,
+        conditions:       tempToConditions(liveTemp),
+        effort:           inp.effort,
+        caffeine_ok:      inp.caffeine_ok,
+        athlete_profile:  inp.athlete_profile,
+        elevation_gain_m: inp.elevation_gain_m ?? 0,
+        distance_km:      parseFloat(inp.custom_km) || 0,
+        training_mode:    inp.training_mode ?? false,
+      })
+    } catch {
+      return null
+    }
+  }, [hasSigChange, heroDetail, weatherConfirmedDB, hero, liveTemp])
+
+  const showWeatherAlert = isPro && pendingTargets !== null && !alertDismissed && !weatherConfirmedDB
+  const effectiveTargets = (appliedTargets) ?? (showWeatherAlert ? pendingTargets : baseTargets)
+  const displaySodium = effectiveTargets?.sodium_per_hour   ?? null
+  const displayFluid  = effectiveTargets?.fluid_ml_per_hour ?? null
+
+  // Temp tile display
+  const tempTileValue = liveTemp !== null
+    ? `${Math.round(liveTemp * 10) / 10}°C`
+    : hero.conditions ? `~${estimatedTempC}°C` : '—'
+  const tempTileLabel = liveTemp !== null ? 'Forecast' : 'Temp'
+  const tempTileBadge = liveTemp !== null ? (hasSigChange && !alertDismissed ? 'updated' : 'live') : null
+  const sodiumBadge   = showWeatherAlert ? 'updated' : null
+  const fluidBadge    = showWeatherAlert ? 'updated' : null
+
+  const coachMsg = getHeroCoachMessage(hero, heroDetail, days ?? 0, liveTemp)
+
+  async function handleApplyWeather() {
+    if (!pendingTargets) return
+    setApplyingWeather(true)
+    try {
+      await fetch('/api/plans', {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+        body:    JSON.stringify({ planId: hero.id, targets: pendingTargets }),
+      })
+    } catch {}
+    setAppliedTargets(pendingTargets)
+    setAlertDismissed(true)
+    setApplyingWeather(false)
+  }
+
+  // Fuel card state
   const gelCount = (() => {
     if (isPro && heroDetail?.selection) {
       const gels = heroDetail.selection.filter?.(i => i?.type === 'gel' || i?.product?.type === 'gel')
@@ -202,10 +315,10 @@ function HeroCard({ hero, heroDetail, userId }) {
     return null
   })()
 
-  const [remindState, setRemindState]           = useState('idle')
-  const [remindDate,  setRemindDate]            = useState('')
-  const [remindConfirmedDate, setRemindConfirmedDate] = useState('')
-  const [fuelDismissed, setFuelDismissed]       = useState(false)
+  const [remindState,          setRemindState]          = useState('idle')
+  const [remindDate,           setRemindDate]           = useState('')
+  const [remindConfirmedDate,  setRemindConfirmedDate]  = useState('')
+  const [fuelDismissed,        setFuelDismissed]        = useState(false)
 
   async function handleSetReminder() {
     if (!remindDate) return
@@ -229,10 +342,9 @@ function HeroCard({ hero, heroDetail, userId }) {
     >
       <div className="p-5 space-y-4">
 
-        {/* Header row */}
+        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            {/* Badges row */}
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <span
                 className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
@@ -242,17 +354,13 @@ function HeroCard({ hero, heroDetail, userId }) {
               </span>
               {isPro && <PlanPill mode="pro" />}
             </div>
-            {/* Meta line */}
             {metaLine && (
               <p className="text-xs text-gray-400 mb-1 leading-tight">{metaLine}</p>
             )}
-            {/* Race name */}
             <p className="leading-tight font-bold" style={{ fontSize: 20, color: '#1B1B1B' }}>
               {raceLabel(hero)}
             </p>
           </div>
-
-          {/* Countdown */}
           <div className="flex-shrink-0 text-right">
             {days !== null ? (
               <>
@@ -266,25 +374,45 @@ function HeroCard({ hero, heroDetail, userId }) {
         </div>
 
         {/* Stat tiles */}
-        <div className="flex gap-1.5">
-          <StatTile label="Target" value={goalTime} />
-          <StatTile label="Carbs/hr" value={carbPerHour !== null ? `${carbPerHour}g` : '—'} />
+        <div className="flex gap-1.5 mt-2">
+          <StatTile label="Target"    value={goalTime} />
+          <StatTile label="Carbs/hr"  value={carbPerHour !== null ? `${carbPerHour}g` : '—'} />
           {isPro ? (
-            <StatTile label="Sodium/hr" value={sodiumPerHour !== null ? `${sodiumPerHour}mg` : '—'} />
-          ) : (
-            <LockedTile label="Sodium/hr" />
-          )}
+            <StatTile label="Sodium/hr" value={displaySodium !== null ? `${displaySodium}mg` : '—'}
+              badge={sodiumBadge} highlighted={!!sodiumBadge} />
+          ) : <LockedTile label="Sodium/hr" />}
           {isPro ? (
-            <StatTile label="Fluid/hr" value={fluidPerHour !== null ? `${Math.round(fluidPerHour)}ml` : '—'} />
-          ) : (
-            <LockedTile label="Fluid/hr" />
-          )}
+            <StatTile label="Fluid/hr"  value={displayFluid !== null ? `${Math.round(displayFluid)}ml` : '—'}
+              badge={fluidBadge} highlighted={!!fluidBadge} />
+          ) : <LockedTile label="Fluid/hr" />}
           {isPro ? (
-            <StatTile label="Temp" value={condLabel ?? '—'} />
-          ) : (
-            <LockedTile label="Temp" />
-          )}
+            <StatTile label={tempTileLabel} value={tempTileValue}
+              badge={tempTileBadge} highlighted={tempTileBadge === 'updated'} />
+          ) : <LockedTile label="Temp" />}
         </div>
+
+        {/* Forecast source footnote */}
+        {isPro && weatherLastFetched && (
+          <p className="text-right text-[10px] text-gray-400 -mt-1 flex items-center justify-end gap-1">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Forecast via Open-Meteo · {formatLastFetched(weatherLastFetched)}
+          </p>
+        )}
+
+        {/* Weather notice strip — pro plan, outside 14-day window, no live data yet */}
+        {isPro && outsideWindow && !liveTemp && city && weatherWindowStr && (
+          <div className="rounded-xl px-4 py-3 flex items-start gap-2" style={{ background: AMBER_LIGHT }}>
+            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p className="text-xs leading-relaxed" style={{ color: AMBER_DARK }}>
+              Weather based on your estimate. Live forecast for <strong>{city}</strong> unlocks{' '}
+              <strong>{weatherWindowStr}</strong> — we'll update your plan automatically.
+            </p>
+          </div>
+        )}
 
         {/* Action buttons */}
         <div className="flex gap-2">
@@ -323,29 +451,59 @@ function HeroCard({ hero, heroDetail, userId }) {
         </div>
       </div>
 
-      {/* TODO: weather alert card */}
+      {/* Weather alert card */}
+      {showWeatherAlert && (
+        <div className="mx-5 my-4 rounded-xl p-4" style={{ background: CORAL_LIGHT }}>
+          <div className="flex items-start gap-3">
+            <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke={CORAL} strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold mb-1" style={{ color: CORAL }}>Plan updated for {tempDiff > 0 ? 'heat' : 'cold'}</p>
+              <p className="text-xs leading-relaxed" style={{ color: CORAL }}>
+                Forecast shows {Math.round(liveTemp)}°C —{' '}
+                {Math.abs(Math.round(tempDiff))}° {tempDiff > 0 ? 'warmer' : 'cooler'} than your estimate.
+                Sodium and fluid targets have been {tempDiff > 0 ? 'increased' : 'decreased'}.
+                Review and confirm to apply.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5 flex-shrink-0">
+              <button
+                onClick={handleApplyWeather}
+                disabled={applyingWeather}
+                className="px-3 py-1.5 text-xs font-bold rounded-lg text-white disabled:opacity-50"
+                style={{ background: CORAL }}
+              >
+                {applyingWeather ? '…' : 'Apply'}
+              </button>
+              <button
+                onClick={() => setAlertDismissed(true)}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border-2 whitespace-nowrap"
+                style={{ borderColor: CORAL, color: CORAL }}
+              >
+                Keep mine
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Fuel ordered? card — buttons on right, text on left */}
+      {/* Fuel ordered? card */}
       {!fuelDismissed && (
         <div className="mx-5 my-4 rounded-xl p-4" style={{ background: AMBER_LIGHT }}>
           <div className="flex items-start gap-3">
-            {/* Left: icon + text */}
             <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold mb-1" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
-
               {remindState === 'idle' && (
-                <>
-                  <p className="text-xs leading-relaxed mb-0" style={{ color: AMBER_MID }}>
-                    {isPro
-                      ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
-                      : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
-                  </p>
-                </>
+                <p className="text-xs leading-relaxed" style={{ color: AMBER_MID }}>
+                  {isPro
+                    ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
+                    : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
+                </p>
               )}
-
               {remindState === 'picking' && (
                 <div className="flex items-center gap-2 mt-1">
                   <input
@@ -365,15 +523,12 @@ function HeroCard({ hero, heroDetail, userId }) {
                   </button>
                 </div>
               )}
-
               {remindState === 'confirmed' && (
                 <p className="text-xs font-medium mt-1" style={{ color: AMBER_MID }}>
                   Reminder set for {remindConfirmedDate}
                 </p>
               )}
             </div>
-
-            {/* Right: action buttons */}
             <div className="flex flex-col gap-1.5 flex-shrink-0">
               {remindState === 'idle' && (
                 <>
@@ -393,7 +548,6 @@ function HeroCard({ hero, heroDetail, userId }) {
                   </button>
                 </>
               )}
-
               {remindState === 'confirmed' && (
                 <>
                   <button
@@ -453,13 +607,10 @@ function UpcomingRow({ plan }) {
 
   return (
     <div className="flex items-center gap-3 py-3 border-b border-gray-100 last:border-0">
-      {/* Date */}
       <div className="flex flex-col items-center w-8 flex-shrink-0">
         <span className="text-[10px] uppercase tracking-wide text-gray-400 leading-none">{month}</span>
         <span className="text-base font-bold text-gray-700 leading-tight">{day}</span>
       </div>
-
-      {/* Name + chips */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap min-w-0">
           <span className="text-sm font-semibold text-gray-800 truncate">{raceLabel(plan)}</span>
@@ -474,7 +625,6 @@ function UpcomingRow({ plan }) {
           )}
         </div>
       </div>
-
       <a href={`/plan/${plan.id}`} className="text-sm font-bold flex-shrink-0" style={{ color: TEAL }}>
         View →
       </a>
@@ -496,7 +646,7 @@ function PastRow({ plan, compact = false }) {
         </div>
         <span className="flex-1 text-sm text-gray-500 truncate">{raceLabel(plan)}</span>
         {plan.has_feedback
-          ? <a href={`/plan/${plan.id}`}   className="text-xs font-bold flex-shrink-0" style={{ color: TEAL }}>View →</a>
+          ? <a href={`/plan/${plan.id}`}    className="text-xs font-bold flex-shrink-0" style={{ color: TEAL }}>View →</a>
           : <a href={`/feedback/${plan.id}`} className="text-xs font-bold flex-shrink-0" style={{ color: CORAL }}>Log →</a>
         }
       </div>
@@ -509,7 +659,6 @@ function PastRow({ plan, compact = false }) {
         <span className="text-[10px] uppercase tracking-wide text-gray-400 leading-none">{month}</span>
         <span className="text-base font-bold text-gray-700 leading-tight">{day}</span>
       </div>
-
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-sm font-semibold text-gray-800 truncate">{raceLabel(plan)}</span>
@@ -517,16 +666,13 @@ function PastRow({ plan, compact = false }) {
           {plan.has_feedback ? (
             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-600">✓ Logged</span>
           ) : (
-            <span
-              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-              style={{ background: CORAL_LIGHT, color: CORAL }}
-            >
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{ background: CORAL_LIGHT, color: CORAL }}>
               Log due
             </span>
           )}
         </div>
       </div>
-
       {plan.has_feedback
         ? <a href={`/plan/${plan.id}`}    className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: TEAL }}>View →</a>
         : <a href={`/feedback/${plan.id}`} className="text-sm font-bold flex-shrink-0 mt-0.5" style={{ color: CORAL }}>Log →</a>
@@ -571,7 +717,13 @@ export default function DashboardPage() {
         .then(r => r.ok ? r.json() : null)
         .then(data => {
           if (data?.planId) {
-            setPlans(prev => prev ? [{ id: data.planId, ...result.targets, race_name: result.form?.race_name ?? null, race_date: result.form?.race_date ?? null, mode: planMode, created_at: new Date().toISOString() }, ...prev] : prev)
+            setPlans(prev => prev ? [{
+              id: data.planId, ...result.targets,
+              race_name: result.form?.race_name ?? null,
+              race_date: result.form?.race_date ?? null,
+              mode: planMode,
+              created_at: new Date().toISOString(),
+            }, ...prev] : prev)
           }
         })
         .catch(() => {})
@@ -583,7 +735,6 @@ export default function DashboardPage() {
       window.location.replace('/auth/login')
       return
     }
-
     fetch('/api/plans', { headers: { 'Authorization': `Bearer ${userId}` } })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
@@ -604,9 +755,9 @@ export default function DashboardPage() {
   if (!userId) return null
 
   const { upcoming, past } = plans ? splitPlans(plans) : { upcoming: [], past: [] }
-  const hero       = upcoming[0] ?? null
+  const hero         = upcoming[0] ?? null
   const restUpcoming = upcoming.slice(1)
-  const empty      = plans && plans.length === 0
+  const empty        = plans && plans.length === 0
 
   const recentPast = past.slice(0, 3)
   const olderPast  = past.slice(3)
@@ -624,14 +775,13 @@ export default function DashboardPage() {
 
       <div className="max-w-2xl mx-auto px-5 py-6 space-y-8">
 
-        {/* Loading */}
         {loading && (
           <div className="flex justify-center py-12">
-            <div className="w-7 h-7 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: TEAL, borderTopColor: 'transparent' }} />
+            <div className="w-7 h-7 border-2 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: TEAL, borderTopColor: 'transparent' }} />
           </div>
         )}
 
-        {/* Error */}
         {error && (
           <div className="border-2 border-red-100 rounded-2xl p-5 text-center">
             <p className="text-sm text-red-500">Couldn't load your plans. Please refresh.</p>
@@ -641,40 +791,33 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Empty state */}
         {empty && (
           <div className="border-2 border-gray-100 rounded-2xl p-8 text-center">
             <p className="text-base font-semibold text-gray-800 mb-1">No plans yet</p>
             <p className="text-sm text-gray-400 mb-5">Build your first race nutrition plan.</p>
-            <a
-              href="/"
-              className="inline-block px-6 py-3 rounded-xl text-sm font-semibold text-white"
-              style={{ background: TEAL }}
-            >
+            <a href="/" className="inline-block px-6 py-3 rounded-xl text-sm font-semibold text-white"
+              style={{ background: TEAL }}>
               Build your first race plan →
             </a>
           </div>
         )}
 
-        {/* Hero card — full width */}
+        {/* Hero card */}
         {!loading && !error && hero && (
           <HeroCard hero={hero} heroDetail={heroDetail} userId={userId} />
         )}
 
-        {/* Two-column: Upcoming (left) + Past (right) */}
+        {/* Two-column: Upcoming + Past */}
         {!loading && !error && plans && plans.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-            {/* ── Upcoming ── */}
             <section>
               <SectionLabel>Upcoming races</SectionLabel>
               <div className="rounded-2xl border border-gray-100 overflow-hidden">
                 {restUpcoming.length > 0 ? (
                   <div className="divide-y divide-gray-100">
                     {restUpcoming.map(plan => (
-                      <div key={plan.id} className="px-4">
-                        <UpcomingRow plan={plan} />
-                      </div>
+                      <div key={plan.id} className="px-4"><UpcomingRow plan={plan} /></div>
                     ))}
                   </div>
                 ) : (
@@ -688,19 +831,15 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            {/* ── Past ── */}
             {past.length > 0 && (
               <section>
                 <SectionLabel>Past races</SectionLabel>
                 <div className="rounded-2xl border border-gray-100 overflow-hidden">
                   <div className="divide-y divide-gray-100">
                     {recentPast.map(plan => (
-                      <div key={plan.id} className="px-4">
-                        <PastRow plan={plan} />
-                      </div>
+                      <div key={plan.id} className="px-4"><PastRow plan={plan} /></div>
                     ))}
                   </div>
-
                   {olderPast.length > 0 && (
                     <>
                       <button
@@ -708,11 +847,11 @@ export default function DashboardPage() {
                         className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-gray-400 hover:text-gray-600 border-t border-gray-100 transition-colors"
                       >
                         <span>{showOlder ? 'Show less' : `Show ${olderPast.length} older`}</span>
-                        <svg className={`w-4 h-4 transition-transform ${showOlder ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <svg className={`w-4 h-4 transition-transform ${showOlder ? 'rotate-180' : ''}`}
+                          fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
-
                       {showOlder && (
                         <div className="border-t border-gray-100">
                           {Object.keys(olderByYear).sort((a, b) => b - a).map(year => (
@@ -720,9 +859,7 @@ export default function DashboardPage() {
                               <p className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50">{year}</p>
                               <div className="divide-y divide-gray-100">
                                 {olderByYear[year].map(plan => (
-                                  <div key={plan.id} className="px-4">
-                                    <PastRow plan={plan} compact />
-                                  </div>
+                                  <div key={plan.id} className="px-4"><PastRow plan={plan} compact /></div>
                                 ))}
                               </div>
                             </div>

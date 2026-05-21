@@ -28,7 +28,9 @@ export default async function handler(req, res) {
         const { rows } = await sql`
           SELECT id, race_name, race_date, race_type, goal_minutes,
                  conditions, effort, inputs, targets, selection,
-                 region, lang, user_id
+                 region, lang, user_id,
+                 race_city, weather_live_temp_c, weather_last_fetched,
+                 weather_confirmed, weather_estimated_temp
           FROM plans
           WHERE id = ${planId}
           LIMIT 1
@@ -85,24 +87,30 @@ export default async function handler(req, res) {
         )
         RETURNING id
       `
-      if (inputs.race_city && inputs.race_city.trim()) {
+      // Populate weather_estimated_temp from conditions choice
+      const condToTempC = { cool: '8', mild: '15', warm: '22', hot: '30' }
+      const estimatedTemp = condToTempC[inputs.conditions ?? inputs.temperature] ?? null
+
+      if (inputs.race_city?.trim() || estimatedTemp) {
         try {
-          const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(inputs.race_city)}&format=json&limit=1`
-          const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'LeckaRacePlanner/1.0 (info@getlecka.com)' } })
-          if (geoRes.ok) {
-            const geoData = await geoRes.json()
-            if (geoData.length > 0) {
-              const { lat, lon } = geoData[0]
-              await sql`
-                UPDATE plans SET
-                  race_city = ${inputs.race_city.trim()},
-                  race_lat  = ${parseFloat(lat)},
-                  race_lng  = ${parseFloat(lon)},
-                  race_start_time = ${inputs.race_start_time ?? null}
-                WHERE id = ${rows[0].id}
-              `
+          let lat = null, lon = null
+          if (inputs.race_city?.trim()) {
+            const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(inputs.race_city)}&format=json&limit=1`
+            const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'LeckaRacePlanner/1.0 (info@getlecka.com)' } })
+            if (geoRes.ok) {
+              const geoData = await geoRes.json()
+              if (geoData.length > 0) { lat = parseFloat(geoData[0].lat); lon = parseFloat(geoData[0].lon) }
             }
           }
+          await sql`
+            UPDATE plans SET
+              race_city             = ${inputs.race_city?.trim() || null},
+              race_lat              = ${lat},
+              race_lng              = ${lon},
+              race_start_time       = ${inputs.race_start_time ?? null},
+              weather_estimated_temp = ${estimatedTemp}
+            WHERE id = ${rows[0].id}
+          `
         } catch (geoErr) {
           console.error('[plans/POST] geocoding failed (non-fatal):', geoErr.message)
         }
@@ -116,8 +124,21 @@ export default async function handler(req, res) {
       const user = await getUser(req)
       if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
-      const { planId, race_date, race_name, checkpoints, segmentData, fuel_reminder_date, weather_confirmed } = req.body ?? {}
+      const { planId, race_date, race_name, checkpoints, segmentData, fuel_reminder_date, weather_confirmed, targets: newTargets } = req.body ?? {}
       if (!planId) return res.status(400).json({ error: 'planId is required' })
+
+      // Apply weather-updated targets
+      if (newTargets !== undefined) {
+        const { rows } = await sql`
+          UPDATE plans
+          SET targets           = ${JSON.stringify(newTargets)}::jsonb,
+              weather_confirmed = true
+          WHERE id = ${planId} AND user_id = ${user.id}
+          RETURNING id
+        `
+        if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
+        return res.status(200).json({ ok: true })
+      }
 
       // Checkpoint save action
       if (checkpoints !== undefined) {
