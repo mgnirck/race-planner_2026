@@ -11,6 +11,7 @@ import HomePage         from './components/HomePage'
 import LoginPage        from './components/LoginPage'
 import PlanViewPage     from './components/PlanViewPage'
 import CheckpointPage   from './components/CheckpointPage'
+import FeedbackWidget   from './components/FeedbackWidget'
 import { isEmbedded, getSavedRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
@@ -72,23 +73,23 @@ export default function App() {
     }
   }, [])
 
-  if (PATH === '/admin')        return <AdminPage />
-  if (PATH === '/auth/verify')  return <VerifyPage />
-  if (PATH === '/auth/login')   return <LoginPage />
-  if (PATH === '/dashboard')    return <DashboardPage />
+  if (PATH === '/admin')        return <><AdminPage /><FeedbackWidget /></>
+  if (PATH === '/auth/verify')  return <><VerifyPage /><FeedbackWidget /></>
+  if (PATH === '/auth/login')   return <><LoginPage /><FeedbackWidget /></>
+  if (PATH === '/dashboard')    return <><DashboardPage /><FeedbackWidget /></>
   if (PATH.startsWith('/feedback/')) {
-    return <FeedbackPage planId={PATH.split('/')[2]} />
+    return <><FeedbackPage planId={PATH.split('/')[2]} /><FeedbackWidget /></>
   }
   if (PATH.startsWith('/plan/') && PATH.endsWith('/checkpoints')) {
     const planId = PATH.split('/')[2]
-    return <CheckpointPage planId={planId} />
+    return <><CheckpointPage planId={planId} /><FeedbackWidget /></>
   }
   if (PATH.startsWith('/plan/')) {
-    return <PlanViewPage />
+    return <><PlanViewPage /><FeedbackWidget /></>
   }
 
   // Standalone homepage — only when not in Shopify embed
-  if (PATH === '/' && !isEmbedded) return <HomePage />
+  if (PATH === '/' && !isEmbedded) return <><HomePage /><FeedbackWidget /></>
 
   // ── Pro planner — existing full form ─────────────────────────────────────
   if (PATH === '/planner/pro') {
@@ -104,22 +105,25 @@ export default function App() {
 
     if (plan) {
       return (
-        <ResultsPage
-          targets={plan.targets}
-          foundationTargets={plan.foundationTargets ?? plan.targets}
-          selection={plan.selection}
-          addonCoverage={plan.addonCoverage ?? null}
-          resolvedAddonItems={plan.resolvedAddonItems ?? []}
-          form={plan.form}
-          onBack={() => {
-            try { sessionStorage.removeItem('lecka_form_draft') } catch {}
-            window.location.replace('/planner/pro')
-          }}
-        />
+        <>
+          <ResultsPage
+            targets={plan.targets}
+            foundationTargets={plan.foundationTargets ?? plan.targets}
+            selection={plan.selection}
+            addonCoverage={plan.addonCoverage ?? null}
+            resolvedAddonItems={plan.resolvedAddonItems ?? []}
+            form={plan.form}
+            onBack={() => {
+              try { sessionStorage.removeItem('lecka_form_draft') } catch {}
+              window.location.replace('/planner/pro')
+            }}
+          />
+          <FeedbackWidget />
+        </>
       )
     }
 
-    return <StepForm onComplete={handleComplete} />
+    return <><StepForm onComplete={handleComplete} /><FeedbackWidget /></>
   }
 
   // ── Simple planner — lightweight form at /planner and embedded / ──────────
@@ -135,15 +139,18 @@ export default function App() {
 
   if (plan && plan.mode === 'simple') {
     return (
-      <SimpleResultsPage
-        targets={plan.targets}
-        selection={plan.selection}
-        form={plan.form}
-        onBack={() => {
-          try { sessionStorage.removeItem('lecka_form_draft') } catch {}
-          setPlan(null)
-        }}
-      />
+      <>
+        <SimpleResultsPage
+          targets={plan.targets}
+          selection={plan.selection}
+          form={plan.form}
+          onBack={() => {
+            try { sessionStorage.removeItem('lecka_form_draft') } catch {}
+            setPlan(null)
+          }}
+        />
+        <FeedbackWidget />
+      </>
     )
   }
 
@@ -172,6 +179,7 @@ export default function App() {
         </div>
       )}
       <SimpleForm onComplete={handleSimpleComplete} />
+      <FeedbackWidget />
     </>
   )
 }
