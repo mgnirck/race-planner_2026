@@ -13,8 +13,9 @@
  * Elevation smoothing (rolling median, window = 5):
  *   Consumer GPS receivers report elevation with ±1–3 m of noise even when
  *   stationary. A rolling median over 5 consecutive points suppresses outliers
- *   better than a mean while preserving genuine climbs. After smoothing, a
- *   small 0.5 m threshold is applied to avoid accumulating rounding artefacts.
+ *   better than a mean while preserving genuine climbs. No threshold is applied
+ *   after smoothing — high-density tracks (many points/km) have sub-0.5 m steps
+ *   that are real gain, so any positive delta after smoothing is counted.
  */
 
 const EARTH_RADIUS_KM = 6371;
@@ -84,16 +85,13 @@ export function parseGPX(fileText) {
     return slice[Math.floor(slice.length / 2)];
   });
 
-  const ELEVATION_NOISE_THRESHOLD_M = 0.5;
   for (let i = 1; i < smoothed.length; i++) {
     if (smoothed[i] === null || smoothed[i - 1] === null) continue;
     const delta = smoothed[i] - smoothed[i - 1];
-    if (Math.abs(delta) > ELEVATION_NOISE_THRESHOLD_M) {
-      if (delta > 0) {
-        elevation_gain_m += delta;
-      } else {
-        elevation_loss_m += Math.abs(delta);
-      }
+    if (delta > 0) {
+      elevation_gain_m += delta;
+    } else if (delta < 0) {
+      elevation_loss_m -= delta;
     }
   }
 
