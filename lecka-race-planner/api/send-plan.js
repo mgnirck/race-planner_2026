@@ -827,6 +827,106 @@ ${plainTextProductList}
   if (error) throw new Error(`Resend error: ${error.message ?? JSON.stringify(error)}`)
 }
 
+// ── Admin alert ───────────────────────────────────────────────────────────────
+
+async function sendAdminAlert(email, inputs, targets, selectedProducts, resolvedAddonItems, region) {
+  if (!process.env.RESEND_API_KEY) return
+  const resend = new Resend(process.env.RESEND_API_KEY)
+
+  const raceName   = raceLabel(inputs)
+  const raceType   = RACE_LABELS[inputs.race_type] ?? inputs.race_type ?? '—'
+  const goalTime   = inputs.goal_time ?? '—'
+  const conditions = CONDITIONS_LABELS[inputs.conditions] ?? inputs.conditions ?? '—'
+  const effort     = EFFORT_LABELS[inputs.effort] ?? inputs.effort ?? '—'
+  const carbPerH   = targets?.carb_per_hour ?? '—'
+  const sodiumPerH = targets?.sodium_per_hour ?? '—'
+  const weight     = inputs.weight_value ? `${inputs.weight_value} ${inputs.weight_unit ?? 'kg'}` : '—'
+  const productCount = (selectedProducts?.length ?? 0) + (resolvedAddonItems?.length ?? 0)
+  const sentAt     = new Date().toUTCString()
+
+  const productList = (selectedProducts ?? [])
+    .map(s => `<li style="margin:2px 0">${(s.product?.name ?? s.product?.id ?? 'Unknown')} × ${s.quantity ?? 1}</li>`)
+    .join('')
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:580px;margin:0 auto;padding:32px;color:#1B1B1B">
+      <img src="https://plan.getlecka.com/Lecka-Logo-New%20Green%20Font.png" alt="Lecka" style="height:28px;margin-bottom:24px" />
+      <h2 style="font-size:18px;margin:0 0 4px;color:#1B1B1B">Plan sent 🎯</h2>
+      <p style="margin:0 0 24px;font-size:14px;color:#666">Someone just received their race nutrition plan.</p>
+
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <tr style="background:#f5f5f5">
+          <td style="padding:8px 12px;font-weight:600;width:160px">Email</td>
+          <td style="padding:8px 12px"><a href="mailto:${email}" style="color:#48C4B0">${email}</a></td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;font-weight:600;border-top:1px solid #e8e8e8">Race</td>
+          <td style="padding:8px 12px;border-top:1px solid #e8e8e8">${raceName}</td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:8px 12px;font-weight:600">Race type</td>
+          <td style="padding:8px 12px">${raceType}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;font-weight:600;border-top:1px solid #e8e8e8">Goal time</td>
+          <td style="padding:8px 12px;border-top:1px solid #e8e8e8">${goalTime}</td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:8px 12px;font-weight:600">Conditions</td>
+          <td style="padding:8px 12px">${conditions}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;font-weight:600;border-top:1px solid #e8e8e8">Effort</td>
+          <td style="padding:8px 12px;border-top:1px solid #e8e8e8">${effort}</td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:8px 12px;font-weight:600">Carbs / hour</td>
+          <td style="padding:8px 12px">${carbPerH} g</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;font-weight:600;border-top:1px solid #e8e8e8">Sodium / hour</td>
+          <td style="padding:8px 12px;border-top:1px solid #e8e8e8">${sodiumPerH} mg</td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:8px 12px;font-weight:600">Weight</td>
+          <td style="padding:8px 12px">${weight}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;font-weight:600;border-top:1px solid #e8e8e8">Region</td>
+          <td style="padding:8px 12px;border-top:1px solid #e8e8e8">${region.toUpperCase()}</td>
+        </tr>
+        <tr style="background:#f5f5f5">
+          <td style="padding:8px 12px;font-weight:600">Products selected</td>
+          <td style="padding:8px 12px">${productCount}</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;font-weight:600;border-top:1px solid #e8e8e8">Sent at</td>
+          <td style="padding:8px 12px;border-top:1px solid #e8e8e8">${sentAt}</td>
+        </tr>
+      </table>
+
+      ${productList ? `
+      <h3 style="font-size:14px;margin:24px 0 8px;color:#1B1B1B">Products</h3>
+      <ul style="margin:0;padding-left:20px;font-size:14px;color:#444">${productList}</ul>
+      ` : ''}
+
+      <p style="margin:28px 0 0;font-size:13px;color:#999">Lecka Race Planner — admin notification</p>
+    </div>
+  `
+
+  try {
+    await resend.emails.send({
+      from:    'Lecka <info@getlecka.com>',
+      to:      'markus@getlecka.com',
+      replyTo: email,
+      subject: `Plan sent to ${email} — ${raceName} (${raceType})`,
+      html,
+    })
+  } catch (err) {
+    console.error('[send-plan] Admin alert failed (non-fatal):', err.message)
+  }
+}
+
 // ── Shopify customer upsert ───────────────────────────────────────────────────
 
 async function upsertShopifyCustomer(email, inputs, region = 'us') {
@@ -1086,6 +1186,9 @@ export default async function handler(req, res) {
     console.error('[send-plan] RESEND_API_KEY set:', !!process.env.RESEND_API_KEY)
     return res.status(500).json({ success: false, error: 'Failed to send email. Please try again.' })
   }
+
+  // ── Admin alert (non-fatal) ───────────────────────────────────────────────
+  sendAdminAlert(email, inputs, targets, selectedProducts, resolvedAddonItems, region).catch(() => {})
 
   // ── Shopify upsert (non-fatal, Shopify regions only) ─────────────────────
   // TODO: implement Haravan customer upsert for VN (Haravan Admin API or webhook).
