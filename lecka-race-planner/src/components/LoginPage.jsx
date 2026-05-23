@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Nav from './Nav.jsx'
 
 export default function LoginPage() {
+  const { t } = useTranslation('common')
   const [email,   setEmail]   = useState('')
   const [state,   setState]   = useState('idle') // idle | sending | sent | error
   const [touched, setTouched] = useState(false)
@@ -36,17 +38,16 @@ export default function LoginPage() {
       <Nav />
 
       <div className="max-w-sm mx-auto px-5 pt-16 pb-10">
-        <h1 className="text-2xl font-bold text-[#1B1B1B] mb-2">Sign in to Lecka</h1>
+        <h1 className="text-2xl font-bold text-[#1B1B1B] mb-2">{t('login.title')}</h1>
         <p className="text-sm text-gray-500 mb-8">
-          We'll send a one-click login link to your inbox.
+          {t('login.subtitle')}
         </p>
 
         {state === 'sent' ? (
           <div className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5">
-            <p className="text-sm font-bold text-[#48C4B0]">Check your inbox</p>
-            <p className="text-sm text-gray-500 mt-1">
-              We sent a login link to <strong>{email}</strong>. It expires in 15 minutes.
-            </p>
+            <p className="text-sm font-bold text-[#48C4B0]">{t('login.sentTitle')}</p>
+            <p className="text-sm text-gray-500 mt-1"
+               dangerouslySetInnerHTML={{ __html: t('login.sentBody', { email }) }} />
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
@@ -56,7 +57,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={e => { setEmail(e.target.value); setTouched(false) }}
                 onBlur={() => setTouched(true)}
-                placeholder="you@example.com"
+                placeholder={t('login.placeholder')}
                 disabled={state === 'sending'}
                 className={[
                   'w-full border-2 rounded-xl px-4 py-3 text-sm',
@@ -65,12 +66,12 @@ export default function LoginPage() {
                 ].join(' ')}
               />
               {showErr && (
-                <p className="text-xs text-red-500 mt-1.5">Please enter a valid email address.</p>
+                <p className="text-xs text-red-500 mt-1.5">{t('login.invalidEmail')}</p>
               )}
             </div>
 
             {state === 'error' && (
-              <p className="text-xs text-red-500">Something went wrong — please try again.</p>
+              <p className="text-xs text-red-500">{t('login.error')}</p>
             )}
 
             <button
@@ -80,7 +81,7 @@ export default function LoginPage() {
                          text-sm font-semibold hover:bg-[#3db09d] transition-colors
                          disabled:opacity-50"
             >
-              {state === 'sending' ? 'Sending…' : 'Send me a login link'}
+              {state === 'sending' ? t('login.sending') : t('login.send')}
             </button>
           </form>
         )}

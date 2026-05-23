@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import Nav from './Nav.jsx'
 
 function StepIcon() {
@@ -41,6 +42,8 @@ function BagIcon() {
 }
 
 export default function HomePage() {
+  const { t } = useTranslation('common')
+
   return (
     <>
     <div className="bg-white min-h-screen">
@@ -50,26 +53,25 @@ export default function HomePage() {
 
         {/* ── Hero ──────────────────────────────────────────────────────────── */}
         <div className="pt-16 pb-14 text-center">
-          <h1 className="text-4xl font-bold text-[#1B1B1B] leading-tight mb-4">
-            Build your race<br />nutrition plan
+          <h1 className="text-4xl font-bold text-[#1B1B1B] leading-tight mb-4"
+              style={{ whiteSpace: 'pre-line' }}>
+            {t('home.hero.title')}
           </h1>
           <p className="text-base text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">
-            Science-based fueling for ultra runners and cyclists — built around real food.
+            {t('home.hero.subtitle')}
           </p>
-          {/* Language switcher — re-enable when translations complete */}
           <a
             href="/planner"
             className="inline-flex items-center justify-center min-h-[56px] px-10
                        bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl
                        text-base font-bold transition-colors"
           >
-            Build my plan →
+            {t('home.hero.cta')}
           </a>
-          <p className="text-sm text-gray-400 mt-3">Takes 30 seconds.</p>
+          <p className="text-sm text-gray-400 mt-3">{t('home.hero.time')}</p>
           <p className="text-xs text-gray-400 mt-3">
-            Already used the planner?{' '}
             <a href="/auth/login" className="text-[#48C4B0] hover:underline">
-              Log in to access your plans and the Pro planner →
+              {t('home.hero.login')}
             </a>
           </p>
         </div>
@@ -79,8 +81,8 @@ export default function HomePage() {
           <div className="flex items-start gap-4">
             <StepIcon />
             <div>
-              <p className="text-sm font-semibold text-[#1B1B1B]">Tell us about your race</p>
-              <p className="text-sm text-gray-400 mt-0.5">Distance, goal time, conditions, your body.</p>
+              <p className="text-sm font-semibold text-[#1B1B1B]">{t('home.step1.title')}</p>
+              <p className="text-sm text-gray-400 mt-0.5">{t('home.step1.body')}</p>
             </div>
           </div>
 
@@ -91,8 +93,8 @@ export default function HomePage() {
           <div className="flex items-start gap-4">
             <TargetIcon />
             <div>
-              <p className="text-sm font-semibold text-[#1B1B1B]">Get your personalised targets</p>
-              <p className="text-sm text-gray-400 mt-0.5">Carbs, sodium and fluid per hour, calibrated to you.</p>
+              <p className="text-sm font-semibold text-[#1B1B1B]">{t('home.step2.title')}</p>
+              <p className="text-sm text-gray-400 mt-0.5">{t('home.step2.body')}</p>
             </div>
           </div>
 
@@ -103,15 +105,15 @@ export default function HomePage() {
           <div className="flex items-start gap-4">
             <BagIcon />
             <div>
-              <p className="text-sm font-semibold text-[#1B1B1B]">Order exactly what you need</p>
-              <p className="text-sm text-gray-400 mt-0.5">Products, quantities and a race-day timeline — ready to buy.</p>
+              <p className="text-sm font-semibold text-[#1B1B1B]">{t('home.step3.title')}</p>
+              <p className="text-sm text-gray-400 mt-0.5">{t('home.step3.body')}</p>
             </div>
           </div>
         </div>
 
         {/* ── Social proof ──────────────────────────────────────────────────── */}
         <p className="text-xs text-center text-gray-400 pb-4">
-          Trusted by athletes who fuel with real food worldwide.
+          {t('home.trust')}
         </p>
 
       </div>
@@ -122,7 +124,7 @@ export default function HomePage() {
 
         <div className="text-center space-y-1">
           <p className="text-xs text-gray-400">
-            Trusted by athletes who fuel with real food worldwide.
+            {t('home.trust')}
           </p>
           <p className="text-xs text-gray-400">
             Provided by{' '}
@@ -139,7 +141,7 @@ export default function HomePage() {
 
         <div className="text-center space-y-1">
           <p className="text-xs text-gray-400">
-            Questions?{' '}
+            {t('home.footer.questions')}{' '}
             <a
               href="mailto:info@getlecka.com"
               className="text-[#48C4B0] hover:underline"
@@ -159,7 +161,7 @@ export default function HomePage() {
         </div>
 
         <div className="text-center">
-          <p className="text-xs text-gray-400 mb-2">Find Lecka near you</p>
+          <p className="text-xs text-gray-400 mb-2">{t('home.footer.findLecka')}</p>
           <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
             {[
               { label: 'US',          href: 'https://www.getlecka.com' },
@@ -167,7 +169,7 @@ export default function HomePage() {
               { label: 'Germany',     href: 'https://www.getlecka.de' },
               { label: 'Denmark',     href: 'https://www.getlecka.dk' },
               { label: 'Switzerland', href: 'https://www.getlecka.ch' },
-              { label: 'Singapore',   href: 'https://www.rdrc.sg/collections/lecka' },
+              { label: 'Singapore',   href: 'https://rdrc.sg/collections/lecka' },
               { label: 'Hong Kong',   href: 'https://foodisdom.is/collections/lecka' },
             ].map(({ label, href }) => (
               <a
