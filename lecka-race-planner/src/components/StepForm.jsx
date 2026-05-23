@@ -1478,7 +1478,16 @@ export default function StepForm({ onComplete }) {
   const allProducts = liveProducts ?? FALLBACK_PRODUCTS
   const [step, setStep] = useState(0)
   const [region, setRegion] = useState(() => getSavedRegion() ?? null)
-  const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
+  const [form, setForm] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('lecka_pro_prefill')
+      if (raw) {
+        sessionStorage.removeItem('lecka_pro_prefill')
+        return { ...DEFAULT_FORM, ...JSON.parse(raw) }
+      }
+    } catch {}
+    return loadDraft() ?? DEFAULT_FORM
+  })
   const [fromSimple, setFromSimple] = useState(() => loadDraft()?._from_simple === true)
   const [fromSimpleDismissed, setFromSimpleDismissed] = useState(false)
   const [profilePrefilled, setProfilePrefilled] = useState(false)
