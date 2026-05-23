@@ -165,5 +165,20 @@
   "home.step3.body": "Products, quantities and a race-day timeline — ready to buy.",
   "home.trust": "Trusted by athletes who fuel with real food worldwide.",
   "home.footer.questions": "Questions?",
-  "home.footer.findLecka": "Find Lecka near you"
+  "home.footer.findLecka": "Find Lecka near you",
+  "home.hero.headline": "Race day\nnutrition,\nsorted.",
+  "home.hero.tagline": "Carbs · sodium · fluid targets + a ready-to-buy Lecka product plan, built for your exact race.",
+  "home.stat.time.label": "to build your plan",
+  "home.stat.carbs.label": "personalised carb target",
+  "home.stat.shop.label": "add to cart",
+  "home.form.whatRace": "What are you racing?",
+  "home.form.goalTime": "Goal finish time",
+  "home.form.cta": "Get my nutrition plan →",
+  "home.form.free": "⚡ Free · instant · no account needed",
+  "home.pro.title": "Pro planner",
+  "home.pro.body": "Non-Lecka products · elevation · coach notes · gut training · weather forecast & more",
+  "home.pro.cta": "Try it →",
+  "racetype.cycling": "Cycling",
+  "racetype.triathlon": "Triathlon",
+  "racetype.custom": "Other"
 }

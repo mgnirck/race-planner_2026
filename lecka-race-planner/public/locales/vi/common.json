@@ -165,5 +165,20 @@
   "home.step3.body": "Sản phẩm, số lượng và lịch trình ngày đua — sẵn sàng để mua.",
   "home.trust": "Được tin dùng bởi các vận động viên trên toàn thế giới.",
   "home.footer.questions": "Câu hỏi?",
-  "home.footer.findLecka": "Tìm Lecka gần bạn"
+  "home.footer.findLecka": "Tìm Lecka gần bạn",
+  "home.hero.headline": "Dinh dưỡng\nngày đua,\nđã có hết.",
+  "home.hero.tagline": "Mục tiêu carb · natri · nước + kế hoạch sản phẩm Lecka sẵn sàng mua, được xây dựng cho cuộc đua của bạn.",
+  "home.stat.time.label": "để tạo kế hoạch",
+  "home.stat.carbs.label": "mục tiêu carb cá nhân",
+  "home.stat.shop.label": "thêm vào giỏ hàng",
+  "home.form.whatRace": "Bạn đang thi đấu gì?",
+  "home.form.goalTime": "Thời gian mục tiêu",
+  "home.form.cta": "Nhận kế hoạch dinh dưỡng →",
+  "home.form.free": "⚡ Miễn phí · tức thì · không cần tài khoản",
+  "home.pro.title": "Pro planner",
+  "home.pro.body": "Sản phẩm ngoài Lecka · độ cao · ghi chú HLV · luyện dạ dày · dự báo thời tiết & nhiều hơn",
+  "home.pro.cta": "Dùng thử →",
+  "racetype.cycling": "Đạp xe",
+  "racetype.triathlon": "Triathlon",
+  "racetype.custom": "Khác"
 }

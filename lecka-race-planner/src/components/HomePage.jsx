@@ -1,26 +1,26 @@
 import React, { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { goalMinutesFromFields } from '../utils/form-helpers.js'
 
-const RACE_OPTIONS = [
-  { key: '5k',           label: '5k'           },
-  { key: '10k',          label: '10k'          },
-  { key: 'half_marathon',label: 'Half marathon' },
-  { key: 'marathon',     label: 'Marathon'     },
-  { key: 'ultra_50k',    label: 'Ultra 50 km'  },
-  { key: 'ultra_100k',   label: 'Ultra 100 km+'},
-  { key: 'cycling',      label: 'Cycling'      },
-  { key: 'triathlon',    label: 'Triathlon'    },
-  { key: 'custom',       label: 'Other'        },
+const TRIATHLON_OPTIONS = [
+  { key: 'triathlon_sprint',  sublabel: '750m · 20km · 5km'   },
+  { key: 'triathlon_olympic', sublabel: '1.5km · 40km · 10km' },
+  { key: 'triathlon_70_3',    sublabel: 'Half Ironman'         },
+  { key: 'triathlon_140_6',   sublabel: 'Full 140.6'          },
 ]
 
-const TRIATHLON_OPTIONS = [
-  { key: 'triathlon_sprint',  label: 'Sprint',  sublabel: '750m · 20km · 5km'      },
-  { key: 'triathlon_olympic', label: 'Olympic', sublabel: '1.5km · 40km · 10km'    },
-  { key: 'triathlon_70_3',    label: '70.3',    sublabel: 'Half Ironman'            },
-  { key: 'triathlon_140_6',   label: 'Ironman', sublabel: 'Full 140.6'             },
+const RACE_KEYS = [
+  '5k', '10k', 'half_marathon', 'marathon',
+  'ultra_50k', 'ultra_100k', 'cycling', 'triathlon', 'custom',
+]
+
+const LANGS = [
+  { code: 'en', label: 'EN' },
+  { code: 'vi', label: 'VN' },
 ]
 
 export default function HomePage() {
+  const { t, i18n } = useTranslation('common')
   const [raceType,      setRaceType]      = useState('')
   const [triathlonType, setTriathlonType] = useState('')
   const [goalH,         setGoalH]         = useState('')
@@ -37,6 +37,14 @@ export default function HomePage() {
   function handleRaceType(key) {
     setRaceType(key)
     if (key !== 'triathlon') setTriathlonType('')
+  }
+
+  function switchLang(lang) {
+    i18n.changeLanguage(lang)
+    try { localStorage.setItem('lecka_lang', lang) } catch {}
+    const url = new URL(window.location.href)
+    url.searchParams.set('lang', lang)
+    window.history.replaceState({}, '', url)
   }
 
   function handleSubmit(e) {
@@ -70,17 +78,13 @@ export default function HomePage() {
     ].join(' ')
   }
 
+  const activeLang = LANGS.find(l => i18n.language?.startsWith(l.code))?.code ?? 'en'
+
   return (
     <div className="bg-white min-h-screen">
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          background: '#F64866',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
+      <div style={{ background: '#F64866', position: 'relative', overflow: 'hidden' }}>
         {/* diagonal stripe overlay */}
         <div style={{
           position: 'absolute',
@@ -98,30 +102,49 @@ export default function HomePage() {
               className="h-7"
               style={{ filter: 'brightness(0) invert(1)' }}
             />
-            <a
-              href="/auth/login"
-              className="text-xs text-white/80 border border-white/30 rounded-full px-3 py-1.5"
-            >
-              Log in
-            </a>
+            <div className="flex items-center gap-2">
+              {/* language switcher */}
+              <div className="flex items-center gap-0.5">
+                {LANGS.map(l => (
+                  <button
+                    key={l.code}
+                    type="button"
+                    onClick={() => switchLang(l.code)}
+                    className={[
+                      'text-xs font-semibold rounded-full px-2.5 py-1 transition-colors',
+                      activeLang === l.code
+                        ? 'bg-white/20 text-white'
+                        : 'text-white/60 hover:text-white/90',
+                    ].join(' ')}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+              <a
+                href="/auth/login"
+                className="text-xs text-white/80 border border-white/30 rounded-full px-3 py-1.5"
+              >
+                {t('nav.logIn')}
+              </a>
+            </div>
           </div>
 
           {/* headline */}
           <h1 className="font-black text-white leading-[1.05] tracking-[-0.04em] mb-2.5"
-              style={{ fontSize: 'clamp(26px, 7vw, 36px)' }}>
-            Race day<br />nutrition,<br />sorted.
+              style={{ fontSize: 'clamp(26px, 7vw, 36px)', whiteSpace: 'pre-line' }}>
+            {t('home.hero.headline')}
           </h1>
           <p className="text-xs text-white/70 leading-relaxed mb-4 max-w-sm">
-            Carbs · sodium · fluid targets + a ready-to-buy Lecka product plan,
-            built for your exact race.
+            {t('home.hero.tagline')}
           </p>
 
           {/* stat chips */}
           <div className="grid grid-cols-3 gap-2">
             {[
-              { num: '30s',    label: 'to build your plan'       },
-              { num: 'g/h',    label: 'personalised carb target' },
-              { num: '1-tap',  label: 'add to cart'              },
+              { num: '30s',   labelKey: 'home.stat.time.label'  },
+              { num: 'g/h',   labelKey: 'home.stat.carbs.label' },
+              { num: '1-tap', labelKey: 'home.stat.shop.label'  },
             ].map(chip => (
               <div
                 key={chip.num}
@@ -133,7 +156,7 @@ export default function HomePage() {
                 }}
               >
                 <div className="text-base font-black text-white">{chip.num}</div>
-                <div className="text-white/65" style={{ fontSize: 9 }}>{chip.label}</div>
+                <div className="text-white/65" style={{ fontSize: 9 }}>{t(chip.labelKey)}</div>
               </div>
             ))}
           </div>
@@ -148,17 +171,17 @@ export default function HomePage() {
             {/* Race type */}
             <div className="mb-5">
               <p className="text-[9px] font-bold tracking-widest text-gray-400 uppercase mb-3">
-                What are you racing?
+                {t('home.form.whatRace')}
               </p>
               <div className="flex flex-wrap gap-2">
-                {RACE_OPTIONS.map(opt => (
+                {RACE_KEYS.map(key => (
                   <button
-                    key={opt.key}
+                    key={key}
                     type="button"
-                    onClick={() => handleRaceType(opt.key)}
-                    className={pillClass(raceType === opt.key)}
+                    onClick={() => handleRaceType(key)}
+                    className={pillClass(raceType === key)}
                   >
-                    {opt.label}
+                    {t(`racetype.${key}`)}
                   </button>
                 ))}
               </div>
@@ -173,7 +196,7 @@ export default function HomePage() {
                       onClick={() => setTriathlonType(opt.key)}
                       className={triPillClass(triathlonType === opt.key)}
                     >
-                      {opt.label}
+                      {t(`racetype.${opt.key}`)}
                       <span className="font-normal opacity-60 ml-1">{opt.sublabel}</span>
                     </button>
                   ))}
@@ -184,7 +207,7 @@ export default function HomePage() {
             {/* Goal time */}
             <div className="mb-5">
               <p className="text-[9px] font-bold tracking-widest text-gray-400 uppercase mb-3">
-                Goal finish time
+                {t('home.form.goalTime')}
               </p>
               <div className="flex items-center gap-3">
                 <div className="flex-1">
@@ -231,20 +254,19 @@ export default function HomePage() {
                          text-white rounded-[14px] text-[15px] font-extrabold
                          py-[15px] transition-colors"
             >
-              Get my nutrition plan →
+              {t('home.form.cta')}
             </button>
             <p className="text-[10px] text-gray-400 text-center mt-2">
-              ⚡ Free · instant · no account needed
+              {t('home.form.free')}
             </p>
 
             {/* Pro planner block */}
             <div className="mt-5 bg-[#1a1a1a] rounded-xl px-4 py-3.5
                             flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold text-white mb-0.5">Pro planner</p>
+                <p className="text-xs font-bold text-white mb-0.5">{t('home.pro.title')}</p>
                 <p className="text-[10px] text-white/40 leading-relaxed">
-                  Non-Lecka products · elevation · coach notes ·
-                  gut training · weather forecast &amp; more
+                  {t('home.pro.body')}
                 </p>
               </div>
               <a
@@ -252,7 +274,7 @@ export default function HomePage() {
                 className="flex-shrink-0 bg-[#48C4B0] text-white text-[11px]
                            font-bold rounded-full px-3.5 py-1.5 whitespace-nowrap"
               >
-                Try it →
+                {t('home.pro.cta')}
               </a>
             </div>
 
@@ -265,9 +287,7 @@ export default function HomePage() {
         <div className="max-w-lg mx-auto px-5 pt-8 space-y-6">
 
           <div className="text-center space-y-1">
-            <p className="text-xs text-gray-400">
-              Trusted by endurance athletes worldwide
-            </p>
+            <p className="text-xs text-gray-400">{t('home.trust')}</p>
             <p className="text-xs text-gray-400">
               Provided by{' '}
               <a
@@ -283,11 +303,8 @@ export default function HomePage() {
 
           <div className="text-center space-y-1">
             <p className="text-xs text-gray-400">
-              Questions?{' '}
-              <a
-                href="mailto:info@getlecka.com"
-                className="text-[#48C4B0] hover:underline"
-              >
+              {t('home.footer.questions')}{' '}
+              <a href="mailto:info@getlecka.com" className="text-[#48C4B0] hover:underline">
                 info@getlecka.com
               </a>
               {' '}·{' '}
@@ -303,7 +320,7 @@ export default function HomePage() {
           </div>
 
           <div className="text-center">
-            <p className="text-xs text-gray-400 mb-2">Find Lecka near you</p>
+            <p className="text-xs text-gray-400 mb-2">{t('home.footer.findLecka')}</p>
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
               {[
                 { label: 'US',          href: 'https://www.getlecka.com' },
