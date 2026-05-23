@@ -84,5 +84,22 @@
   "field.region.distributor": "Distributor partners",
   "field.region.other": "Other",
   "field.region.distributorNote": "via distributor",
-  "field.region.internationalNote": "Shows full product range"
+  "field.region.internationalNote": "Shows full product range",
+
+  "simple.raceName": "Race name",
+  "simple.raceDate": "Race date",
+  "simple.raceType": "What are you racing?",
+  "simple.goalTime": "Your goal time",
+  "simple.conditions": "Expected conditions on race day",
+  "simple.gender": "You are",
+  "simple.weight": "Your weight",
+  "simple.caffeine": "Caffeine during racing?",
+  "simple.flavour": "Lecka flavour preference",
+  "simple.email": "Your email — get your plan as a PDF",
+  "simple.suggestForMe": "Suggest for me",
+  "simple.suggestForMe.desc": "We'll choose a balanced mix based on your plan.",
+  "simple.pickFavourites": "I'll pick my favourites",
+  "simple.pickFavourites.desc": "Choose the flavours you want in your plan.",
+  "simple.buildPlan": "Build my plan →",
+  "simple.buildingPlan": "Building your plan…"
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Nav from './Nav.jsx'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
@@ -108,6 +109,7 @@ const DEFAULT_FORM = {
 }
 
 export default function SimpleForm({ onComplete }) {
+  const { t } = useTranslation(['form', 'common'])
   const [form,       setForm]       = useState(DEFAULT_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [region,     setRegion]     = useState(() => getSavedRegion() ?? null)
@@ -264,7 +266,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 0. Region */}
           <div className="mb-8">
-            <SectionLabel>Where are you based?</SectionLabel>
+            <SectionLabel>{t('form:steps.region')}</SectionLabel>
             <p className="text-xs text-gray-400 mb-3">We use this to show you available products and local pricing.</p>
 
             {/* All non-international countries */}
@@ -317,7 +319,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 1. Race name */}
           <div className="mb-8">
-            <SectionLabel>Race name</SectionLabel>
+            <SectionLabel>{t('form:simple.raceName')}</SectionLabel>
             <input
               type="text"
               placeholder="e.g. Cape Town Marathon 2026"
@@ -331,7 +333,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 2. Race date */}
           <div className="mb-8">
-            <SectionLabel>Race date</SectionLabel>
+            <SectionLabel>{t('form:simple.raceDate')}</SectionLabel>
             <input
               type="date"
               value={form.race_date}
@@ -345,7 +347,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 3. Race type */}
           <div className="mb-8">
-            <SectionLabel>What are you racing?</SectionLabel>
+            <SectionLabel>{t('form:simple.raceType')}</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {RACE_OPTIONS.map(opt => (
                 <Pill
@@ -395,7 +397,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 4. Goal time */}
           <div className="mb-8">
-            <SectionLabel>Your goal time</SectionLabel>
+            <SectionLabel>{t('form:simple.goalTime')}</SectionLabel>
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <input
@@ -436,7 +438,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 5. Race conditions */}
           <div className="mb-8">
-            <SectionLabel>Expected conditions on race day</SectionLabel>
+            <SectionLabel>{t('form:simple.conditions')}</SectionLabel>
 
             {/* Temperature */}
             <p className="text-xs text-gray-400 mb-2">Temperature</p>
@@ -486,7 +488,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 6. Gender */}
           <div className="mb-8">
-            <SectionLabel>You are</SectionLabel>
+            <SectionLabel>{t('form:simple.gender')}</SectionLabel>
             <div className="flex gap-2">
               {[
                 { key: 'female', label: 'Female' },
@@ -504,7 +506,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 7. Weight */}
           <div className="mb-8">
-            <SectionLabel>Your weight</SectionLabel>
+            <SectionLabel>{t('form:simple.weight')}</SectionLabel>
             <WeightInput
               value={form.weight_value}
               unit={form.weight_unit}
@@ -517,7 +519,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 8. Caffeine */}
           <div className="mb-8">
-            <SectionLabel>Caffeine during racing?</SectionLabel>
+            <SectionLabel>{t('form:simple.caffeine')}</SectionLabel>
             <div className="flex gap-2">
               <div className="flex-1">
                 <Pill
@@ -539,7 +541,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 9. Lecka flavour preference */}
           <div className="mb-8">
-            <SectionLabel>Lecka flavour preference</SectionLabel>
+            <SectionLabel>{t('form:simple.flavour')}</SectionLabel>
             <div className="space-y-2">
               <button
                 type="button"
@@ -552,9 +554,9 @@ export default function SimpleForm({ onComplete }) {
                 ].join(' ')}
               >
                 <p className={`text-sm font-semibold ${form.product_preference_mode === 'suggested' ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
-                  Suggest for me
+                  {t('form:simple.suggestForMe')}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">We'll choose a balanced mix based on your plan.</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('form:simple.suggestForMe.desc')}</p>
               </button>
               <button
                 type="button"
@@ -567,9 +569,9 @@ export default function SimpleForm({ onComplete }) {
                 ].join(' ')}
               >
                 <p className={`text-sm font-semibold ${form.product_preference_mode === 'pick' ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
-                  I'll pick my favourites
+                  {t('form:simple.pickFavourites')}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">Choose the flavours you want in your plan.</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('form:simple.pickFavourites.desc')}</p>
               </button>
             </div>
             {form.product_preference_mode === 'pick' && (
@@ -594,7 +596,7 @@ export default function SimpleForm({ onComplete }) {
           {/* 10. Email (optional) */}
           <div className="mb-8">
             <p className="text-xs text-gray-400 mb-2">
-              Your email — get your plan as a PDF
+              {t('form:simple.email')}
             </p>
             <input
               type="email"
@@ -615,7 +617,7 @@ export default function SimpleForm({ onComplete }) {
                        rounded-2xl text-base font-bold transition-colors
                        disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Building your plan…' : 'Build my plan →'}
+            {submitting ? t('form:simple.buildingPlan') : t('form:simple.buildPlan')}
           </button>
 
         </form>
