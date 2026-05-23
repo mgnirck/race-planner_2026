@@ -12,15 +12,22 @@ import { getSavedRegion, saveRegion } from '../embed.js'
 import regionsConfig from '../config/regions.json'
 
 const RACE_OPTIONS = [
-  { key: '5k',              label: '5 km' },
-  { key: '10k',             label: '10 km' },
-  { key: 'half_marathon',   label: 'Half marathon' },
-  { key: 'marathon',        label: 'Marathon' },
-  { key: 'ultra_50k',       label: 'Ultra 50 km' },
-  { key: 'ultra_100k',      label: 'Ultra 100 km+' },
-  { key: 'triathlon_70_3',  label: '70.3 Triathlon' },
-  { key: 'triathlon_140_6', label: 'Ironman 140.6' },
-  { key: 'custom',          label: 'Other / Custom' },
+  { key: '5k',            label: '5 km'          },
+  { key: '10k',           label: '10 km'         },
+  { key: 'half_marathon', label: 'Half marathon' },
+  { key: 'marathon',      label: 'Marathon'      },
+  { key: 'ultra_50k',     label: 'Ultra 50 km'   },
+  { key: 'ultra_100k',    label: 'Ultra 100 km+' },
+  { key: 'cycling',       label: 'Cycling'       },
+  { key: 'triathlon',     label: 'Triathlon'     },
+  { key: 'custom',        label: 'Other / Custom'},
+]
+
+const TRIATHLON_OPTIONS = [
+  { key: 'triathlon_sprint',  label: 'Sprint',  sublabel: '750m swim · 20km bike · 5km run',    km: 51   },
+  { key: 'triathlon_olympic', label: 'Olympic', sublabel: '1.5km swim · 40km bike · 10km run',  km: 51.5 },
+  { key: 'triathlon_70_3',    label: '70.3',    sublabel: '1.9km swim · 90km bike · 21km run',  km: 113  },
+  { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226  },
 ]
 
 const TEMPERATURE_OPTIONS = [
@@ -93,6 +100,7 @@ const DEFAULT_FORM = {
   race_name:              '',
   race_date:              '',
   race_type:              '',
+  triathlon_type:         '',
   custom_race_km:         '',
   custom_race_unit:       'km',
   goal_time_h:            '',
@@ -121,6 +129,25 @@ export default function SimpleForm({ onComplete }) {
 
   const { products: liveProducts } = useProducts()
   const catalog = liveProducts ?? FALLBACK_PRODUCTS
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('lecka_homepage_prefill')
+      if (!raw) return
+      sessionStorage.removeItem('lecka_homepage_prefill')
+      const prefill = JSON.parse(raw)
+      const isTriSub = TRIATHLON_OPTIONS.some(o => o.key === prefill.race_type)
+      setForm(f => ({
+        ...f,
+        race_type:      isTriSub ? 'triathlon' : (prefill.race_type ?? f.race_type),
+        triathlon_type: isTriSub ? prefill.race_type : (prefill.triathlon_type ?? f.triathlon_type ?? ''),
+        goal_time_h:    prefill.goal_time_h ?? f.goal_time_h,
+        goal_time_m:    prefill.goal_time_m ?? f.goal_time_m,
+      }))
+    } catch {
+      // malformed sessionStorage — silently ignore
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const userId = localStorage.getItem('lecka_user_id')
@@ -164,9 +191,12 @@ export default function SimpleForm({ onComplete }) {
         ? parseFloat(form.custom_race_km) * 1.60934
         : parseFloat(form.custom_race_km))
     : null
-  const resolvedRaceType = form.race_type === 'custom'
-    ? (customKm > 0 ? mapCustomDistToRaceType(customKm) : '')
-    : form.race_type
+  const resolvedRaceType =
+    form.race_type === 'custom'
+      ? (customKm > 0 ? mapCustomDistToRaceType(customKm) : '')
+      : form.race_type === 'triathlon'
+        ? (form.triathlon_type || '')
+        : form.race_type
 
   const canSubmit = resolvedRaceType !== '' && goalValid && !submitting &&
     (form.race_type !== 'custom' || (parseFloat(form.custom_race_km) > 0))
@@ -196,6 +226,10 @@ export default function SimpleForm({ onComplete }) {
       ? []
       : form.preferred_product_ids
 
+    const triathlonKm = form.race_type === 'triathlon'
+      ? (TRIATHLON_OPTIONS.find(o => o.key === form.triathlon_type)?.km ?? 0)
+      : null
+
     const engineInputs = {
       race_type:        resolvedRaceType,
       goal_minutes:     goalMinutes,
@@ -205,7 +239,7 @@ export default function SimpleForm({ onComplete }) {
       effort:           SIMPLE_DEFAULTS.effort,
       caffeine_ok,
       elevation_gain_m: SIMPLE_DEFAULTS.elevation_gain_m,
-      distance_km:      customKm ?? SIMPLE_DEFAULTS.distance_km,
+      distance_km:      triathlonKm ?? customKm ?? SIMPLE_DEFAULTS.distance_km,
       athlete_profile:  SIMPLE_DEFAULTS.athlete_profile,
       training_mode:    SIMPLE_DEFAULTS.training_mode,
     }
@@ -237,7 +271,7 @@ export default function SimpleForm({ onComplete }) {
       caffeine_ok,
       preferred_product_ids,
       product_preference_mode: form.product_preference_mode,
-      surface_type:           '',
+      surface_type:           form.race_type === 'triathlon' ? 'road' : '',
       elevation_gain_m:       0,
       dist_unit:              'km',
       fuelling_style:         'gels_only',
@@ -354,10 +388,32 @@ export default function SimpleForm({ onComplete }) {
                   key={opt.key}
                   label={opt.label}
                   selected={form.race_type === opt.key}
-                  onClick={() => setForm(f => ({ ...f, race_type: opt.key }))}
+                  onClick={() => setForm(f => ({ ...f, race_type: opt.key, triathlon_type: '' }))}
                 />
               ))}
             </div>
+
+            {/* Triathlon sub-options */}
+            {form.race_type === 'triathlon' && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {TRIATHLON_OPTIONS.map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, triathlon_type: opt.key }))}
+                    className={[
+                      'px-3 py-1.5 rounded-full border-2 text-xs font-semibold transition-colors',
+                      form.triathlon_type === opt.key
+                        ? 'bg-[#48C4B0] border-[#48C4B0] text-white'
+                        : 'bg-white border-gray-200 text-gray-600',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                    <span className="font-normal opacity-60 ml-1">{opt.sublabel}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Custom distance input */}
             {form.race_type === 'custom' && (
