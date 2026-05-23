@@ -1060,52 +1060,62 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
 function StepThree({ form, setForm }) {
   const { t } = useTranslation(['form', 'common'])
 
-  const style = form.fuelling_style
+  const style       = form.fuelling_style
+  const isTriathlon = form.sport === 'triathlon'
+
+  // Silently lock triathlon to gels_only so downstream logic is consistent
+  React.useEffect(() => {
+    if (isTriathlon && form.fuelling_style !== 'gels_only') {
+      setForm(f => ({ ...f, fuelling_style: 'gels_only' }))
+    }
+  }, [isTriathlon]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-7">
 
-      {/* Fuelling style */}
-      <div>
-        <FieldLabel>Fuelling style</FieldLabel>
-        <div className="space-y-2">
-          <OptionCard
-            label="Gels only"
-            desc="Simple and fast — gels are your primary fuel source throughout"
-            selected={style === 'gels_only'}
-            onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_only' }))}
-          />
-          <OptionCard
-            label="Gels + bars"
-            desc="Real food variety — bars for steady energy, gels when you need a boost"
-            selected={style === 'gels_and_bars'}
-            onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_and_bars' }))}
-          />
-          <OptionCard
-            label="Drink mix + gels"
-            desc="Continuous carbs from your bottle, gels for intensity spikes"
-            selected={style === 'drink_mix_base'}
-            onClick={() => setForm(f => ({ ...f, fuelling_style: 'drink_mix_base' }))}
-          />
-          <OptionCard
-            label="Whatever works"
-            desc="No strong preference — give me a solid starting plan I can adjust"
-            selected={style === 'flexible'}
-            onClick={() => setForm(f => ({ ...f, fuelling_style: 'flexible' }))}
-          />
+      {/* Fuelling style — hidden for triathlon */}
+      {!isTriathlon && (
+        <div>
+          <FieldLabel>Fuelling style</FieldLabel>
+          <div className="space-y-2">
+            <OptionCard
+              label="Gels only"
+              desc="Simple and fast — gels are your primary fuel source throughout"
+              selected={style === 'gels_only'}
+              onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_only' }))}
+            />
+            <OptionCard
+              label="Gels + bars"
+              desc="Real food variety — bars for steady energy, gels when you need a boost"
+              selected={style === 'gels_and_bars'}
+              onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_and_bars' }))}
+            />
+            <OptionCard
+              label="Drink mix + gels"
+              desc="Continuous carbs from your bottle, gels for intensity spikes"
+              selected={style === 'drink_mix_base'}
+              onClick={() => setForm(f => ({ ...f, fuelling_style: 'drink_mix_base' }))}
+            />
+            <OptionCard
+              label="Whatever works"
+              desc="No strong preference — give me a solid starting plan I can adjust"
+              selected={style === 'flexible'}
+              onClick={() => setForm(f => ({ ...f, fuelling_style: 'flexible' }))}
+            />
+          </div>
+          {style === 'drink_mix_base' && (
+            <p className="text-xs text-[#48C4B0] mt-3">
+              Lecka's carb + hydration powder is coming soon.{' '}
+              <a
+                href="mailto:info@getlecka.com?subject=Carb powder waitlist"
+                className="underline"
+              >
+                Join the waitlist to be first →
+              </a>
+            </p>
+          )}
         </div>
-        {style === 'drink_mix_base' && (
-          <p className="text-xs text-[#48C4B0] mt-3">
-            Lecka's carb + hydration powder is coming soon.{' '}
-            <a
-              href="mailto:info@getlecka.com?subject=Carb powder waitlist"
-              className="underline"
-            >
-              Join the waitlist to be first →
-            </a>
-          </p>
-        )}
-      </div>
+      )}
 
       {/* Product preferences */}
       <p className="text-sm text-gray-500">
@@ -1127,6 +1137,7 @@ function StepThree({ form, setForm }) {
         }
         region={getSavedRegion() ?? 'us'}
         caffeineOk={form.caffeine_ok !== false}
+        sport={form.sport}
       />
 
     </div>
@@ -1793,7 +1804,12 @@ export default function StepForm({ onComplete }) {
 
     const addonCoverage      = computeAddonCoverage(resolvedAddonItems, goal_minutes)
     const foundationTargets  = computeFoundationTargets(targets, addonCoverage)
-    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, getSavedRegion(), { fuelling_style: form.fuelling_style }, allProducts)
+    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, getSavedRegion(), {
+      fuelling_style: form.fuelling_style,
+      swim_minutes,
+      bike_minutes,
+      run_minutes,
+    }, allProducts)
 
     try { sessionStorage.removeItem(DRAFT_KEY) } catch {}
     onComplete({
