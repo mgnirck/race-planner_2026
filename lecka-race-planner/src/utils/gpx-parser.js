@@ -10,16 +10,15 @@
  *   This gives the shortest surface path and is accurate to within ~0.3% for
  *   the distances typical of running and cycling routes.
  *
- * Elevation noise filter (2 m threshold):
+ * Elevation smoothing (rolling median, window = 5):
  *   Consumer GPS receivers report elevation with ±1–3 m of noise even when
- *   stationary. Accumulating every tiny delta would inflate gain/loss figures
- *   significantly over a long route. Ignoring deltas whose absolute value is
- *   ≤ 2 m suppresses most sensor noise while still capturing genuine short
- *   climbs, a common approach used by Garmin Connect and Strava.
+ *   stationary. A rolling median over 5 consecutive points suppresses outliers
+ *   better than a mean while preserving genuine climbs. No threshold is applied
+ *   after smoothing — high-density tracks (many points/km) have sub-0.5 m steps
+ *   that are real gain, so any positive delta after smoothing is counted.
  */
 
 const EARTH_RADIUS_KM = 6371;
-const ELEVATION_NOISE_THRESHOLD_M = 2;
 
 function toRad(deg) {
   return (deg * Math.PI) / 180;
@@ -57,29 +56,42 @@ export function parseGPX(fileText) {
   let elevation_gain_m = 0;
   let elevation_loss_m = 0;
 
+  // Pass 1: accumulate distance
   for (let i = 1; i < trkpts.length; i++) {
     const prev = trkpts[i - 1];
     const curr = trkpts[i];
-
     const lat1 = parseFloat(prev.getAttribute('lat'));
     const lon1 = parseFloat(prev.getAttribute('lon'));
     const lat2 = parseFloat(curr.getAttribute('lat'));
     const lon2 = parseFloat(curr.getAttribute('lon'));
-
     distance_km += haversineKm(lat1, lon1, lat2, lon2);
+  }
 
-    const prevEle = prev.getElementsByTagName('ele')[0];
-    const currEle = curr.getElementsByTagName('ele')[0];
+  // Pass 2: smooth elevations with rolling median (window=5), then accumulate gain/loss
+  const elevations = trkpts.map(pt => {
+    const ele = pt.getElementsByTagName('ele')[0];
+    return ele ? parseFloat(ele.textContent) : null;
+  });
 
-    if (prevEle && currEle) {
-      const delta = parseFloat(currEle.textContent) - parseFloat(prevEle.textContent);
-      if (Math.abs(delta) > ELEVATION_NOISE_THRESHOLD_M) {
-        if (delta > 0) {
-          elevation_gain_m += delta;
-        } else {
-          elevation_loss_m += Math.abs(delta);
-        }
-      }
+  const WINDOW = 5;
+  const half = Math.floor(WINDOW / 2);
+  const smoothed = elevations.map((val, i) => {
+    if (val === null) return null;
+    const slice = [];
+    for (let j = Math.max(0, i - half); j <= Math.min(elevations.length - 1, i + half); j++) {
+      if (elevations[j] !== null) slice.push(elevations[j]);
+    }
+    slice.sort((a, b) => a - b);
+    return slice[Math.floor(slice.length / 2)];
+  });
+
+  for (let i = 1; i < smoothed.length; i++) {
+    if (smoothed[i] === null || smoothed[i - 1] === null) continue;
+    const delta = smoothed[i] - smoothed[i - 1];
+    if (delta > 0) {
+      elevation_gain_m += delta;
+    } else if (delta < 0) {
+      elevation_loss_m -= delta;
     }
   }
 

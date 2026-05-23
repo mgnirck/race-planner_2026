@@ -36,5 +36,10 @@
   "surface.trail": "Trail",
 
   "gender.female": "Female",
-  "gender.male": "Male"
+  "gender.male": "Male",
+
+  "nav.myPlans": "My Plans",
+  "nav.quickPlan": "Quick plan",
+  "nav.proPlan": "Pro plan",
+  "nav.logIn": "Log in"
 }

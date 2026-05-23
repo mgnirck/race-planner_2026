@@ -1657,19 +1657,18 @@ export default function StepForm({ onComplete }) {
       <div className="max-w-md mx-auto w-full px-5 pt-6 pb-4">
         <div className="flex items-center justify-between mb-5">
           <img src="/Lecka-Logo-New%20Green%20Font.png" alt="Lecka" className="h-7" />
-          {/* Language switcher — re-enable when translations complete */}
         </div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
           {t('common:step.ofTotal', { step: step + 1, total: totalSteps })}
         </p>
         <h1 className="text-2xl font-bold text-[#1B1B1B] mt-1">
           {step === 0
-            ? 'Where are you based?'
+            ? t('form:steps.region')
             : [
                 t('form:steps.race'),
                 t('form:steps.body'),
                 t('form:steps.products'),
-                'Performance add-ons',
+                t('form:steps.addons'),
               ][step - 1]}
         </h1>
       </div>
@@ -1688,8 +1687,8 @@ export default function StepForm({ onComplete }) {
             }
             prefillMessage={
               fromSimple && !fromSimpleDismissed
-                ? 'Pre-filled from your Quick plan — just add the details below.'
-                : undefined
+                ? t('form:prefill.fromSimple')
+                : t('form:prefill.fromProfile')
             }
             onDismissPrefill={() => {
               if (fromSimple && !fromSimpleDismissed) setFromSimpleDismissed(true)

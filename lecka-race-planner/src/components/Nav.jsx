@@ -1,5 +1,6 @@
 import React from 'react'
 import { isEmbedded } from '../embed.js'
+import LanguageSwitcher from './LanguageSwitcher.jsx'
 
 const TEAL = '#1D9E75'
 
@@ -48,6 +49,7 @@ export default function Nav() {
           >
             Pro plan
           </a>
+          <LanguageSwitcher compact />
           {userId ? (
             <a
               href="/dashboard"
