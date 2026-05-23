@@ -1188,7 +1188,8 @@ export default async function handler(req, res) {
   }
 
   // ── Admin alert (non-fatal) ───────────────────────────────────────────────
-  sendAdminAlert(email, inputs, targets, selectedProducts, resolvedAddonItems, region).catch(() => {})
+  // Must be awaited — serverless functions freeze on response, so fire-and-forget never executes.
+  await sendAdminAlert(email, inputs, targets, selectedProducts, resolvedAddonItems, region)
 
   // ── Shopify upsert (non-fatal, Shopify regions only) ─────────────────────
   // TODO: implement Haravan customer upsert for VN (Haravan Admin API or webhook).
