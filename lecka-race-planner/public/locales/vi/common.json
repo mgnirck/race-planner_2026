@@ -36,5 +36,10 @@
   "surface.trail": "Trail",
 
   "gender.female": "Nữ",
-  "gender.male": "Nam"
+  "gender.male": "Nam",
+
+  "nav.myPlans": "Kế hoạch của tôi",
+  "nav.quickPlan": "Kế hoạch nhanh",
+  "nav.proPlan": "Kế hoạch Pro",
+  "nav.logIn": "Đăng nhập"
 }
