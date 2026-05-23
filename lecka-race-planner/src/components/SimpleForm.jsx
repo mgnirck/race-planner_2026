@@ -400,7 +400,16 @@ export default function SimpleForm({ onComplete }) {
                   <button
                     key={opt.key}
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, triathlon_type: opt.key }))}
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem('lecka_pro_prefill', JSON.stringify({
+                          sport: 'triathlon',
+                          triathlon_type: opt.key,
+                          race_type: opt.key,
+                        }))
+                      } catch {}
+                      window.location.assign('/planner/pro')
+                    }}
                     className={[
                       'px-3 py-1.5 rounded-full border-2 text-xs font-semibold transition-colors',
                       form.triathlon_type === opt.key

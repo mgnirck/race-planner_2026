@@ -1295,6 +1295,9 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         has_addons:        resolvedAddonItems.length > 0,
         addon_carbs_ph:    form.addon_carbs_per_hour ?? 0,
         fuelling_style:    form.fuelling_style,
+        swim_minutes:      form.swim_minutes,
+        bike_minutes:      form.bike_minutes,
+        run_minutes:       form.run_minutes,
         selected_products: effectiveSelection.map(s => s.product.name),
       }),
     })
@@ -1396,6 +1399,25 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     () => adjustTimelineSelection(leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog),
     [leckaSelection, manualQty, targets, allProductsCatalog]
   )
+
+  const triPhaseSummary = useMemo(() => {
+    const swimMin = Number(form.swim_minutes)
+    const bikeMin = Number(form.bike_minutes)
+    const runMin  = Number(form.run_minutes)
+    if (!(swimMin > 0) || !(bikeMin > 0) || !(runMin > 0)) return null
+    if (!String(targets.race_type).startsWith('triathlon_')) return null
+    const bikeWindowEnd = swimMin + bikeMin
+    let bikeCarbs = 0
+    let runCarbs  = 0
+    for (const item of effectiveSelection) {
+      if (!item.timing_minutes || !item.product?.carbs_per_unit) continue
+      for (const t of item.timing_minutes) {
+        if (t >= 0 && t < bikeWindowEnd) bikeCarbs += item.product.carbs_per_unit
+        else if (t >= bikeWindowEnd && t < targets.total_duration_minutes) runCarbs += item.product.carbs_per_unit
+      }
+    }
+    return { swimMin, bikeMin, runMin, bikeWindowEnd, bikeCarbs: Math.round(bikeCarbs), runCarbs: Math.round(runCarbs) }
+  }, [effectiveSelection, targets, form.swim_minutes, form.bike_minutes, form.run_minutes])
 
   const addonTimelineItems = useMemo(
     () => buildAddonTimelineItems(resolvedAddonItems, targets.total_duration_minutes),
@@ -1671,6 +1693,34 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         <SectionLabel>{t('section.raceTimeline')}</SectionLabel>
         <RaceTimelineV2 events={timeline} totalDuration={targets.total_duration_minutes} />
       </section>
+      {triPhaseSummary && (
+        <div className="rounded-xl border border-gray-100 bg-gray-50 divide-y divide-gray-100">
+          <div className="flex items-start gap-3 px-4 py-3">
+            <span className="text-base leading-tight mt-0.5">🏊</span>
+            <div>
+              <span className="text-sm font-semibold text-[#1B1B1B]">Swim</span>
+              <span className="text-xs text-gray-400 ml-2">0 → T+{triPhaseSummary.swimMin} min</span>
+              <p className="text-xs text-gray-500 mt-0.5">No intake. Start fuelling at T1.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 px-4 py-3">
+            <span className="text-base leading-tight mt-0.5">🚴</span>
+            <div>
+              <span className="text-sm font-semibold text-[#1B1B1B]">Bike</span>
+              <span className="text-xs text-gray-400 ml-2">T+{triPhaseSummary.swimMin} → T+{triPhaseSummary.bikeWindowEnd} min</span>
+              <p className="text-xs text-gray-500 mt-0.5">Primary fuelling window. {triPhaseSummary.bikeCarbs}g carbs, gels every 30 min.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3 px-4 py-3">
+            <span className="text-base leading-tight mt-0.5">🏃</span>
+            <div>
+              <span className="text-sm font-semibold text-[#1B1B1B]">Run</span>
+              <span className="text-xs text-gray-400 ml-2">T+{triPhaseSummary.bikeWindowEnd} → T+{targets.total_duration_minutes} min</span>
+              <p className="text-xs text-gray-500 mt-0.5">Gel-only. Every 25 min. Keep it light.</p>
+            </div>
+          </div>
+        </div>
+      )}
       {leckaSelection.some(i => i.product?.type === 'ultra_gel') && (
         <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-xl p-3">
           <p className="text-xs font-semibold text-amber-900 mb-0.5">Running vest required</p>

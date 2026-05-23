@@ -16,6 +16,26 @@ const rateLimitMap = new Map()
 const RATE_LIMIT   = 5
 const WINDOW_MS    = 60_000
 
+const TRIATHLON_RACE_TYPES = new Set(['triathlon_sprint', 'triathlon_olympic', 'triathlon_70_3', 'triathlon_140_6'])
+
+function buildTriathlonPhaseBlock(input) {
+  const { race_type, swim_minutes: sw, bike_minutes: bk, run_minutes: rn, goal_minutes } = input
+  if (!TRIATHLON_RACE_TYPES.has(race_type)) return ''
+  const swimMin = Number(sw)
+  const bikeMin = Number(bk)
+  const runMin  = Number(rn)
+  if (!(swimMin > 0) || !(bikeMin > 0) || !(runMin > 0)) return ''
+  const total = goal_minutes ?? swimMin + bikeMin + runMin
+  return `
+This is a triathlon with three distinct nutrition phases:
+- Swim (0–${swimMin} min): no intake possible — the athlete arrives at T1 with depleted fast carbs
+- Bike (${swimMin}–${swimMin + bikeMin} min): the primary fuelling window — highest carb absorption rate, carry enough for the full bike
+- Run (${swimMin + bikeMin}–${total} min): gel-only, every 25 min, gut stress increases with run impact after hours of racing
+
+Frame your coach notes around these three phases. Explicitly mention T1 as the start of fuelling, the bike as the opportunity to front-load carbs, and the run as the phase to keep intake light and consistent.
+`
+}
+
 function isRateLimited(ip) {
   const now = Date.now()
   const entry = rateLimitMap.get(ip)
@@ -63,6 +83,8 @@ function buildCoachPrompt(input) {
   const elevationNote = elevation_tier && elevation_tier !== 'flat'
     ? ` The course is ${elevation_tier.replace('_', ' ')}.` : ''
 
+  const triathlonBlock = buildTriathlonPhaseBlock(input)
+
   return `Write coach copy for this athlete's race nutrition plan:
 
 Race: ${raceLabels[race_type] ?? race_type}
@@ -74,7 +96,7 @@ Fluid target: ${fluid_ml_per_hour}ml per hour
 Gels in plan: ${gel_count}
 Athlete profile: ${athlete_profile ?? 'intermediate'}
 Gender: ${gender ?? 'not specified'}
-
+${triathlonBlock}
 Write 3–4 paragraphs explaining why this plan is right for this athlete and these conditions. Be specific to the numbers above.`
 }
 
@@ -120,6 +142,8 @@ function buildProCoachPrompt(input) {
     ? `The athlete is supplementing with additional products providing ${addon_carbs_ph}g carbs/hour on top of the Lecka foundation.`
     : ''
 
+  const triathlonBlock = buildTriathlonPhaseBlock(input)
+
   return `Write detailed coach notes for this athlete's race nutrition plan.
 
 Athlete profile:
@@ -140,7 +164,7 @@ Nutrition targets:
 - Products: ${selected_products?.join(', ') ?? 'not specified'}
 - Fuelling style: ${fuelling_style ?? 'gels only'}
 ${addonNote}
-
+${triathlonBlock}
 Write 4–5 paragraphs of coach notes. Be specific to this athlete's exact combination of variables — explain why their targets are what they are and how the different factors interact. Reference their actual numbers. Include one paragraph specifically on execution — the most important timing or pacing cue for this race and conditions.
 
 Then write a separate "Watch out for" section: 2–3 sentences on the one or two most likely failure modes for this specific plan. Be direct and specific — not generic warnings. Reference their actual race, conditions, and profile.

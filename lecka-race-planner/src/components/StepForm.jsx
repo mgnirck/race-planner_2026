@@ -29,6 +29,17 @@ import regionsConfig from '../config/regions.json'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function effectiveGoalMinutes(form) {
+  if (form.sport === 'triathlon') {
+    const swim = parseInt(form.swim_minutes, 10)
+    const bike = goalMinutesFromFields(form.bike_time_h, form.bike_time_m) ?? 0
+    const run  = goalMinutesFromFields(form.run_time_h,  form.run_time_m)  ?? 0
+    const total = (Number.isFinite(swim) ? swim : 0) + bike + run
+    return total > 0 ? total : null
+  }
+  return goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
+}
+
 function goalMinutesFromFields(h, m) {
   const hours = parseInt(h, 10)
   const mins  = parseInt(m, 10)
@@ -46,10 +57,13 @@ const PACE_BOUNDS = {
   'marathon':          { min: 120, max: 720  },
   'ultra_50k':         { min: 210, max: 1200 },
   'ultra_100k':        { min: 480, max: 2400 },
-  'triathlon_sprint':  { min: 40,  max: 240  },
-  'triathlon_olympic': { min: 90,  max: 480  },
-  'triathlon_70_3':    { min: 210, max: 900  },
-  'triathlon_140_6':   { min: 480, max: 1800 },
+}
+
+const TRIATHLON_SPLIT_BOUNDS = {
+  triathlon_sprint:  { swim: [8,  40],  bike: [20,  120], run: [10,  90]  },
+  triathlon_olympic: { swim: [15, 70],  bike: [45,  200], run: [25,  150] },
+  triathlon_70_3:    { swim: [25, 90],  bike: [120, 420], run: [60,  300] },
+  triathlon_140_6:   { swim: [45, 160], bike: [240, 900], run: [120, 600] },
 }
 
 function distanceToRaceType(km) {
@@ -97,6 +111,11 @@ const DEFAULT_FORM = {
   gpx_parsed:        false,
   sport:             'running',
   triathlon_type:    '',
+  swim_minutes:      '',
+  bike_time_h:       '',
+  bike_time_m:       '',
+  run_time_h:        '',
+  run_time_m:        '',
   // Step 2
   weight_value:    '70',
   weight_unit:     'kg',
@@ -250,6 +269,27 @@ function StepOne({ form, setForm }) {
   const hTouched      = form.goal_time_h !== ''
   const mTouched      = form.goal_time_m !== ''
   const timeIsInvalid = (hTouched || mTouched) && goalMinutes === null
+
+  // Triathlon split state
+  const splitBounds   = form.triathlon_type ? TRIATHLON_SPLIT_BOUNDS[form.triathlon_type] : null
+  const swimMin       = parseInt(form.swim_minutes, 10)
+  const bikeMin       = goalMinutesFromFields(form.bike_time_h, form.bike_time_m)
+  const runMin        = goalMinutesFromFields(form.run_time_h,  form.run_time_m)
+  const swimTouched   = form.swim_minutes !== ''
+  const bikeTouched   = form.bike_time_h !== '' || form.bike_time_m !== ''
+  const runTouched    = form.run_time_h  !== '' || form.run_time_m  !== ''
+  const swimOk        = splitBounds && Number.isFinite(swimMin) && swimMin >= splitBounds.swim[0] && swimMin <= splitBounds.swim[1]
+  const bikeOk        = splitBounds && bikeMin !== null && bikeMin >= splitBounds.bike[0] && bikeMin <= splitBounds.bike[1]
+  const runOk         = splitBounds && runMin  !== null && runMin  >= splitBounds.run[0]  && runMin  <= splitBounds.run[1]
+  const swimError     = swimTouched && splitBounds && !swimOk
+    ? (!Number.isFinite(swimMin) ? 'Enter a number' : swimMin < splitBounds.swim[0] ? `Min ${splitBounds.swim[0]} min` : `Max ${splitBounds.swim[1]} min`)
+    : null
+  const bikeError     = bikeTouched && splitBounds && !bikeOk
+    ? (bikeMin === null ? 'Enter a valid time' : bikeMin < splitBounds.bike[0] ? `Min ${splitBounds.bike[0]} min` : `Max ${splitBounds.bike[1]} min`)
+    : null
+  const runError      = runTouched && splitBounds && !runOk
+    ? (runMin === null ? 'Enter a valid time' : runMin < splitBounds.run[0] ? `Min ${splitBounds.run[0]} min` : `Max ${splitBounds.run[1]} min`)
+    : null
 
   function handleDistChange(rawValue) {
     setForm(f => {
@@ -613,92 +653,204 @@ function StepOne({ form, setForm }) {
         </div>
       )}
 
-      {/* Goal finish time */}
-      <div>
-        <FieldLabel>{t('form:field.goalTime')}</FieldLabel>
-        <div className="flex items-center gap-2">
-          <div className="flex flex-col items-center gap-1">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={3}
-              placeholder="0"
-              value={form.goal_time_h}
-              onChange={e => setForm(f => ({ ...f, goal_time_h: e.target.value }))}
-              className={[
-                'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono',
-                'focus:outline-none',
-                goalMinutes !== null
-                  ? 'border-[#48C4B0]'
-                  : timeIsInvalid
-                  ? 'border-red-300'
-                  : 'border-gray-200 focus:border-[#48C4B0]',
-              ].join(' ')}
-            />
-            <span className="text-xs text-gray-400">{t('form:field.goalTime.hours')}</span>
+      {/* Goal finish time — split fields for triathlon, single field otherwise */}
+      {form.sport === 'triathlon' ? (
+        <div>
+          <FieldLabel>Split times</FieldLabel>
+          <div className="space-y-4">
+
+            {/* Swim */}
+            <div>
+              <span className="text-xs font-medium text-gray-500 mb-1.5 block">Swim</span>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col items-center gap-1">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={3}
+                    placeholder="42"
+                    value={form.swim_minutes}
+                    onChange={e => setForm(f => ({ ...f, swim_minutes: e.target.value }))}
+                    className={[
+                      'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono focus:outline-none',
+                      swimOk ? 'border-[#48C4B0]' : swimError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
+                    ].join(' ')}
+                  />
+                  <span className="text-xs text-gray-400">min</span>
+                </div>
+              </div>
+              {swimError && <p className="text-xs text-red-400 mt-1">{swimError}</p>}
+            </div>
+
+            {/* Bike */}
+            <div>
+              <span className="text-xs font-medium text-gray-500 mb-1.5 block">Bike</span>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col items-center gap-1">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={3}
+                    placeholder="0"
+                    value={form.bike_time_h}
+                    onChange={e => setForm(f => ({ ...f, bike_time_h: e.target.value }))}
+                    className={[
+                      'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono focus:outline-none',
+                      bikeOk ? 'border-[#48C4B0]' : bikeError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
+                    ].join(' ')}
+                  />
+                  <span className="text-xs text-gray-400">h</span>
+                </div>
+                <span className="text-lg font-semibold text-gray-300 pb-4">:</span>
+                <div className="flex flex-col items-center gap-1">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={2}
+                    placeholder="00"
+                    value={form.bike_time_m}
+                    onChange={e => setForm(f => ({ ...f, bike_time_m: e.target.value }))}
+                    className={[
+                      'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono focus:outline-none',
+                      bikeOk ? 'border-[#48C4B0]' : bikeError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
+                    ].join(' ')}
+                  />
+                  <span className="text-xs text-gray-400">min</span>
+                </div>
+              </div>
+              {bikeError && <p className="text-xs text-red-400 mt-1">{bikeError}</p>}
+            </div>
+
+            {/* Run */}
+            <div>
+              <span className="text-xs font-medium text-gray-500 mb-1.5 block">Run</span>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col items-center gap-1">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={3}
+                    placeholder="0"
+                    value={form.run_time_h}
+                    onChange={e => setForm(f => ({ ...f, run_time_h: e.target.value }))}
+                    className={[
+                      'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono focus:outline-none',
+                      runOk ? 'border-[#48C4B0]' : runError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
+                    ].join(' ')}
+                  />
+                  <span className="text-xs text-gray-400">h</span>
+                </div>
+                <span className="text-lg font-semibold text-gray-300 pb-4">:</span>
+                <div className="flex flex-col items-center gap-1">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={2}
+                    placeholder="00"
+                    value={form.run_time_m}
+                    onChange={e => setForm(f => ({ ...f, run_time_m: e.target.value }))}
+                    className={[
+                      'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono focus:outline-none',
+                      runOk ? 'border-[#48C4B0]' : runError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
+                    ].join(' ')}
+                  />
+                  <span className="text-xs text-gray-400">min</span>
+                </div>
+              </div>
+              {runError && <p className="text-xs text-red-400 mt-1">{runError}</p>}
+            </div>
+
           </div>
-          <span className="text-lg font-semibold text-gray-300 pb-4">:</span>
-          <div className="flex flex-col items-center gap-1">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={2}
-              placeholder="00"
-              value={form.goal_time_m}
-              onChange={e => setForm(f => ({ ...f, goal_time_m: e.target.value }))}
-              className={[
-                'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono',
-                'focus:outline-none',
-                goalMinutes !== null
-                  ? 'border-[#48C4B0]'
-                  : timeIsInvalid
-                  ? 'border-red-300'
-                  : 'border-gray-200 focus:border-[#48C4B0]',
-              ].join(' ')}
-            />
-            <span className="text-xs text-gray-400">{t('form:field.goalTime.minutes')}</span>
-          </div>
+          {swimOk && bikeOk && runOk && (() => {
+            const total = swimMin + bikeMin + runMin
+            return (
+              <p className="text-xs text-[#48C4B0] mt-2">
+                Total: {Math.floor(total / 60)}h {total % 60}min
+              </p>
+            )
+          })()}
         </div>
-        {goalMinutes !== null && (
-          <p className="text-xs text-[#48C4B0] mt-1.5">
-            {t('form:field.goalTime.parsed', { hours: Math.floor(goalMinutes / 60), mins: goalMinutes % 60 })}
-          </p>
-        )}
-        {timeIsInvalid && (
-          <p className="text-xs text-red-400 mt-1.5">{t('form:field.goalTime.error')}</p>
-        )}
-        {!timeIsInvalid && goalMinutes === null && (
-          <p className="text-xs text-gray-400 mt-1.5">{t('form:field.goalTime.hint')}</p>
-        )}
-        {/* Triathlon typical-times hint — hide once the user has a valid in-range time */}
-        {form.sport === 'triathlon' && form.triathlon_type && (() => {
-          const opt = TRIATHLON_OPTIONS.find(o => o.key === form.triathlon_type)
-          if (!opt) return null
-          const bounds = PACE_BOUNDS[form.triathlon_type]
-          const inRange = goalMinutes !== null && bounds && goalMinutes >= bounds.min && goalMinutes <= bounds.max
-          if (inRange) return null
-          return (
-            <p className="text-xs text-gray-400 mt-1.5">{opt.hint}</p>
-          )
-        })()}
-        {!timeIsInvalid && goalMinutes !== null && form.race_type && (() => {
-          const bounds = PACE_BOUNDS[form.race_type]
-          if (!bounds) return null
-          if (goalMinutes < bounds.min) return (
-            <p className="text-xs text-amber-600 mt-1.5">
-              That&apos;s a very fast target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+      ) : (
+        <div>
+          <FieldLabel>{t('form:field.goalTime')}</FieldLabel>
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center gap-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={3}
+                placeholder="0"
+                value={form.goal_time_h}
+                onChange={e => setForm(f => ({ ...f, goal_time_h: e.target.value }))}
+                className={[
+                  'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono',
+                  'focus:outline-none',
+                  goalMinutes !== null
+                    ? 'border-[#48C4B0]'
+                    : timeIsInvalid
+                    ? 'border-red-300'
+                    : 'border-gray-200 focus:border-[#48C4B0]',
+                ].join(' ')}
+              />
+              <span className="text-xs text-gray-400">{t('form:field.goalTime.hours')}</span>
+            </div>
+            <span className="text-lg font-semibold text-gray-300 pb-4">:</span>
+            <div className="flex flex-col items-center gap-1">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={2}
+                placeholder="00"
+                value={form.goal_time_m}
+                onChange={e => setForm(f => ({ ...f, goal_time_m: e.target.value }))}
+                className={[
+                  'w-16 border-2 rounded-lg px-3 py-2.5 text-sm text-center font-mono',
+                  'focus:outline-none',
+                  goalMinutes !== null
+                    ? 'border-[#48C4B0]'
+                    : timeIsInvalid
+                    ? 'border-red-300'
+                    : 'border-gray-200 focus:border-[#48C4B0]',
+                ].join(' ')}
+              />
+              <span className="text-xs text-gray-400">{t('form:field.goalTime.minutes')}</span>
+            </div>
+          </div>
+          {goalMinutes !== null && (
+            <p className="text-xs text-[#48C4B0] mt-1.5">
+              {t('form:field.goalTime.parsed', { hours: Math.floor(goalMinutes / 60), mins: goalMinutes % 60 })}
             </p>
-          )
-          if (goalMinutes > bounds.max) return (
-            <p className="text-xs text-amber-600 mt-1.5">
-              That&apos;s a very slow target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
-            </p>
-          )
-          return null
-        })()}
-      </div>
+          )}
+          {timeIsInvalid && (
+            <p className="text-xs text-red-400 mt-1.5">{t('form:field.goalTime.error')}</p>
+          )}
+          {!timeIsInvalid && goalMinutes === null && (
+            <p className="text-xs text-gray-400 mt-1.5">{t('form:field.goalTime.hint')}</p>
+          )}
+          {!timeIsInvalid && goalMinutes !== null && form.race_type && (() => {
+            const bounds = PACE_BOUNDS[form.race_type]
+            if (!bounds) return null
+            if (goalMinutes < bounds.min) return (
+              <p className="text-xs text-amber-600 mt-1.5">
+                That&apos;s a very fast target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+              </p>
+            )
+            if (goalMinutes > bounds.max) return (
+              <p className="text-xs text-amber-600 mt-1.5">
+                That&apos;s a very slow target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+              </p>
+            )
+            return null
+          })()}
+        </div>
+      )}
 
     </div>
   )
@@ -908,52 +1060,62 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
 function StepThree({ form, setForm }) {
   const { t } = useTranslation(['form', 'common'])
 
-  const style = form.fuelling_style
+  const style       = form.fuelling_style
+  const isTriathlon = form.sport === 'triathlon'
+
+  // Silently lock triathlon to gels_only so downstream logic is consistent
+  React.useEffect(() => {
+    if (isTriathlon && form.fuelling_style !== 'gels_only') {
+      setForm(f => ({ ...f, fuelling_style: 'gels_only' }))
+    }
+  }, [isTriathlon]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-7">
 
-      {/* Fuelling style */}
-      <div>
-        <FieldLabel>Fuelling style</FieldLabel>
-        <div className="space-y-2">
-          <OptionCard
-            label="Gels only"
-            desc="Simple and fast — gels are your primary fuel source throughout"
-            selected={style === 'gels_only'}
-            onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_only' }))}
-          />
-          <OptionCard
-            label="Gels + bars"
-            desc="Real food variety — bars for steady energy, gels when you need a boost"
-            selected={style === 'gels_and_bars'}
-            onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_and_bars' }))}
-          />
-          <OptionCard
-            label="Drink mix + gels"
-            desc="Continuous carbs from your bottle, gels for intensity spikes"
-            selected={style === 'drink_mix_base'}
-            onClick={() => setForm(f => ({ ...f, fuelling_style: 'drink_mix_base' }))}
-          />
-          <OptionCard
-            label="Whatever works"
-            desc="No strong preference — give me a solid starting plan I can adjust"
-            selected={style === 'flexible'}
-            onClick={() => setForm(f => ({ ...f, fuelling_style: 'flexible' }))}
-          />
+      {/* Fuelling style — hidden for triathlon */}
+      {!isTriathlon && (
+        <div>
+          <FieldLabel>Fuelling style</FieldLabel>
+          <div className="space-y-2">
+            <OptionCard
+              label="Gels only"
+              desc="Simple and fast — gels are your primary fuel source throughout"
+              selected={style === 'gels_only'}
+              onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_only' }))}
+            />
+            <OptionCard
+              label="Gels + bars"
+              desc="Real food variety — bars for steady energy, gels when you need a boost"
+              selected={style === 'gels_and_bars'}
+              onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_and_bars' }))}
+            />
+            <OptionCard
+              label="Drink mix + gels"
+              desc="Continuous carbs from your bottle, gels for intensity spikes"
+              selected={style === 'drink_mix_base'}
+              onClick={() => setForm(f => ({ ...f, fuelling_style: 'drink_mix_base' }))}
+            />
+            <OptionCard
+              label="Whatever works"
+              desc="No strong preference — give me a solid starting plan I can adjust"
+              selected={style === 'flexible'}
+              onClick={() => setForm(f => ({ ...f, fuelling_style: 'flexible' }))}
+            />
+          </div>
+          {style === 'drink_mix_base' && (
+            <p className="text-xs text-[#48C4B0] mt-3">
+              Lecka's carb + hydration powder is coming soon.{' '}
+              <a
+                href="mailto:info@getlecka.com?subject=Carb powder waitlist"
+                className="underline"
+              >
+                Join the waitlist to be first →
+              </a>
+            </p>
+          )}
         </div>
-        {style === 'drink_mix_base' && (
-          <p className="text-xs text-[#48C4B0] mt-3">
-            Lecka's carb + hydration powder is coming soon.{' '}
-            <a
-              href="mailto:info@getlecka.com?subject=Carb powder waitlist"
-              className="underline"
-            >
-              Join the waitlist to be first →
-            </a>
-          </p>
-        )}
-      </div>
+      )}
 
       {/* Product preferences */}
       <p className="text-sm text-gray-500">
@@ -975,6 +1137,7 @@ function StepThree({ form, setForm }) {
         }
         region={getSavedRegion() ?? 'us'}
         caffeineOk={form.caffeine_ok !== false}
+        sport={form.sport}
       />
 
     </div>
@@ -1432,10 +1595,20 @@ function StepFour({ form, setForm, previewTargets }) {
 // ── Step validation ───────────────────────────────────────────────────────────
 
 function isStep1Valid(form) {
-  const goalMinutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
   if (form.sport === 'triathlon') {
-    return form.triathlon_type !== '' && goalMinutes !== null && form.race_date !== ''
+    if (!form.triathlon_type || form.race_date === '') return false
+    const bounds = TRIATHLON_SPLIT_BOUNDS[form.triathlon_type]
+    if (!bounds) return false
+    const swimMin = parseInt(form.swim_minutes, 10)
+    const bikeMin = goalMinutesFromFields(form.bike_time_h, form.bike_time_m)
+    const runMin  = goalMinutesFromFields(form.run_time_h,  form.run_time_m)
+    return (
+      Number.isFinite(swimMin) && swimMin >= bounds.swim[0] && swimMin <= bounds.swim[1] &&
+      bikeMin !== null && bikeMin >= bounds.bike[0] && bikeMin <= bounds.bike[1] &&
+      runMin  !== null && runMin  >= bounds.run[0]  && runMin  <= bounds.run[1]
+    )
   }
+  const goalMinutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
   return (
     form.race_date !== '' &&
     form.custom_km !== '' &&
@@ -1478,7 +1651,16 @@ export default function StepForm({ onComplete }) {
   const allProducts = liveProducts ?? FALLBACK_PRODUCTS
   const [step, setStep] = useState(0)
   const [region, setRegion] = useState(() => getSavedRegion() ?? null)
-  const [form, setForm] = useState(() => loadDraft() ?? DEFAULT_FORM)
+  const [form, setForm] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem('lecka_pro_prefill')
+      if (raw) {
+        sessionStorage.removeItem('lecka_pro_prefill')
+        return { ...DEFAULT_FORM, ...JSON.parse(raw) }
+      }
+    } catch {}
+    return loadDraft() ?? DEFAULT_FORM
+  })
   const [fromSimple, setFromSimple] = useState(() => loadDraft()?._from_simple === true)
   const [fromSimpleDismissed, setFromSimpleDismissed] = useState(false)
   const [profilePrefilled, setProfilePrefilled] = useState(false)
@@ -1555,7 +1737,7 @@ export default function StepForm({ onComplete }) {
       // Compute preview targets so we know whether Step 4 (addons) is needed
       try {
         const weight_kg    = toKg(form.weight_value, form.weight_unit)
-        const goal_minutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
+        const goal_minutes = effectiveGoalMinutes(form)
         const preview = calculateTargets({
           race_type:        form.race_type,
           goal_minutes,
@@ -1584,10 +1766,13 @@ export default function StepForm({ onComplete }) {
 
     // Final step — build the plan
     const weight_kg    = toKg(form.weight_value, form.weight_unit)
-    const goal_minutes = goalMinutesFromFields(form.goal_time_h, form.goal_time_m)
+    const goal_minutes = effectiveGoalMinutes(form)
     const h = Math.floor(goal_minutes / 60)
     const m = goal_minutes % 60
     const goal_time = `${h}:${String(m).padStart(2, '0')}`
+    const swim_minutes = form.sport === 'triathlon' ? (parseInt(form.swim_minutes, 10) || 0) : undefined
+    const bike_minutes = form.sport === 'triathlon' ? (goalMinutesFromFields(form.bike_time_h, form.bike_time_m) ?? 0) : undefined
+    const run_minutes  = form.sport === 'triathlon' ? (goalMinutesFromFields(form.run_time_h,  form.run_time_m)  ?? 0) : undefined
 
     const conditions = deriveConditionsFromForm(form)
     const targets = calculateTargets({
@@ -1619,7 +1804,12 @@ export default function StepForm({ onComplete }) {
 
     const addonCoverage      = computeAddonCoverage(resolvedAddonItems, goal_minutes)
     const foundationTargets  = computeFoundationTargets(targets, addonCoverage)
-    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, getSavedRegion(), { fuelling_style: form.fuelling_style }, allProducts)
+    const selection          = selectProducts(foundationTargets, form.preferred_product_ids, getSavedRegion(), {
+      fuelling_style: form.fuelling_style,
+      swim_minutes,
+      bike_minutes,
+      run_minutes,
+    }, allProducts)
 
     try { sessionStorage.removeItem(DRAFT_KEY) } catch {}
     onComplete({
@@ -1632,6 +1822,9 @@ export default function StepForm({ onComplete }) {
         ...form,
         conditions,
         goal_time,
+        swim_minutes,
+        bike_minutes,
+        run_minutes,
         addon_carbs_per_hour:      Math.round(addonCoverage.carbs_per_hour ?? 0),
         foundation_carbs_per_hour: foundationTargets.carb_per_hour,
         custom_products:           form.custom_products ?? [],
