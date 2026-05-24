@@ -284,6 +284,102 @@ Respond ONLY with valid JSON. No prose before or after. No markdown.`,
   }
 }
 
+// ── Pre-fuel handler ──────────────────────────────────────────────────────────
+
+async function handlePreFuel(req, res) {
+  const { race_type, goal_minutes, conditions, carb_per_hour } = req.body ?? {}
+  if (!race_type || !goal_minutes || !conditions || carb_per_hour == null) {
+    return res.status(400).json({ pre_fuel: null, error: 'Missing required fields' })
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(200).json({ pre_fuel: null, error: 'AI not configured' })
+  }
+
+  const {
+    weight_kg, athlete_profile, gender,
+    diet, gi_sensitivity, breakfast_time, coffee_habit, race_morning_experience,
+  } = req.body
+
+  const userPrompt = `Write a pre-race nutrition plan for this athlete.
+
+Race: ${race_type}, goal ${goal_minutes} min, conditions: ${conditions}
+Athlete: ${athlete_profile ?? 'intermediate'}, ${gender ?? 'not specified'}, ${weight_kg ? weight_kg + 'kg' : 'weight not provided'}
+Carb target on race day: ${carb_per_hour}g/hour
+Diet: ${diet}
+GI sensitivity: ${gi_sensitivity}
+Breakfast timing: ${breakfast_time} before race start
+Coffee habit: ${coffee_habit}
+Race morning experience: ${race_morning_experience}
+
+Guidelines:
+- 3 days out: carb-loading approach matched to their diet and GI sensitivity. Give specific food examples. Target 7–9g carbs/kg/day (use 70kg if weight unknown). Be concrete not generic.
+- Day before: reduce fibre and fat, maintain carbs, hydration strategy. Give a sample dinner and evening snack.
+- Race morning: specific breakfast matched to their timing preference and diet. State approximate carb grams. High GI sensitivity = simpler foods, smaller portions.
+- Pre-start (0–60 min before gun): what to eat or drink in the final hour. Suggest a Lecka energy bar 30 min before start where appropriate. Include caffeine guidance based on their coffee habit and race duration.
+- Watch out for: the one or two most likely pre-race nutrition mistakes for this specific athlete. 2–3 direct sentences. Reference their actual race and profile.
+
+IMPORTANT — electrolyte guidance: Lecka does not currently sell electrolyte products. For electrolyte needs, recommend widely available options such as electrolyte tablets (e.g. Nuun, Precision Hydration tabs), sports drink powder mixed into water, or simply salted food. Do not suggest a "Lecka electrolyte" product.
+
+Respond ONLY with this exact JSON (no markdown, no extra keys):
+{
+  "pre_fuel": {
+    "t_minus_3_days": "...",
+    "t_minus_1_day": "...",
+    "race_morning": "...",
+    "pre_start": "...",
+    "watch_out": "..."
+  }
+}`
+
+  try {
+    const controller = new AbortController()
+    const timeout    = setTimeout(() => controller.abort(), 8000)
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:  'POST',
+      signal:  controller.signal,
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model:      'claude-haiku-4-5-20251001',
+        max_tokens: 900,
+        system: `You are a race nutrition coach writing a personalised pre-race fueling plan for an endurance athlete.
+
+Lecka's voice: pragmatic and direct. Real food focused. No sports marketing clichés. No generic advice — be specific to this athlete's race, conditions, dietary preferences, and GI history.
+
+Respond ONLY with valid JSON. No prose before or after. No markdown fences.`,
+        messages: [{ role: 'user', content: userPrompt }],
+      }),
+    })
+
+    clearTimeout(timeout)
+
+    if (!response.ok) {
+      return res.status(200).json({ pre_fuel: null, error: 'AI API error' })
+    }
+
+    const data = await response.json()
+    try {
+      let text = (data.content[0].text ?? '').trim()
+      const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+      if (fenceMatch) text = fenceMatch[1].trim()
+      const json = JSON.parse(text)
+      return res.status(200).json({ pre_fuel: json.pre_fuel })
+    } catch {
+      return res.status(200).json({ pre_fuel: null, error: 'Could not generate plan' })
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('[coach-copy/pre-fuel] error:', err.message)
+    }
+    return res.status(200).json({ pre_fuel: null, error: 'Request failed' })
+  }
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -297,6 +393,11 @@ export default async function handler(req, res) {
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() ?? req.socket?.remoteAddress ?? 'unknown'
   if (isRateLimited(ip)) {
     return res.status(429).json({ copy: null })
+  }
+
+  // Route pre-fuel to its own handler
+  if (req.query?.action === 'pre-fuel') {
+    return handlePreFuel(req, res)
   }
 
   // Route checkpoint-fill to its own handler

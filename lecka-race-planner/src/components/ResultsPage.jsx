@@ -30,6 +30,8 @@ import PlanLeftColumn from './PlanLeftColumn.jsx'
 import PlanRightColumn from './PlanRightColumn.jsx'
 import PlanProductEditor from './PlanProductEditor.jsx'
 import GutTrainingTab from './GutTrainingTab.jsx'
+import PreFuelSection from './PreFuelSection.jsx'
+import COMPETITOR_PRODUCTS from '../config/competitor-products.json'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +72,15 @@ function formatTimingLabel(minutes, totalDuration, t) {
   if (h > 0 && m > 0) return `${h}h ${m}m`
   if (h > 0)          return `${h}h`
   return `${minutes} min`
+}
+
+function minutesToKmRange(minutes, totalMinutes, totalKm) {
+  if (!totalKm || totalKm <= 0 || minutes < 0 || minutes >= totalMinutes) return null
+  const fraction = minutes / totalMinutes
+  const km = fraction * totalKm
+  const lo = Math.max(1, Math.floor(km))
+  const hi = lo + 1
+  return `km ${lo}–${hi}`
 }
 
 function timingPhase(minutes, totalDuration) {
@@ -211,7 +222,7 @@ function computeProvidedNutrition(selection, manualQty, totalDurationMinutes, ca
  * Group during-phase events by product and derive a compact schedule string.
  * Returns array of { product, note, count, scheduleText }
  */
-function buildDuringGroups(duringEvents, t) {
+function buildDuringGroups(duringEvents, t, totalDurationMinutes, totalKm) {
   const byProduct = {}
   for (const ev of duringEvents) {
     const id = ev.product.id
@@ -220,21 +231,12 @@ function buildDuringGroups(duringEvents, t) {
   }
 
   return Object.values(byProduct).map(({ product, note, times, isAddon }) => {
-    let scheduleText
-    if (times.length === 1) {
-      scheduleText = t('results:timeline.atTime', { time: formatTimingLabel(times[0], Infinity, t) })
-    } else {
-      const intervals = times.slice(1).map((tv, i) => tv - times[i])
-      const allSame   = intervals.every(iv => iv === intervals[0])
-      if (allSame) {
-        scheduleText = t('results:timeline.every', { interval: intervals[0], start: formatTimingLabel(times[0], Infinity, t) })
-      } else {
-        const labels = times.map(tv => formatTimingLabel(tv, Infinity, t))
-        scheduleText = labels.length > 4
-          ? `${labels.slice(0, 3).join(', ')} … ${t('results:timeline.moreSlots', { count: labels.length - 3 })}`
-          : t('results:timeline.atTime', { time: labels.join(', ') })
-      }
-    }
+    const labels = times.map(tv => {
+      const timeLabel = formatTimingLabel(tv, Infinity, t)
+      const km = minutesToKmRange(tv, totalDurationMinutes, totalKm)
+      return km ? `${timeLabel} (${km})` : timeLabel
+    })
+    const scheduleText = labels.join(' · ')
     return { product, note, count: times.length, scheduleText, isAddon }
   })
 }
@@ -587,14 +589,14 @@ function ProductCard({ product, totalUnits, cartItems, linePrice, cartUnits, cur
 
 // ── RaceTimelineV2 ────────────────────────────────────────────────────────────
 
-function RaceTimelineV2({ events, totalDuration }) {
+function RaceTimelineV2({ events, totalDuration, totalKm }) {
   const { t } = useTranslation('results')
   if (!events.length) return null
 
   const beforeEvents = events.filter(e => e.phase === 'before')
   const duringEvents = events.filter(e => e.phase === 'during')
   const afterEvents  = events.filter(e => e.phase === 'after')
-  const duringGroups = buildDuringGroups(duringEvents, t)
+  const duringGroups = buildDuringGroups(duringEvents, t, totalDuration, totalKm)
 
   const PhaseHeader = ({ phase }) => (
     <div className="flex items-center gap-2 mt-4 mb-2 first:mt-0">
@@ -1191,6 +1193,98 @@ function TrainingAccordion({ trainingInfo, t }) {
   )
 }
 
+// ── SodiumGapCard ─────────────────────────────────────────────────────────────
+
+const NUUN_SPORT   = COMPETITOR_PRODUCTS.products.find(p => p.id === 'nuun-sport')
+const PH_1500      = COMPETITOR_PRODUCTS.products.find(p => p.id === 'precision-h1500')
+
+function SodiumGapCard({ targets, provided, resolvedAddonItems, addonOverrides, onAddonChange, dismissed, onDismiss }) {
+  const sodiumPct = targets.sodium_per_hour > 0
+    ? Math.round((provided.sodium_per_hour_provided / targets.sodium_per_hour) * 100)
+    : 100
+
+  const hasElectrolyte = [
+    ...resolvedAddonItems,
+    ...Object.entries(addonOverrides)
+      .filter(([id, qty]) => qty > 0 && !resolvedAddonItems.find(i => i.product.id === id))
+      .map(([id, qty]) => {
+        const p = COMPETITOR_PRODUCTS.products.find(p => p.id === id)
+        return p ? { product: p } : null
+      })
+      .filter(Boolean),
+  ].some(item => item.product.type === 'tab' || item.product.category === 'electrolyte')
+
+  if (sodiumPct >= 70 || dismissed || hasElectrolyte) return null
+
+  const showHighSodium = targets.sodium_per_hour > 800
+
+  function addProduct(product) {
+    onAddonChange(product.id, 1)
+    onDismiss()
+  }
+
+  return (
+    <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-xl p-4">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <p className="text-xs font-semibold text-amber-800">
+          Your sodium is {sodiumPct}% covered
+        </p>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="text-amber-500 hover:text-amber-700 text-sm leading-none flex-shrink-0"
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+      <p className="text-xs text-amber-900 mb-3 leading-relaxed">
+        Gels alone rarely cover sodium fully. Adding an electrolyte product will prevent cramping and fluid retention issues late in the race.
+      </p>
+      <div className="space-y-2">
+        {NUUN_SPORT && (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-amber-900">
+              <span className="font-medium">Nuun Sport Tab</span> · 300mg sodium per tab
+            </span>
+            <button
+              type="button"
+              onClick={() => addProduct(NUUN_SPORT)}
+              className="text-xs font-semibold text-[#48C4B0] hover:underline whitespace-nowrap flex-shrink-0"
+            >
+              Add to plan →
+            </button>
+          </div>
+        )}
+        {showHighSodium && PH_1500 && (
+          <>
+            <p className="text-xs text-amber-600">— or —</p>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-amber-900">
+                <span className="font-medium">Precision Hydration PH 1500</span> · 1500mg sodium per tab
+              </span>
+              <button
+                type="button"
+                onClick={() => addProduct(PH_1500)}
+                className="text-xs font-semibold text-[#48C4B0] hover:underline whitespace-nowrap flex-shrink-0"
+              >
+                Add to plan →
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-xs text-amber-600 hover:text-amber-800 mt-3"
+      >
+        ✕ I&apos;ll sort this myself
+      </button>
+    </div>
+  )
+}
+
 // ── Race distance constant ─────────────────────────────────────────────────────
 
 const RACE_DISTANCE_KM = {
@@ -1573,7 +1667,10 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     : null
 
   const [mobileTab, setMobileTab] = useState('products')
+  const [sodiumCardDismissed, setSodiumCardDismissed] = useState(false)
   const htmlContent = useMemo(() => markdownToHtml(researchMarkdown), [])
+
+  const totalKm = form.custom_race_km ?? RACE_DISTANCE_KM[targets.race_type] ?? null
 
   const orderSection = (
     <>
@@ -1691,7 +1788,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       )}
       <section>
         <SectionLabel>{t('section.raceTimeline')}</SectionLabel>
-        <RaceTimelineV2 events={timeline} totalDuration={targets.total_duration_minutes} />
+        <RaceTimelineV2 events={timeline} totalDuration={targets.total_duration_minutes} totalKm={totalKm} />
       </section>
       {triPhaseSummary && (
         <div className="rounded-xl border border-gray-100 bg-gray-50 divide-y divide-gray-100">
@@ -1772,6 +1869,10 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         </>
       )}
     </div>
+  )
+
+  const prefuelTabContent = (
+    <PreFuelSection targets={targets} form={form} />
   )
 
   const scienceTabContent = (
@@ -2003,6 +2104,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             { key: 'products', label: 'Products' },
             { key: 'timeline', label: 'Timeline' },
             { key: 'coach',    label: 'Coach' },
+            { key: 'prefuel',  label: 'Pre-fuel' },
             { key: 'order',    label: 'Order' },
           ].map(tab => (
             <button
@@ -2047,7 +2149,21 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                   provided={provided}
                   catalog={allProductsCatalog}
                 />
+                <SodiumGapCard
+                  targets={targets}
+                  provided={provided}
+                  resolvedAddonItems={resolvedAddonItems}
+                  addonOverrides={addonOverrides}
+                  onAddonChange={handleAddonChange}
+                  dismissed={sodiumCardDismissed}
+                  onDismiss={() => setSodiumCardDismissed(true)}
+                />
               </section>
+            </div>
+          )}
+          {mobileTab === 'prefuel' && (
+            <div className="space-y-6">
+              {prefuelTabContent}
             </div>
           )}
           {mobileTab === 'coach' && (
@@ -2146,6 +2262,15 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               provided={provided}
               catalog={allProductsCatalog}
             />
+            <SodiumGapCard
+              targets={targets}
+              provided={provided}
+              resolvedAddonItems={resolvedAddonItems}
+              addonOverrides={addonOverrides}
+              onAddonChange={handleAddonChange}
+              dismissed={sodiumCardDismissed}
+              onDismiss={() => setSodiumCardDismissed(true)}
+            />
           </section>
 
           {/* Order card */}
@@ -2219,6 +2344,11 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               key: 'coach',
               label: 'Coach notes',
               content: coachTabContent,
+            },
+            {
+              key: 'prefuel',
+              label: 'Pre-fueling',
+              content: prefuelTabContent,
             },
             {
               key: 'gut',
