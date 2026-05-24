@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { isAvailableInRegion } from '../engine/region-utils.js'
 import FALLBACK_PRODUCTS from '../config/products.json'
 
-const ADDON_CATALOG = [
+export const ADDON_CATALOG = [
   { id: 'maurten-160',     display_name: 'Maurten 160',     brand: 'Maurten', type: 'drink_mix', carbs_per_unit: 38, note: 'drink mix' },
   { id: 'maurten-gel-100', display_name: 'Maurten Gel 100', brand: 'Maurten', type: 'gel',       carbs_per_unit: 25, note: 'gel' },
   { id: 'sis-beta-fuel',   display_name: 'SiS Beta Fuel',   brand: 'SiS',     type: 'gel',       carbs_per_unit: 40, note: 'gel' },
