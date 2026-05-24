@@ -9,6 +9,7 @@ import regionsConfig from '../config/regions.json'
 import i18n from '../i18n.js'
 import { formatAddonSummary } from '../engine/kit-calculator.js'
 import ShareModal from './ShareModal.jsx'
+import PreFuelSection from './PreFuelSection.jsx'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -128,13 +129,17 @@ function SectionLabel({ children }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SimpleResultsPage({ targets, selection, form, onBack }) {
-  const [region,      setRegion]      = useState(getSavedRegion())
-  const [emailInput,  setEmailInput]  = useState('')
-  const [emailState,  setEmailState]  = useState('idle')
-  const [planSent,    setPlanSent]    = useState(false)
-  const [chatSummary, setChatSummary] = useState(null)
+  const [region,        setRegion]        = useState(getSavedRegion())
+  const [emailInput,    setEmailInput]    = useState('')
+  const [emailState,    setEmailState]    = useState('idle')
+  const [planSent,      setPlanSent]      = useState(false)
+  const [chatSummary,   setChatSummary]   = useState(null)
   const [showShareModal, setShowShareModal] = useState(false)
-  const [navigating,  setNavigating]  = useState(false)
+  const [navigating,    setNavigating]    = useState(false)
+  const [coachCopy,      setCoachCopy]      = useState(null)
+  const [coachLoading,   setCoachLoading]   = useState(true)
+  const [coachFailed,    setCoachFailed]    = useState(false)
+  const [coachRetryKey,  setCoachRetryKey]  = useState(0)
   const emailRef = useRef(null)
 
   const { products: liveProducts } = useProducts()
@@ -223,6 +228,45 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
       }),
     }).catch(() => {})
   }, [])
+
+  // Fetch coach notes for the simple plan
+  useEffect(() => {
+    const gelCount = leckaSelection
+      .filter(i => i.product.type === 'gel' || i.product.type === 'ultra_gel')
+      .reduce((sum, i) => sum + i.quantity, 0)
+
+    const controller = new AbortController()
+    fetch('/api/coach-copy', {
+      method:  'POST',
+      signal:  controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        race_type:         targets.race_type,
+        goal_minutes:      targets.total_duration_minutes,
+        conditions:        targets.conditions,
+        carb_per_hour:     targets.carb_per_hour,
+        sodium_per_hour:   targets.sodium_per_hour,
+        fluid_ml_per_hour: targets.fluid_ml_per_hour,
+        total_carbs:       targets.total_carbs,
+        gel_count:         gelCount,
+        athlete_profile:   'intermediate',
+        gender:            form.gender ?? null,
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.copy) setCoachCopy(data.copy)
+        else setCoachFailed(true)
+        setCoachLoading(false)
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          setCoachFailed(true)
+          setCoachLoading(false)
+        }
+      })
+    return () => controller.abort()
+  }, [coachRetryKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleRegionChange(newRegion) {
     setRegion(newRegion)
@@ -476,7 +520,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
             </p>
             <p style={{ fontSize: 13, color: '#0F6E56', lineHeight: 1.6, marginBottom: 16, marginTop: 0 }}>
               Pro plan uses your actual weight, fitness level, elevation, and effort to personalise every number.
-              Also unlocks gut training mode, checkpoint planning, coach notes, and support for other nutrition
+              Also unlocks gut training schedule, checkpoint planning, and support for adding other nutrition
               brands alongside Lecka.
             </p>
             <button
@@ -537,7 +581,64 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           </div>
         </div>
 
-        {/* ── Section 5: Simple flat timeline ─────────────────────────────── */}
+        {/* ── Section 5: Coach notes ──────────────────────────────────────── */}
+        <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
+          <SectionLabel>Coach notes</SectionLabel>
+          {coachLoading ? (
+            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 20, background: '#f5f3ff',
+                  border: '1px solid #ddd6fe', fontSize: 10, fontWeight: 600, color: '#7c3aed',
+                }}>
+                  AI · Lecka knowledge
+                </span>
+              </div>
+              <div style={{ background: '#f3f4f6', borderRadius: 4, height: 10, marginBottom: 8, width: '100%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div style={{ background: '#f3f4f6', borderRadius: 4, height: 10, marginBottom: 8, width: '80%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div style={{ background: '#f3f4f6', borderRadius: 4, height: 10, width: '60%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            </div>
+          ) : coachFailed || !coachCopy ? (
+            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
+              <p style={{ fontSize: 14, color: '#9ca3af', margin: '0 0 8px' }}>Coach notes couldn&apos;t load this time.</p>
+              <button
+                type="button"
+                onClick={() => { setCoachFailed(false); setCoachLoading(true); setCoachCopy(null); setCoachRetryKey(k => k + 1) }}
+                style={{ fontSize: 12, fontWeight: 600, color: '#48C4B0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                Retry →
+              </button>
+            </div>
+          ) : (
+            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '2px 8px', borderRadius: 20, background: '#f5f3ff',
+                  border: '1px solid #ddd6fe', fontSize: 10, fontWeight: 600, color: '#7c3aed',
+                }}>
+                  AI · Lecka knowledge
+                </span>
+              </div>
+              {coachCopy.split(/\n\n+/).filter(Boolean).map((para, i) => (
+                <p key={i} style={{
+                  fontSize: 14, color: '#374151', lineHeight: 1.7,
+                  borderLeft: '2px solid #48C4B0', paddingLeft: 12, marginBottom: 16, marginTop: 0,
+                }}>
+                  {para}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Section 6: Pre-fueling ──────────────────────────────────────── */}
+        <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
+          <PreFuelSection targets={targets} form={form} />
+        </div>
+
+        {/* ── Section 7: Simple flat timeline ─────────────────────────────── */}
         {timelineEvents.length > 0 && (
           <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
             <SectionLabel>Race day timeline</SectionLabel>
@@ -573,7 +674,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           </div>
         )}
 
-        {/* ── Section 6: Order card ────────────────────────────────────────── */}
+        {/* ── Section 8: Order card ────────────────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
           <SectionLabel>Get your products</SectionLabel>
 
@@ -684,7 +785,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           )}
         </div>
 
-        {/* ── Section 7: Share button ──────────────────────────────────────── */}
+        {/* ── Section 9: Share button ──────────────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
           <button
             type="button"
@@ -705,7 +806,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           </button>
         </div>
 
-        {/* ── Section 8: Email capture ─────────────────────────────────────── */}
+        {/* ── Section 10: Email capture ────────────────────────────────────── */}
         <div ref={emailRef} style={{ paddingTop: 24 }}>
           <SectionLabel>Get your plan by email</SectionLabel>
           {form.email && planSent ? (

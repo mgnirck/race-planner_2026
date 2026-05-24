@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { isEmbedded } from '../embed.js'
 
 const TEAL = '#1D9E75'
 
 export default function FeedbackWidget() {
+  const { t } = useTranslation('common')
   const [open, setOpen]           = useState(false)
   const [message, setMessage]     = useState('')
   const [email, setEmail]         = useState('')
@@ -85,7 +87,7 @@ export default function FeedbackWidget() {
         <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
           <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
         </svg>
-        Feedback
+        {t('feedback.widget.button')}
       </button>
 
       {/* Backdrop */}
@@ -102,8 +104,8 @@ export default function FeedbackWidget() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <div>
-                <p className="font-semibold text-base text-gray-900">Share feedback</p>
-                <p className="text-xs text-gray-500 mt-0.5">We read every message</p>
+                <p className="font-semibold text-base text-gray-900">{t('feedback.widget.title')}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t('feedback.widget.subtitle')}</p>
               </div>
               <button
                 type="button"
@@ -128,15 +130,15 @@ export default function FeedbackWidget() {
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <p className="font-semibold text-gray-900">Thanks for your feedback!</p>
-                <p className="text-sm text-gray-500">We&apos;ll use it to keep improving the planner.</p>
+                <p className="font-semibold text-gray-900">{t('feedback.widget.successTitle')}</p>
+                <p className="text-sm text-gray-500">{t('feedback.widget.successBody')}</p>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
                   className="mt-1 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
                   style={{ background: TEAL }}
                 >
-                  Done
+                  {t('feedback.widget.done')}
                 </button>
               </div>
             ) : (
@@ -146,7 +148,7 @@ export default function FeedbackWidget() {
                   ref={textareaRef}
                   value={message}
                   onChange={e => setMessage(e.target.value)}
-                  placeholder="What's on your mind? Bug, idea, or just a thought…"
+                  placeholder={t('feedback.widget.placeholder')}
                   rows={4}
                   maxLength={2000}
                   className="w-full resize-none rounded-xl border border-gray-200 px-3.5 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-transparent"
@@ -159,14 +161,14 @@ export default function FeedbackWidget() {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="Your email (optional — for a reply)"
+                  placeholder={t('feedback.widget.emailPlaceholder')}
                   className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
                   onFocus={e => { e.target.style.boxShadow = `0 0 0 2px ${TEAL}40`; e.target.style.borderColor = TEAL }}
                   onBlur={e =>  { e.target.style.boxShadow = ''; e.target.style.borderColor = '' }}
                 />
 
                 {status === 'error' && (
-                  <p className="text-xs text-red-500">Something went wrong — please try again.</p>
+                  <p className="text-xs text-red-500">{t('feedback.widget.error')}</p>
                 )}
 
                 <button
@@ -176,7 +178,7 @@ export default function FeedbackWidget() {
                   className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity disabled:opacity-40"
                   style={{ background: TEAL }}
                 >
-                  {status === 'sending' ? 'Sending…' : 'Send feedback'}
+                  {status === 'sending' ? t('feedback.widget.sending') : t('feedback.widget.send')}
                 </button>
               </div>
             )}

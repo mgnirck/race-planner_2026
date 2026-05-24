@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import Nav from './Nav.jsx'
 import { calculateTargets } from '../engine/nutrition-engine'
 
@@ -137,30 +138,30 @@ function tempToConditions(tempC) {
   return 'hot'
 }
 
-function formatLastFetched(isoString) {
+function formatLastFetched(isoString, t) {
   if (!isoString) return null
   const d = new Date(isoString)
   const diffDays = Math.floor((Date.now() - d) / (1000 * 60 * 60 * 24))
-  if (diffDays === 0) return 'updated today'
-  if (diffDays === 1) return 'updated yesterday'
-  return `updated ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+  if (diffDays === 0) return t('updated.today')
+  if (diffDays === 1) return t('updated.yesterday')
+  return t('updated.date', { date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) })
 }
 
-function getHeroCoachMessage(plan, heroDetail, days, liveTemp) {
-  const name = plan.race_name || 'your race'
+function getHeroCoachMessage(plan, heroDetail, days, liveTemp, t) {
+  const name = plan.race_name || t('coach.yourRace')
   if (liveTemp !== null && days !== null && days <= 14) {
     const cond = tempToConditions(liveTemp)
-    if (cond === 'hot')  return `${name} is looking hot — ${Math.round(liveTemp)}°C at race start. Pre-hydrate the morning before. Carry fluid to every aid station, don't skip any. Your carbs stay the same but sodium and fluid are up. Adjust your kit accordingly.`
-    if (cond === 'cool') return `Good news for ${name} — ${Math.round(liveTemp)}°C is ideal running weather. Your fluid targets drop slightly. Stick to the plan.`
+    if (cond === 'hot')  return t('coach.hot', { name, temp: Math.round(liveTemp) })
+    if (cond === 'cool') return t('coach.cool', { name, temp: Math.round(liveTemp) })
   }
   if (plan.mode === 'quick') {
-    if (days > 60) return `Good base plan for ${name}. For a race this important, upgrading to Pro will dial in your sodium and fluid targets and add weather-aware pacing. Plenty of time to build on this.`
-    if (days > 14) return `${days} days to ${name} — solid foundation. Upgrade to Pro for aid station timing and live weather targets.`
-    return `Race week. Your quick plan gives you carb targets. Pro adds sodium, fluid, and a race-day timeline.`
+    if (days > 60) return t('coach.quick.far', { name })
+    if (days > 14) return t('coach.quick.near', { name, days })
+    return t('coach.quick.raceWeek')
   }
-  if (days > 60) return `${days} days to ${name} — plenty of time. Focus on gut training with your plan targets from week 8 out.`
-  if (days > 14) return `${days} days out. Weather integration active — we'll update your plan if conditions shift significantly.`
-  return `Race week for ${name}. Stick exactly to your plan. No new products, no changes.`
+  if (days > 60) return t('coach.pro.far', { name, days })
+  if (days > 14) return t('coach.pro.near', { days })
+  return t('coach.pro.raceWeek', { name })
 }
 
 function handleUpgrade(heroDetail) {
@@ -188,6 +189,7 @@ function handleUpgrade(heroDetail) {
 // ── Edit / Delete modal ───────────────────────────────────────────────────────
 
 function EditPlanModal({ plan, userId, onSave, onClose }) {
+  const { t } = useTranslation('dashboard')
   const [name, setName]   = useState(plan.race_name ?? '')
   const [date, setDate]   = useState(plan.race_date ?? '')
   const [saving, setSaving] = useState(false)
@@ -213,20 +215,20 @@ function EditPlanModal({ plan, userId, onSave, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
-        <p className="text-base font-bold text-gray-900">Edit race</p>
+        <p className="text-base font-bold text-gray-900">{t('edit.title')}</p>
         <div>
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Race name</label>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{t('edit.raceName')}</label>
           <input
             type="text"
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="e.g. Berlin Marathon"
+            placeholder={t('edit.placeholder')}
             className="w-full border-2 rounded-lg px-3 py-2 text-sm focus:outline-none"
             style={{ borderColor: TEAL }}
           />
         </div>
         <div>
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">Race date</label>
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">{t('edit.raceDate')}</label>
           <input
             type="date"
             value={date}
@@ -242,13 +244,13 @@ function EditPlanModal({ plan, userId, onSave, onClose }) {
             className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white disabled:opacity-50"
             style={{ background: TEAL }}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('edit.saving') : t('edit.save')}
           </button>
           <button
             onClick={onClose}
             className="flex-1 py-2.5 text-sm font-semibold rounded-xl border-2 border-gray-200 text-gray-600"
           >
-            Cancel
+            {t('edit.cancel')}
           </button>
         </div>
       </div>
@@ -293,6 +295,7 @@ function LockedTile({ label }) {
 // badge: null | 'live' | 'updated'
 // highlighted: show amber border
 function StatTile({ label, value, badge = null, highlighted = false }) {
+  const { t } = useTranslation('dashboard')
   return (
     <div
       className="flex-1 flex flex-col items-center justify-center rounded-xl px-2 min-w-0 relative"
@@ -308,7 +311,7 @@ function StatTile({ label, value, badge = null, highlighted = false }) {
           className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap"
           style={{ background: badge === 'live' ? TEAL : AMBER, color: '#fff' }}
         >
-          {badge === 'live' ? 'live' : '↑ updated'}
+          {badge === 'live' ? t('hero.badge.live') : t('hero.badge.updated')}
         </span>
       )}
       <span className="text-[15px] font-medium text-gray-900">{value ?? '—'}</span>
@@ -320,6 +323,7 @@ function StatTile({ label, value, badge = null, highlighted = false }) {
 // ── Hero Card ─────────────────────────────────────────────────────────────────
 
 function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
+  const { t } = useTranslation('dashboard')
   const isPro    = hero.mode === 'pro'
   const days     = daysUntil(hero.race_date)
   const dateStr  = formatRaceDateLong(hero.race_date)
@@ -375,7 +379,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
       a.click()
       URL.revokeObjectURL(url)
     } catch {
-      alert('Could not generate PDF. Please try again.')
+      alert(t('pdf.error'))
     } finally {
       setDownloading(false)
     }
@@ -415,12 +419,11 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
   const tempTileValue = liveTemp !== null
     ? `${Math.round(liveTemp * 10) / 10}°C`
     : hero.conditions ? `~${estimatedTempC}°C` : '—'
-  const tempTileLabel = liveTemp !== null ? 'Forecast' : 'Temp'
   const tempTileBadge = liveTemp !== null ? (hasSigChange && !alertDismissed ? 'updated' : 'live') : null
   const sodiumBadge   = showWeatherAlert ? 'updated' : null
   const fluidBadge    = showWeatherAlert ? 'updated' : null
 
-  const coachMsg = getHeroCoachMessage(hero, heroDetail, days ?? 0, liveTemp)
+  const coachMsg = getHeroCoachMessage(hero, heroDetail, days ?? 0, liveTemp, t)
 
   async function handleApplyWeather() {
     if (!pendingTargets) return
@@ -512,7 +515,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
                 className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
                 style={{ background: TEAL_LIGHT, color: TEAL_MID }}
               >
-                Next race
+                {t('hero.nextRace')}
               </span>
               {isPro && <PlanPill mode="pro" />}
               <button onClick={() => onEdit(hero)} title="Edit" className="ml-1 text-gray-300 hover:text-gray-500 transition-colors">
@@ -533,7 +536,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             {days !== null ? (
               <>
                 <p className="text-4xl font-bold leading-none" style={{ color: TEAL_DARK }}>{days}</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: TEAL }}>days to go</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: TEAL }}>{t('hero.daysToGo')}</p>
               </>
             ) : (
               <p className="text-4xl font-bold" style={{ color: GREY }}>—</p>
@@ -543,20 +546,20 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
 
         {/* Stat tiles */}
         <div className="flex gap-1.5 mt-2">
-          <StatTile label="Target"    value={goalTime} />
-          <StatTile label="Carbs/hr"  value={carbPerHour !== null ? `${carbPerHour}g` : '—'} />
+          <StatTile label={t('hero.stat.target')}   value={goalTime} />
+          <StatTile label={t('hero.stat.carbsHr')}  value={carbPerHour !== null ? `${carbPerHour}g` : '—'} />
           {isPro ? (
-            <StatTile label="Sodium/hr" value={displaySodium !== null ? `${displaySodium}mg` : '—'}
+            <StatTile label={t('hero.stat.sodiumHr')} value={displaySodium !== null ? `${displaySodium}mg` : '—'}
               badge={sodiumBadge} highlighted={!!sodiumBadge} />
-          ) : <LockedTile label="Sodium/hr" />}
+          ) : <LockedTile label={t('hero.stat.sodiumHr')} />}
           {isPro ? (
-            <StatTile label="Fluid/hr"  value={displayFluid !== null ? `${Math.round(displayFluid)}ml` : '—'}
+            <StatTile label={t('hero.stat.fluidHr')}  value={displayFluid !== null ? `${Math.round(displayFluid)}ml` : '—'}
               badge={fluidBadge} highlighted={!!fluidBadge} />
-          ) : <LockedTile label="Fluid/hr" />}
+          ) : <LockedTile label={t('hero.stat.fluidHr')} />}
           {isPro ? (
-            <StatTile label={tempTileLabel} value={tempTileValue}
+            <StatTile label={liveTemp !== null ? t('hero.stat.forecast') : t('hero.stat.temp')} value={tempTileValue}
               badge={tempTileBadge} highlighted={tempTileBadge === 'updated'} />
-          ) : <LockedTile label="Temp" />}
+          ) : <LockedTile label={t('hero.stat.temp')} />}
         </div>
 
         {/* Forecast source footnote */}
@@ -565,7 +568,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Forecast via Open-Meteo · {formatLastFetched(weatherLastFetched)}
+            {t('hero.forecast.source', { updated: formatLastFetched(weatherLastFetched, t) })}
           </p>
         )}
 
@@ -576,8 +579,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <p className="text-xs leading-relaxed" style={{ color: AMBER_DARK }}>
-              Weather based on your estimate. Live forecast for <strong>{city}</strong> unlocks{' '}
-              <strong>{weatherWindowStr}</strong> — we'll update your plan automatically.
+              {t('hero.weather.upcoming', { city, date: weatherWindowStr })}
             </p>
           </div>
         )}
@@ -589,7 +591,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             className="flex-1 text-center text-sm font-semibold rounded-xl py-2.5 text-white transition-colors"
             style={{ background: TEAL }}
           >
-            View full plan
+            {t('hero.viewPlan')}
           </a>
           <button
             onClick={handleDownloadPdf}
@@ -601,14 +603,14 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             ) : (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3M3 7V4a1 1 0 011-1h5l2 2h7a1 1 0 011 1v3"/></svg>
             )}
-            {downloading ? 'Generating…' : 'Download PDF'}
+            {downloading ? t('hero.generating') : t('hero.downloadPdf')}
           </button>
           <a
             href={`/plan/${hero.id}`}
             className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            Email
+            {t('hero.email')}
           </a>
         </div>
       </div>
@@ -619,7 +621,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide mb-0.5" style={{ color: TEAL_MID }}>Coach says</p>
+          <p className="text-xs font-bold uppercase tracking-wide mb-0.5" style={{ color: TEAL_MID }}>{t('hero.coachSays')}</p>
           <p className="text-sm leading-relaxed" style={{ color: TEAL_DARK }}>{coachMsg}</p>
         </div>
       </div>
@@ -632,12 +634,14 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold mb-1" style={{ color: CORAL }}>Plan updated for {tempDiff > 0 ? 'heat' : 'cold'}</p>
+              <p className="text-sm font-bold mb-1" style={{ color: CORAL }}>{tempDiff > 0 ? t('hero.alert.heat') : t('hero.alert.cold')}</p>
               <p className="text-xs leading-relaxed" style={{ color: CORAL }}>
-                Forecast shows {Math.round(liveTemp)}°C —{' '}
-                {Math.abs(Math.round(tempDiff))}° {tempDiff > 0 ? 'warmer' : 'cooler'} than your estimate.
-                Sodium and fluid targets have been {tempDiff > 0 ? 'increased' : 'decreased'}.
-                Review and confirm to apply.
+                {t('hero.alert.body', {
+                  temp: Math.round(liveTemp),
+                  diff: Math.abs(Math.round(tempDiff)),
+                  direction: t(tempDiff > 0 ? 'hero.alert.warmer' : 'hero.alert.cooler'),
+                  change: t(tempDiff > 0 ? 'hero.alert.increased' : 'hero.alert.decreased'),
+                })}
               </p>
             </div>
             <div className="flex flex-col gap-1.5 flex-shrink-0">
@@ -647,14 +651,14 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
                 className="px-3 py-1.5 text-xs font-bold rounded-lg text-white disabled:opacity-50"
                 style={{ background: CORAL }}
               >
-                {applyingWeather ? '…' : 'Apply'}
+                {applyingWeather ? '…' : t('hero.alert.apply')}
               </button>
               <button
                 onClick={() => setAlertDismissed(true)}
                 className="px-3 py-1.5 text-xs font-semibold rounded-lg border-2 whitespace-nowrap"
                 style={{ borderColor: CORAL, color: CORAL }}
               >
-                Keep mine
+                {t('hero.alert.keepMine')}
               </button>
             </div>
           </div>
@@ -670,7 +674,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
           <p className="flex-1 text-xs font-medium" style={{ color: AMBER_MID }}>
-            Fuel reminder: {formatReminderDate(liveReminderDate)}
+            {t('hero.fuel.reminder', { date: formatReminderDate(liveReminderDate) })}
           </p>
           <button
             onClick={() => { setPickDate(liveReminderDate); setEditingReminder(true) }}
@@ -687,7 +691,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
       {/* ── Editing existing reminder: date picker inline ── */}
       {liveReminderDate && editingReminder && (
         <div className="mx-5 my-4 rounded-xl p-4 space-y-3" style={{ background: AMBER_LIGHT }}>
-          <p className="text-xs font-semibold" style={{ color: AMBER_DARK }}>Change reminder date</p>
+          <p className="text-xs font-semibold" style={{ color: AMBER_DARK }}>{t('hero.fuel.changeReminder')}</p>
           <div className="flex items-center gap-2">
             <input
               type="date"
@@ -702,7 +706,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
               className="px-4 py-2 text-sm font-semibold rounded-lg text-white disabled:opacity-40 flex-shrink-0"
               style={{ background: AMBER }}
             >
-              Save
+              {t('hero.fuel.save')}
             </button>
             <button
               onClick={() => setEditingReminder(false)}
@@ -725,12 +729,12 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={AMBER} strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
-                  <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>Fuel ordered yet?</p>
+                  <p className="text-sm font-semibold" style={{ color: AMBER_DARK }}>{t('hero.fuel.title')}</p>
                 </div>
                 <p className="text-xs leading-relaxed" style={{ color: AMBER_MID }}>
                   {isPro
-                    ? (gelCount ? `~${gelCount} gels based on your plan. Check your full plan for quantities.` : 'Check your full plan for quantities.')
-                    : '~12 gels based on your quick plan. Upgrade for exact quantities.'}
+                    ? (gelCount ? t('hero.fuel.gelsPro', { count: gelCount }) : t('hero.fuel.gelsProUnknown'))
+                    : t('hero.fuel.gelsQuick')}
                 </p>
               </div>
               <div className="flex flex-col gap-1.5 flex-shrink-0">
@@ -739,20 +743,20 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
                   className="px-4 py-1.5 text-xs font-bold rounded-lg text-white whitespace-nowrap"
                   style={{ background: AMBER }}
                 >
-                  Done
+                  {t('hero.fuel.done')}
                 </button>
                 <button
                   onClick={() => setPickingNew(true)}
                   className="px-4 py-1.5 text-xs font-semibold rounded-lg border-2 bg-white whitespace-nowrap"
                   style={{ borderColor: AMBER, color: AMBER }}
                 >
-                  Remind me
+                  {t('hero.fuel.remindMe')}
                 </button>
               </div>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs font-semibold" style={{ color: AMBER_DARK }}>Set a fuel reminder</p>
+              <p className="text-xs font-semibold" style={{ color: AMBER_DARK }}>{t('hero.fuel.setReminder')}</p>
               <div className="flex items-center gap-2">
                 <input
                   type="date"
@@ -767,7 +771,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
                   className="px-4 py-2 text-sm font-semibold rounded-lg text-white disabled:opacity-40 flex-shrink-0"
                   style={{ background: AMBER }}
                 >
-                  Set
+                  {t('hero.fuel.set')}
                 </button>
                 <button
                   onClick={() => { setPickingNew(false); setNewPickDate('') }}
@@ -789,17 +793,17 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={TEAL} strokeWidth="2" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <p className="text-sm font-semibold" style={{ color: TEAL_DARK }}>Upgrade to pro plan</p>
+            <p className="text-sm font-semibold" style={{ color: TEAL_DARK }}>{t('hero.upgrade.title')}</p>
           </div>
           <p className="text-xs leading-relaxed" style={{ color: GREY_MID }}>
-            Get sodium &amp; fluid targets, live race-day weather, aid station plan, and gut training schedule — built on what you've already entered.
+            {t('hero.upgrade.body')}
           </p>
           <button
             onClick={() => handleUpgrade(heroDetail)}
             className="w-full py-2.5 text-sm font-semibold rounded-lg text-white mt-1 transition-colors"
             style={{ background: TEAL }}
           >
-            Upgrade →
+            {t('hero.upgrade.cta')}
           </button>
         </div>
       )}
@@ -810,6 +814,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
 // ── Upcoming row ──────────────────────────────────────────────────────────────
 
 function UpcomingRow({ plan, onEdit, onDelete }) {
+  const { t } = useTranslation('dashboard')
   const { month, day } = formatMonthDay(plan.race_date)
   const goalTime = formatGoalTime(plan.goal_minutes)
   const tempLabel = plan.display_temp_c
@@ -830,7 +835,7 @@ function UpcomingRow({ plan, onEdit, onDelete }) {
         </div>
         <div className="flex gap-1.5 mt-0.5 flex-wrap">
           {goalTime && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Goal {goalTime}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{t('plan.goal', { time: goalTime })}</span>
           )}
           {kmLabel && (
             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{kmLabel}</span>
@@ -848,7 +853,7 @@ function UpcomingRow({ plan, onEdit, onDelete }) {
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v1a1 1 0 01-1 1H9z"/></svg>
         </button>
         <a href={`/plan/${plan.id}`} className="text-sm font-bold" style={{ color: TEAL }}>
-          View →
+          {t('plan.view')}
         </a>
       </div>
     </div>
@@ -858,6 +863,7 @@ function UpcomingRow({ plan, onEdit, onDelete }) {
 // ── Past row ──────────────────────────────────────────────────────────────────
 
 function PastRow({ plan, compact = false, onEdit, onDelete }) {
+  const { t } = useTranslation('dashboard')
   const { month, day } = formatMonthDay(plan.race_date)
   const monthYear = formatMonthYear(plan.race_date)
   const goalTime  = formatGoalTime(plan.goal_minutes)
@@ -882,7 +888,7 @@ function PastRow({ plan, compact = false, onEdit, onDelete }) {
           </button>
           {plan.has_feedback
             ? <span className="text-xs text-green-500">✓</span>
-            : <a href={`/feedback/${plan.id}`} className="text-xs font-bold" style={{ color: CORAL }}>Log →</a>
+            : <a href={`/feedback/${plan.id}`} className="text-xs font-bold" style={{ color: CORAL }}>{t('plan.log')}</a>
           }
         </div>
       </div>
@@ -891,7 +897,7 @@ function PastRow({ plan, compact = false, onEdit, onDelete }) {
 
   // detail line varies: logged = "Jan 2025 · 1:34 finish"; unlogged = "Oct 2024 · 42.2 km"
   const detailParts = plan.has_feedback
-    ? [monthYear, goalTime ? `${goalTime} finish` : null].filter(Boolean)
+    ? [monthYear, goalTime ? t('plan.finish', { time: goalTime }) : null].filter(Boolean)
     : [monthYear, kmLabel].filter(Boolean)
   const detailLine = detailParts.join(' · ')
 
@@ -906,11 +912,11 @@ function PastRow({ plan, compact = false, onEdit, onDelete }) {
           <span className="text-sm font-semibold text-gray-800 truncate">{raceLabel(plan)}</span>
           <PlanPill mode={plan.mode} />
           {plan.has_feedback ? (
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-600">✓ Logged</span>
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-50 text-green-600">{t('plan.logged')}</span>
           ) : (
             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
               style={{ background: CORAL_LIGHT, color: CORAL }}>
-              Log due
+              {t('plan.logDue')}
             </span>
           )}
         </div>
@@ -929,8 +935,8 @@ function PastRow({ plan, compact = false, onEdit, onDelete }) {
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v1a1 1 0 01-1 1H9z"/></svg>
         </button>
         {plan.has_feedback
-          ? <a href={`/plan/${plan.id}`}     className="text-sm font-bold" style={{ color: TEAL }}>View →</a>
-          : <a href={`/feedback/${plan.id}`} className="text-sm font-bold" style={{ color: CORAL }}>Log →</a>
+          ? <a href={`/plan/${plan.id}`}     className="text-sm font-bold" style={{ color: TEAL }}>{t('plan.view')}</a>
+          : <a href={`/feedback/${plan.id}`} className="text-sm font-bold" style={{ color: CORAL }}>{t('plan.log')}</a>
         }
       </div>
     </div>
@@ -940,6 +946,7 @@ function PastRow({ plan, compact = false, onEdit, onDelete }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const { t } = useTranslation('dashboard')
   const [plans,         setPlans]         = useState(null)
   const [heroDetail,    setHeroDetail]    = useState(null)
   const [loading,       setLoading]       = useState(true)
@@ -1071,20 +1078,20 @@ export default function DashboardPage() {
 
         {error && (
           <div className="border-2 border-red-100 rounded-2xl p-5 text-center">
-            <p className="text-sm text-red-500">Couldn't load your plans. Please refresh.</p>
+            <p className="text-sm text-red-500">{t('error')}</p>
             <button onClick={() => window.location.reload()} className="mt-3 text-sm font-semibold text-red-400 underline">
-              Retry
+              {t('retry')}
             </button>
           </div>
         )}
 
         {empty && (
           <div className="border-2 border-gray-100 rounded-2xl p-8 text-center">
-            <p className="text-base font-semibold text-gray-800 mb-1">No plans yet</p>
-            <p className="text-sm text-gray-400 mb-5">Build your first race nutrition plan.</p>
+            <p className="text-base font-semibold text-gray-800 mb-1">{t('empty.title')}</p>
+            <p className="text-sm text-gray-400 mb-5">{t('empty.body')}</p>
             <a href="/" className="inline-block px-6 py-3 rounded-xl text-sm font-semibold text-white"
               style={{ background: TEAL }}>
-              Build your first race plan →
+              {t('empty.cta')}
             </a>
           </div>
         )}
@@ -1105,7 +1112,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
             <section>
-              <SectionLabel>Upcoming races</SectionLabel>
+              <SectionLabel>{t('upcoming')}</SectionLabel>
               <div className="rounded-2xl border border-gray-100 overflow-hidden">
                 {upcoming.length > 0 ? (
                   <div className="divide-y divide-gray-100">
@@ -1116,11 +1123,11 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="px-4 py-3 text-sm text-gray-400">No upcoming races.</p>
+                  <p className="px-4 py-3 text-sm text-gray-400">{t('noUpcoming')}</p>
                 )}
                 <div className="px-4 py-3 border-t border-gray-100">
                   <a href="/" className="flex items-center gap-1.5 text-sm font-semibold" style={{ color: TEAL }}>
-                    <span className="text-base leading-none">+</span> Add a race
+                    <span className="text-base leading-none">+</span> {t('addRace')}
                   </a>
                 </div>
               </div>
@@ -1128,7 +1135,7 @@ export default function DashboardPage() {
 
             {past.length > 0 && (
               <section>
-                <SectionLabel>Past races</SectionLabel>
+                <SectionLabel>{t('past')}</SectionLabel>
                 <div className="rounded-2xl border border-gray-100 overflow-hidden">
                   <div className="divide-y divide-gray-100">
                     {recentPast.map(plan => (
@@ -1143,7 +1150,7 @@ export default function DashboardPage() {
                         onClick={() => setShowOlder(v => !v)}
                         className="w-full flex items-center justify-between px-4 py-3 text-xs font-semibold text-gray-400 hover:text-gray-600 border-t border-gray-100 transition-colors"
                       >
-                        <span>{showOlder ? 'Show less' : `Show ${olderPast.length} older`}</span>
+                        <span>{showOlder ? t('showLess') : t('showOlder', { count: olderPast.length })}</span>
                         <svg className={`w-4 h-4 transition-transform ${showOlder ? 'rotate-180' : ''}`}
                           fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -1190,20 +1197,20 @@ export default function DashboardPage() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6 space-y-4">
-            <p className="text-base font-bold text-gray-900">Delete this plan?</p>
-            <p className="text-sm text-gray-500">This can't be undone.</p>
+            <p className="text-base font-bold text-gray-900">{t('delete.title')}</p>
+            <p className="text-sm text-gray-500">{t('delete.body')}</p>
             <div className="flex gap-2">
               <button
                 onClick={handleDeleteConfirm}
                 className="flex-1 py-2.5 text-sm font-semibold rounded-xl text-white bg-red-500"
               >
-                Delete
+                {t('delete.confirm')}
               </button>
               <button
                 onClick={() => { setDeleteConfirm(false); setDeletingId(null) }}
                 className="flex-1 py-2.5 text-sm font-semibold rounded-xl border-2 border-gray-200 text-gray-600"
               >
-                Cancel
+                {t('delete.cancel')}
               </button>
             </div>
           </div>

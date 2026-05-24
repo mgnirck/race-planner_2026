@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -92,6 +93,7 @@ function OptionGroup({ options, value, onChange }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function FeedbackPage({ planId }) {
+  const { t } = useTranslation('common')
   const [plan,       setPlan]       = useState(null)
   const [loadError,  setLoadError]  = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -165,7 +167,7 @@ export default function FeedbackPage({ planId }) {
             className="text-sm text-[#48C4B0] font-medium hover:underline
                        min-h-[44px] flex items-center"
           >
-            ← Dashboard
+            {t('feedback.back')}
           </a>
           <img src="/Lecka-Logo-New%20Green%20Font.png" alt="Lecka" className="h-6" />
           <div className="w-20" />
@@ -177,15 +179,15 @@ export default function FeedbackPage({ planId }) {
         {/* ── Page heading ─────────────────────────────────────────────────── */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-[#48C4B0] mb-1">
-            Post-race feedback
+            {t('feedback.category')}
           </p>
-          <h1 className="text-2xl font-bold text-[#1B1B1B]">How did it go?</h1>
+          <h1 className="text-2xl font-bold text-[#1B1B1B]">{t('feedback.title')}</h1>
         </div>
 
         {/* ── Plan context card ─────────────────────────────────────────────── */}
         {loadError && (
           <div className="border-2 border-red-100 rounded-2xl p-5">
-            <p className="text-sm text-red-500">Couldn't load plan details. You can still submit feedback.</p>
+            <p className="text-sm text-red-500">{t('feedback.loadError')}</p>
           </div>
         )}
 
@@ -210,64 +212,64 @@ export default function FeedbackPage({ planId }) {
 
           {/* 1 — Overall rating */}
           <div>
-            <FieldLabel>How did the race go overall?</FieldLabel>
+            <FieldLabel>{t('feedback.overall')}</FieldLabel>
             <StarRating value={rating} onChange={setRating} />
             {rating > 0 && (
               <p className="text-xs text-[#48C4B0] mt-2">
-                {['', 'Tough day out there', 'Could have gone better', 'Solid effort', 'Really strong race', 'Perfect race!'][rating]}
+                {[null, t('feedback.rating.1'), t('feedback.rating.2'), t('feedback.rating.3'), t('feedback.rating.4'), t('feedback.rating.5')][rating]}
               </p>
             )}
           </div>
 
           {/* 2 — Carb targets */}
           <div>
-            <FieldLabel>Did you manage to hit your carb targets?</FieldLabel>
+            <FieldLabel>{t('feedback.carbTarget')}</FieldLabel>
             <OptionGroup
               value={hitCarbTarget}
               onChange={setHitCarbTarget}
               options={[
-                { value: 'yes',    label: 'Yes' },
-                { value: 'mostly', label: 'Mostly' },
-                { value: 'no',     label: 'No' },
+                { value: 'yes',    label: t('feedback.yes') },
+                { value: 'mostly', label: t('feedback.mostly') },
+                { value: 'no',     label: t('feedback.no') },
               ]}
             />
           </div>
 
           {/* 3 — GI issues */}
           <div>
-            <FieldLabel>Any GI issues during the race?</FieldLabel>
+            <FieldLabel>{t('feedback.giIssues')}</FieldLabel>
             <OptionGroup
               value={giIssues}
               onChange={setGiIssues}
               options={[
-                { value: 'none',        label: 'None' },
-                { value: 'minor',       label: 'Minor' },
-                { value: 'significant', label: 'Significant' },
+                { value: 'none',        label: t('feedback.none') },
+                { value: 'minor',       label: t('feedback.minor') },
+                { value: 'significant', label: t('feedback.significant') },
               ]}
             />
           </div>
 
           {/* 4 — Plan felt right */}
           <div>
-            <FieldLabel>Did the nutrition plan feel right for the conditions?</FieldLabel>
+            <FieldLabel>{t('feedback.planFelt')}</FieldLabel>
             <OptionGroup
               value={planFeltRight}
               onChange={setPlanFeltRight}
               options={[
-                { value: 'yes',    label: 'Yes' },
-                { value: 'mostly', label: 'Mostly' },
-                { value: 'no',     label: 'No' },
+                { value: 'yes',    label: t('feedback.yes') },
+                { value: 'mostly', label: t('feedback.mostly') },
+                { value: 'no',     label: t('feedback.no') },
               ]}
             />
           </div>
 
           {/* 5 — Notes */}
           <div>
-            <FieldLabel>Anything else? (optional)</FieldLabel>
+            <FieldLabel>{t('feedback.notes')}</FieldLabel>
             <textarea
               value={notes}
               onChange={e => setNotes(e.target.value.slice(0, 500))}
-              placeholder="What worked well, what didn't, anything you'd change…"
+              placeholder={t('feedback.notesPlaceholder')}
               rows={4}
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
                          focus:outline-none focus:border-[#48C4B0] resize-none
@@ -279,7 +281,7 @@ export default function FeedbackPage({ planId }) {
           {/* Submit */}
           {submitError && (
             <p className="text-sm text-red-500 text-center">
-              Something went wrong — please try again.
+              {t('feedback.submitError')}
             </p>
           )}
 
@@ -294,11 +296,11 @@ export default function FeedbackPage({ planId }) {
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed',
               ].join(' ')}
             >
-              {submitting ? 'Saving…' : 'Save feedback'}
+              {submitting ? t('feedback.saving') : t('feedback.save')}
             </button>
             {!canSubmit && (
               <p className="text-xs text-gray-400 text-center mt-2">
-                Please answer all questions above to continue.
+                {t('feedback.incomplete')}
               </p>
             )}
           </div>

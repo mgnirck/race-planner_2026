@@ -2,7 +2,7 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import HttpBackend from 'i18next-http-backend'
 
-const SUPPORTED_LANGS = ['en', 'de', 'da', 'fr', 'vi']
+const SUPPORTED_LANGS = ['en', 'vi']
 
 /**
  * Determine the initial language using priority order:
@@ -32,7 +32,7 @@ i18n
     lng: initialLanguage,
     fallbackLng: 'en',
     supportedLngs: SUPPORTED_LANGS,
-    ns: ['common', 'form', 'results', 'admin'],
+    ns: ['common', 'form', 'results', 'admin', 'dashboard'],
     defaultNS: 'common',
     backend: {
       loadPath: '/locales/{{lng}}/{{ns}}.json',
