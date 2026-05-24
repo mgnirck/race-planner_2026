@@ -28,7 +28,7 @@ import { formatAddonSummary } from '../engine/kit-calculator.js'
 import ShareModal from './ShareModal.jsx'
 import PlanLeftColumn from './PlanLeftColumn.jsx'
 import PlanRightColumn from './PlanRightColumn.jsx'
-import PlanProductEditor from './PlanProductEditor.jsx'
+import PlanProductEditor, { ADDON_CATALOG } from './PlanProductEditor.jsx'
 import GutTrainingTab from './GutTrainingTab.jsx'
 import PreFuelSection from './PreFuelSection.jsx'
 import COMPETITOR_PRODUCTS from '../config/competitor-products.json'
@@ -176,7 +176,7 @@ function computeTrainingInfo(aggregated) {
   }
 }
 
-function computeProvidedNutrition(selection, manualQty, totalDurationMinutes, catalog = FALLBACK_PRODUCTS) {
+function computeProvidedNutrition(selection, manualQty, totalDurationMinutes, catalog = FALLBACK_PRODUCTS, addonItems = []) {
   const qtyMap = {}
   const productById = {}
 
@@ -207,6 +207,12 @@ function computeProvidedNutrition(selection, manualQty, totalDurationMinutes, ca
     if (!product) continue
     totalCarbs  += (product.carbs_per_unit  || 0) * qty
     totalSodium += (product.sodium_per_unit || 0) * qty
+  }
+
+  for (const { product, quantity } of addonItems) {
+    if (!product || !quantity) continue
+    totalCarbs  += (product.carbs_per_unit  || 0) * quantity
+    totalSodium += (product.sodium_per_unit || 0) * quantity
   }
 
   const durationHours = totalDurationMinutes / 60
@@ -1446,10 +1452,27 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     [leckaSelection, region, manualQty, allProductsCatalog]
   )
   const trainingInfo = useMemo(() => computeTrainingInfo(aggregated), [aggregated])
-  const provided     = useMemo(
-    () => computeProvidedNutrition(leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog),
-    [leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog]
-  )
+  const provided     = useMemo(() => {
+    // Build the effective addon list, mirroring PlanProductEditor's visibleAddons logic.
+    // This covers resolvedAddonItems whose quantity may be overridden, plus any items
+    // added manually via addonOverrides that weren't in the original resolved list.
+    const addonLookup = [...ADDON_CATALOG, ...COMPETITOR_PRODUCTS.products]
+    const effectiveAddons = [
+      ...resolvedAddonItems.map(item => ({
+        product: item.product,
+        quantity: addonOverrides[item.product.id] ?? item.quantity,
+      })),
+      ...Object.entries(addonOverrides)
+        .filter(([id, qty]) => qty > 0 && !resolvedAddonItems.find(i => i.product.id === id))
+        .map(([id, qty]) => {
+          const p = addonLookup.find(a => a.id === id)
+          return p ? { product: p, quantity: qty } : null
+        })
+        .filter(Boolean),
+    ].filter(item => (addonOverrides[item.product.id] ?? item.quantity) > 0)
+
+    return computeProvidedNutrition(leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog, effectiveAddons)
+  }, [leckaSelection, manualQty, targets.total_duration_minutes, allProductsCatalog, resolvedAddonItems, addonOverrides])
 
   // Variety pack CTA — always just 1× gel variety pack + 1× bar variety pack, nothing else
   const vpCartURL = useMemo(() => {
