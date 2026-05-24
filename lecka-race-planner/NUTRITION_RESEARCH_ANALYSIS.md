@@ -182,7 +182,7 @@ Worked example — 70 kg male, hot, intermediate, flat:
 | 70 kg male, hot, intermediate | 840 mg/h | 420–700+ | ⚠️ Upper end — appropriate in sustained heat |
 | 70 kg male, hot, trained | 924 mg/h | 500–900+ | ✓ |
 | 60 kg female, cool, intermediate | 367 mg/h | 240–480 | ✓ |
-| 70 kg male, mountain, intermediate | 840 × 1.18 = 991 mg/h | 500–1200 | ✓ |
+| 70 kg male, hot, mountain, intermediate | 840 × 1.18 = 991 mg/h | 500–1200 | ✓ |
 
 ### Known limitations
 1. **Gender modifier is a simplified proxy** — fitness level and VO2max predict sweat rate more accurately than gender alone; a trained female often sweats more than an untrained male
@@ -200,7 +200,7 @@ fluid_ml_per_hour =
   weight_kg
   × 8 ml/kg               (base rate — ACSM population midpoint)
   × gender_modifier
-  × condition_modifier
+  × condition_modifier     (fluid-specific — see table below)
   × athlete_profile_modifier
 
   Clamped to 400–1000 ml/h
@@ -210,7 +210,15 @@ fluid_ml_per_hour =
   multiplier — athletes on mountain courses should treat the fluid target
   as a minimum and monitor thirst and urine colour.
 
-Same gender, condition, and profile modifiers as sodium.
+Gender modifiers: same as sodium (male × 1.00, female × 0.90, other × 0.95)
+Athlete profile modifiers: same as sodium (untrained × 0.85, intermediate × 1.00, trained × 1.10, elite × 1.15)
+
+Condition modifiers for fluid (lower than sodium — fluid demand rises less steeply than sodium loss):
+  cool:   × 0.90
+  mild:   × 1.00
+  warm:   × 1.20
+  hot:    × 1.40
+  humid:  × 1.35
 
 Worked example — 70 kg male, warm, trained:
   = 70 × 8 × 1.0 × 1.2 × 1.10 = 739 ml/h
@@ -345,12 +353,12 @@ Step 3 — Caffeine assignment:
   contribute their carbs toward the total.
 ```
 
-**Worked example — 2-hour race, 58 g/h target, Passion Fruit gel (25 g carbs):**
+**Worked example — 2-hour race, 58 g/h target, Passion Fruit gel (27 g carbs):**
 ```
   total_carbs  = 58 × 2.0 = 116 g
-  needed_gels  = ceil(116 / 25) = ceil(4.64) = 5
+  needed_gels  = ceil(116 / 27) = ceil(4.30) = 5
   slots        = [20, 45, 70, 94, 119 min]  (evenly spaced)
-  provided     = 5 × 25 = 125 g  (108% of target — ceil rounds up by design)
+  provided     = 5 × 27 = 135 g  (116% of target — ceil rounds up by design)
 ```
 
 **Why a slight overshoot is intentional:**
@@ -424,5 +432,5 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 
 ---
 
-**Last updated:** April 25, 2026
+**Last updated:** May 24, 2026
 **Next review:** April 2027, or upon major ISSN / IOC guideline update
