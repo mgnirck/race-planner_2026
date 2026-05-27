@@ -35,8 +35,8 @@ const REGION_LABELS = Object.fromEntries(
   Object.entries(regionsConfig).map(([k, v]) => [k, v.label])
 )
 
-const CATALOG_REGIONS      = ['us', 'de', 'dk', 'ch', 'vn', 'sg', 'hk', 'au', 'fr']
-const CATALOG_REGION_CODES = { us: 'US', de: 'DE', dk: 'DK', ch: 'CH', vn: 'VN', sg: 'SG', hk: 'HK', au: 'AU', fr: 'FR' }
+const CATALOG_REGIONS      = ['us', 'de', 'dk', 'ch', 'vn', 'sg', 'hk', 'au', 'fr', 'kh']
+const CATALOG_REGION_CODES = { us: 'US', de: 'DE', dk: 'DK', ch: 'CH', vn: 'VN', sg: 'SG', hk: 'HK', au: 'AU', fr: 'FR', kh: 'KH' }
 
 const ATHLETE_PROFILE_LABELS = {
   untrained: 'New to endurance sports',

@@ -127,6 +127,15 @@
             "price": 2.7
           }
         ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "49860811063594",
+            "units_per_pack": 12,
+            "price": 27.0
+          }
+        ]
       }
     }
   },
@@ -262,6 +271,15 @@
           {
             "units_per_pack": 1,
             "price": 2.7
+          }
+        ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "49963852366122",
+            "units_per_pack": 12,
+            "price": 27.0
           }
         ]
       }
@@ -401,6 +419,15 @@
             "price": 2.7
           }
         ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "49860842717482",
+            "units_per_pack": 12,
+            "price": 27.0
+          }
+        ]
       }
     }
   },
@@ -538,6 +565,15 @@
             "price": 2.7
           }
         ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "50453777678634",
+            "units_per_pack": 12,
+            "price": 27.0
+          }
+        ]
       }
     }
   },
@@ -670,6 +706,15 @@
             "price": 2.7
           }
         ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "50453792424234",
+            "units_per_pack": 12,
+            "price": 27.0
+          }
+        ]
       }
     }
   },
@@ -784,6 +829,9 @@
       },
       "fr": {
         "variants": []
+      },
+      "kh": {
+        "variants": []
       }
     }
   },
@@ -847,6 +895,9 @@
         "variants": []
       },
       "fr": {
+        "variants": []
+      },
+      "kh": {
         "variants": []
       }
     }
@@ -954,6 +1005,15 @@
       },
       "fr": {
         "variants": []
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "51561162375466",
+            "units_per_pack": 4,
+            "price": 28.8
+          }
+        ]
       }
     }
   },
@@ -1015,6 +1075,9 @@
         "variants": []
       },
       "fr": {
+        "variants": []
+      },
+      "kh": {
         "variants": []
       }
     }
@@ -1086,6 +1149,9 @@
         "variants": []
       },
       "fr": {
+        "variants": []
+      },
+      "kh": {
         "variants": []
       }
     }
@@ -1208,6 +1274,15 @@
             "price": 2.5
           }
         ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "49860970185002",
+            "units_per_pack": 12,
+            "price": 20.0
+          }
+        ]
       }
     }
   },
@@ -1323,6 +1398,15 @@
             "price": 2.5
           }
         ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "49863643726122",
+            "units_per_pack": 12,
+            "price": 20.0
+          }
+        ]
       }
     }
   },
@@ -1420,6 +1504,15 @@
           {
             "units_per_pack": 1,
             "price": 2.5
+          }
+        ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "49860904124714",
+            "units_per_pack": 12,
+            "price": 20.0
           }
         ]
       }
@@ -1547,6 +1640,15 @@
           {
             "units_per_pack": 1,
             "price": 2.5
+          }
+        ]
+      },
+      "kh": {
+        "variants": [
+          {
+            "shopify_variant_id": "49863631831338",
+            "units_per_pack": 12,
+            "price": 20.0
           }
         ]
       }
