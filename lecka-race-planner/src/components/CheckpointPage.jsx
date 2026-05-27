@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProducts } from '../hooks/useProducts.js'
 import FALLBACK_PRODUCTS from '../config/products.json'
 
@@ -88,12 +89,13 @@ function SectionLabel({ children }) {
 // ── Left Panel ────────────────────────────────────────────────────────────────
 
 function PlanSummaryPanel({ plan }) {
+  const { t } = useTranslation('common')
   if (!plan) {
     return (
       <div className="h-full bg-gray-50 border-r border-gray-200 p-5 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-[#48C4B0] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs text-gray-400">Loading plan…</p>
+          <p className="text-xs text-gray-400">{t('cp.planLoading')}</p>
         </div>
       </div>
     )
@@ -123,7 +125,7 @@ function PlanSummaryPanel({ plan }) {
     <div className="h-full bg-gray-50 border-r border-gray-200 p-5 overflow-y-auto text-xs">
       <div className="space-y-5">
         <div>
-          <SectionLabel>Race</SectionLabel>
+          <SectionLabel>{t('cp.sectionRace')}</SectionLabel>
           <p className="text-sm font-bold text-[#1B1B1B] leading-snug">{raceName}</p>
           <p className="text-gray-500 mt-1">
             {formatGoalTime(targets.total_duration_minutes)}
@@ -143,18 +145,18 @@ function PlanSummaryPanel({ plan }) {
         </div>
 
         <div className="border-t border-gray-200 pt-4">
-          <SectionLabel>Targets per hour</SectionLabel>
+          <SectionLabel>{t('cp.targetsPerHour')}</SectionLabel>
           <div className="space-y-1.5">
             <div className="flex justify-between">
-              <span className="text-gray-500">Carbs</span>
+              <span className="text-gray-500">{t('cp.carbs')}</span>
               <span className="font-semibold text-[#1B1B1B]">{targets.carb_per_hour ?? '—'}g</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Sodium</span>
+              <span className="text-gray-500">{t('cp.sodium')}</span>
               <span className="font-semibold text-[#1B1B1B]">{targets.sodium_per_hour ?? '—'}mg</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Fluid</span>
+              <span className="text-gray-500">{t('cp.fluid')}</span>
               <span className="font-semibold text-[#1B1B1B]">{targets.fluid_ml_per_hour ?? '—'}ml</span>
             </div>
           </div>
@@ -162,20 +164,20 @@ function PlanSummaryPanel({ plan }) {
 
         {productSummary && (
           <div className="border-t border-gray-200 pt-4">
-            <SectionLabel>Products in plan</SectionLabel>
+            <SectionLabel>{t('cp.productsInPlan')}</SectionLabel>
             <p className="text-gray-600 leading-relaxed">{productSummary}</p>
           </div>
         )}
 
         <div className="border-t border-gray-200 pt-4">
-          <SectionLabel>Total race</SectionLabel>
+          <SectionLabel>{t('cp.totalRace')}</SectionLabel>
           <div className="space-y-1.5">
             <div className="flex justify-between">
-              <span className="text-gray-500">Carbs</span>
+              <span className="text-gray-500">{t('cp.carbs')}</span>
               <span className="font-semibold text-[#1B1B1B]">{targets.total_carbs ?? '—'}g</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Sodium</span>
+              <span className="text-gray-500">{t('cp.sodium')}</span>
               <span className="font-semibold text-[#1B1B1B]">{targets.total_sodium ?? '—'}mg</span>
             </div>
           </div>
@@ -188,6 +190,7 @@ function PlanSummaryPanel({ plan }) {
 // ── Segment edit popover ──────────────────────────────────────────────────────
 
 function SegmentEditPopover({ seg, segTarget, products, segmentDataAll, editingIndex, onChange, onClose }) {
+  const { t } = useTranslation('common')
   const [localProducts, setLocalProducts] = useState(seg.products ?? [])
   const [localNote,     setLocalNote]     = useState(seg.note ?? '')
 
@@ -225,10 +228,10 @@ function SegmentEditPopover({ seg, segTarget, products, segmentDataAll, editingI
                       overflow-hidden flex flex-col" style={{ maxHeight: '80vh' }}>
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <p className="text-sm font-bold text-[#1B1B1B]">Edit segment nutrition</p>
+            <p className="text-sm font-bold text-[#1B1B1B]">{t('cp.editSegment')}</p>
             {segTarget && (
               <p className="text-xs text-gray-400 mt-0.5">
-                Target: {segTarget.carbs}g carbs · {segTarget.sodium}mg sodium · ~{formatDuration(segTarget.estMins)}
+                {t('cp.segTarget', { carbs: segTarget.carbs, sodium: segTarget.sodium, time: formatDuration(segTarget.estMins) })}
               </p>
             )}
           </div>
@@ -251,15 +254,15 @@ function SegmentEditPopover({ seg, segTarget, products, segmentDataAll, editingI
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold leading-snug ${qty > 0 ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>{product.name}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {product.carbs_per_unit}g carbs · {product.sodium_per_unit}mg sodium per serving
+                      {t('cp.carbsPerServing', { carbs: product.carbs_per_unit, sodium: product.sodium_per_unit })}
                     </p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {recommended !== null && (
-                        <span className="text-xs text-[#48C4B0] font-medium">Rec: {recommended}</span>
+                        <span className="text-xs text-[#48C4B0] font-medium">{t('cp.rec', { n: recommended })}</span>
                       )}
                       {planTotal > 0 && (
                         <span className={`text-xs font-medium ${totalUsed > planTotal ? 'text-amber-600' : 'text-gray-400'}`}>
-                          {totalUsed}/{planTotal} used
+                          {t('cp.used', { used: totalUsed, total: planTotal })}
                         </span>
                       )}
                     </div>
@@ -281,12 +284,12 @@ function SegmentEditPopover({ seg, segTarget, products, segmentDataAll, editingI
             )
           })}
           <div className="pt-2">
-            <label className="text-xs text-gray-500 block mb-1">Segment note</label>
+            <label className="text-xs text-gray-500 block mb-1">{t('cp.segNote')}</label>
             <textarea
               value={localNote}
               onChange={e => setLocalNote(e.target.value)}
               rows={2}
-              placeholder="Coaching note for this segment…"
+              placeholder={t('cp.segNotePlaceholder')}
               className="w-full border-2 rounded-lg px-3 py-2 text-sm border-gray-200
                          focus:outline-none focus:border-[#48C4B0] resize-none"
             />
@@ -296,7 +299,7 @@ function SegmentEditPopover({ seg, segTarget, products, segmentDataAll, editingI
           <button type="button" onClick={handleDone}
             className="w-full min-h-[44px] bg-[#48C4B0] text-white rounded-xl text-sm
                        font-semibold hover:bg-[#3db09d] transition-colors">
-            Done
+            {t('cp.done')}
           </button>
         </div>
       </div>
@@ -307,6 +310,7 @@ function SegmentEditPopover({ seg, segTarget, products, segmentDataAll, editingI
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function CheckpointPage({ planId }) {
+  const { t } = useTranslation('common')
   const [plan,         setPlan]         = useState(null)
   const [planLoading,  setPlanLoading]  = useState(true)
   const [checkpoints,  setCheckpoints]  = useState([])
@@ -740,7 +744,7 @@ export default function CheckpointPage({ planId }) {
             <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
             </svg>
-            Back to my plan
+            {t('cp.back')}
           </a>
           <img src="/Lecka-Logo-New%20Green%20Font.png" alt="Lecka" className="h-6" />
           <div className="flex items-center gap-2">
@@ -756,7 +760,7 @@ export default function CheckpointPage({ planId }) {
                 (!hasCheckpoints || saveState === 'saving') ? 'opacity-40 cursor-not-allowed' : '',
               ].join(' ')}
             >
-              {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? '✓ Saved' : 'Save'}
+              {saveState === 'saving' ? t('cp.saving') : saveState === 'saved' ? t('cp.saved') : t('cp.save')}
             </button>
             <button
               type="button"
@@ -768,7 +772,7 @@ export default function CheckpointPage({ planId }) {
                 (!hasCheckpoints || pdfGenerating) ? 'opacity-40 cursor-not-allowed' : '',
               ].join(' ')}
             >
-              {pdfGenerating ? 'Generating…' : 'Download PDF'}
+              {pdfGenerating ? t('cp.generating') : t('cp.downloadPdf')}
             </button>
           </div>
         </div>
@@ -777,11 +781,11 @@ export default function CheckpointPage({ planId }) {
       {/* ── Mobile target pills ────────────────────────────────────────────── */}
       <div className="lg:hidden bg-gray-50 border-b border-gray-200 px-4 py-2">
         <div className="flex items-center gap-3 text-xs font-semibold text-[#48C4B0]">
-          <span>{targets.carb_per_hour ?? '—'}g carbs/h</span>
+          <span>{t('cp.carbsH', { carbs: targets.carb_per_hour ?? '—' })}</span>
           <span className="text-gray-300">|</span>
-          <span>{targets.sodium_per_hour ?? '—'}mg sodium/h</span>
+          <span>{t('cp.sodiumH', { sodium: targets.sodium_per_hour ?? '—' })}</span>
           <span className="text-gray-300">|</span>
-          <span>{targets.fluid_ml_per_hour ?? '—'}ml fluid/h</span>
+          <span>{t('cp.fluidH', { fluid: targets.fluid_ml_per_hour ?? '—' })}</span>
         </div>
       </div>
 
@@ -806,10 +810,10 @@ export default function CheckpointPage({ planId }) {
 
             {/* ── Section 1: Checkpoint table ──────────────────────────── */}
             <section>
-              <SectionLabel>Your checkpoints</SectionLabel>
+              <SectionLabel>{t('cp.sectionCheckpoints')}</SectionLabel>
               {checkpoints.length === 0 ? (
                 <p className="text-sm text-gray-400 italic py-4 text-center">
-                  Add your first checkpoint below to start planning.
+                  {t('cp.noCheckpoints')}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -868,7 +872,7 @@ export default function CheckpointPage({ planId }) {
                               : 'border-gray-200 text-gray-400 hover:border-[#48C4B0]',
                           ].join(' ')}
                         >
-                          Bag
+                          {t('cp.dropBagBadge')}
                         </button>
                       </div>
                       {/* Remove */}
@@ -894,15 +898,15 @@ export default function CheckpointPage({ planId }) {
               {checkpoints.length > 0 && (
                 <div className="grid grid-cols-12 gap-2 mt-1 px-3">
                   <div className="col-span-1" />
-                  <div className="col-span-4 text-xs text-gray-400">Name</div>
-                  <div className="col-span-2 text-xs text-gray-400">At km</div>
-                  <div className="col-span-2 text-xs text-gray-400">Elev gain (m)</div>
-                  <div className="col-span-2 text-xs text-gray-400">Drop bag</div>
+                  <div className="col-span-4 text-xs text-gray-400">{t('cp.colName')}</div>
+                  <div className="col-span-2 text-xs text-gray-400">{t('cp.colKm')}</div>
+                  <div className="col-span-2 text-xs text-gray-400">{t('cp.colElev')}</div>
+                  <div className="col-span-2 text-xs text-gray-400">{t('cp.colDropBag')}</div>
                   <div className="col-span-1" />
                 </div>
               )}
               {checkpoints.length > 0 && (
-                <p className="text-xs text-gray-400 mt-1.5 px-1">Tip: "At km" = where on the course this checkpoint is located (e.g. km 25 of a 50 km race)</p>
+                <p className="text-xs text-gray-400 mt-1.5 px-1">{t('cp.tip')}</p>
               )}
 
               <button
@@ -912,18 +916,18 @@ export default function CheckpointPage({ planId }) {
                            text-[#48C4B0] text-sm font-semibold rounded-xl
                            hover:bg-[#48C4B0]/5 transition-colors"
               >
-                + Add checkpoint
+                {t('cp.addCheckpoint')}
               </button>
               {hasSegments && (
                 <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                  <span>Elevation entered:</span>
+                  <span>{t('cp.elevEntered')}</span>
                   <span className="font-semibold text-[#1B1B1B]">
                     {segments.reduce((s, seg) => s + seg.elevM, 0).toLocaleString()}m
                   </span>
                   {(inputs.elevation_gain_m ?? 0) > 0 && (
                     <>
                       <span className="text-gray-300">/</span>
-                      <span>{(inputs.elevation_gain_m).toLocaleString()}m race total</span>
+                      <span>{t('cp.raceTotal', { elev: inputs.elevation_gain_m.toLocaleString() })}</span>
                     </>
                   )}
                 </div>
@@ -939,16 +943,16 @@ export default function CheckpointPage({ planId }) {
                   className="w-full min-h-[52px] rounded-xl text-sm font-semibold transition-colors
                              bg-[#48C4B0] text-white hover:bg-[#3db09d]"
                 >
-                  Fill nutrition from plan →
+                  {t('cp.fillFromPlan')}
                 </button>
                 {aiFillMsg === 'success' && (
                   <p className="text-xs text-[#48C4B0] text-center mt-2">
-                    Products distributed — review and adjust as needed.
+                    {t('cp.fillSuccess')}
                   </p>
                 )}
                 {aiFillMsg === 'error' && (
                   <p className="text-xs text-gray-400 text-center mt-2">
-                    No products in plan — add them manually using the edit icon.
+                    {t('cp.fillError')}
                   </p>
                 )}
               </section>
@@ -957,17 +961,17 @@ export default function CheckpointPage({ planId }) {
             {/* ── Section 2: Nutrition table ────────────────────────────── */}
             {hasSegments && (
               <section>
-                <SectionLabel>Nutrition per segment</SectionLabel>
+                <SectionLabel>{t('cp.sectionNutrition')}</SectionLabel>
                 <div className="border-2 border-gray-100 rounded-2xl overflow-hidden">
                   {/* Header row */}
                   <div className="grid grid-cols-9 gap-1 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500">
-                    <div className="col-span-2">Segment</div>
-                    <div>Dist</div>
-                    <div>Time</div>
-                    <div>Plan</div>
-                    <div>Actual</div>
-                    <div>Sodium</div>
-                    <div className="col-span-2">Products</div>
+                    <div className="col-span-2">{t('cp.colSegment')}</div>
+                    <div>{t('cp.colDist')}</div>
+                    <div>{t('cp.colTime')}</div>
+                    <div>{t('cp.colPlan')}</div>
+                    <div>{t('cp.colActual')}</div>
+                    <div>{t('cp.colSodium')}</div>
+                    <div className="col-span-2">{t('cp.colProducts')}</div>
                   </div>
 
                   {segments.map((seg, i) => {
@@ -991,7 +995,7 @@ export default function CheckpointPage({ planId }) {
                           {seg.drop_bag && (
                             <span className="inline-block mt-0.5 text-[10px] font-semibold
                                              text-[#48C4B0] border border-[#48C4B0] rounded px-1">
-                              DROP BAG ✓
+                                {t('cp.dropBag')}
                             </span>
                           )}
                         </div>

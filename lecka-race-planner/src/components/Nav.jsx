@@ -1,9 +1,12 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { isEmbedded } from '../embed.js'
+import LanguageSwitcher from './LanguageSwitcher.jsx'
 
 const TEAL = '#1D9E75'
 
 export default function Nav() {
+  const { t } = useTranslation('common')
   if (isEmbedded) return null
 
   const userId  = localStorage.getItem('lecka_user_id')
@@ -29,7 +32,7 @@ export default function Nav() {
             href="/dashboard"
             className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
           >
-            My Plans
+            {t('nav.myPlans')}
           </a>
         </div>
 
@@ -39,15 +42,16 @@ export default function Nav() {
             href="/planner"
             className="text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-gray-400 transition-colors whitespace-nowrap"
           >
-            Quick plan
+            {t('nav.quickPlan')}
           </a>
           <a
             href="/planner/pro"
             className="text-xs font-semibold px-3 py-1.5 rounded-full text-white whitespace-nowrap"
             style={{ background: TEAL }}
           >
-            Pro plan
+            {t('nav.proPlan')}
           </a>
+          <LanguageSwitcher compact />
           {userId ? (
             <a
               href="/dashboard"
@@ -62,7 +66,7 @@ export default function Nav() {
               href="/auth/login"
               className="text-xs font-medium text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap ml-1"
             >
-              Log in
+              {t('nav.logIn')}
             </a>
           )}
         </div>

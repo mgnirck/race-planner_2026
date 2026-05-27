@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import StepForm         from './components/StepForm'
 import ResultsPage      from './components/ResultsPage'
 import SimpleForm       from './components/SimpleForm'
@@ -59,6 +60,7 @@ function recordPlan(race_type, region, mode = 'simple') {
 const PATH = window.location.pathname
 
 export default function App() {
+  const { t } = useTranslation('common')
   const [plan,           setPlan]           = useState(null)
   const [offlineBanner,  setOfflineBanner]  = useState(false)
   const [savedPlan,      setSavedPlan]      = useState(null)
@@ -159,21 +161,21 @@ export default function App() {
       {offlineBanner && savedPlan && (
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#1B1B1B] text-white
                         px-4 py-3 flex items-center justify-between gap-3 text-sm shadow-lg">
-          <span>You&apos;re offline. Want to view your last saved plan?</span>
+          <span>{t('offline.message')}</span>
           <div className="flex gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={() => { setPlan(savedPlan); setOfflineBanner(false) }}
               className="px-3 py-1.5 bg-[#48C4B0] text-white rounded-lg font-semibold text-xs"
             >
-              Restore plan
+              {t('offline.restore')}
             </button>
             <button
               type="button"
               onClick={() => setOfflineBanner(false)}
               className="px-3 py-1.5 bg-white/10 text-white rounded-lg text-xs"
             >
-              Dismiss
+              {t('offline.dismiss')}
             </button>
           </div>
         </div>

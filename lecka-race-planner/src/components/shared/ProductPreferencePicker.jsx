@@ -56,7 +56,7 @@ function ProductPreferenceCard({ product, selected, onToggle, caffeineOk, t }) {
   )
 }
 
-export default function ProductPreferencePicker({ preferredProductIds, onToggle, region, caffeineOk }) {
+export default function ProductPreferencePicker({ preferredProductIds, onToggle, region, caffeineOk, sport }) {
   const { t } = useTranslation(['form', 'common'])
   const { products: liveProducts } = useProducts()
   const products = liveProducts ?? FALLBACK_PRODUCTS
@@ -89,7 +89,10 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
 
       {/* Regular Gels */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Gels</p>
+        <p className={`text-xs font-semibold uppercase tracking-widest text-gray-400 ${sport === 'triathlon' ? 'mb-1' : 'mb-3'}`}>Gels</p>
+        {sport === 'triathlon' && (
+          <p className="text-xs text-gray-400 mb-3">Used on the bike and run legs.</p>
+        )}
         <div className="space-y-2">
           {gels.map(gel => (
             <ProductPreferenceCard
@@ -106,7 +109,10 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
 
       {/* Bars */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Bars</p>
+        <p className={`text-xs font-semibold uppercase tracking-widest text-gray-400 ${sport === 'triathlon' ? 'mb-1' : 'mb-3'}`}>Bars</p>
+        {sport === 'triathlon' && (
+          <p className="text-xs text-gray-400 mb-3">Bike leg only — placed in your plan before T2.</p>
+        )}
         <div className="space-y-2">
           {bars.map(bar => (
             <ProductPreferenceCard

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export default function VerifyPage() {
+  const { t } = useTranslation('common')
   const [status, setStatus] = useState('verifying') // verifying | saving | error
 
   useEffect(() => {
@@ -76,29 +78,29 @@ export default function VerifyPage() {
         {status === 'verifying' && (
           <>
             <div className="w-8 h-8 border-2 border-[#48C4B0] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm text-gray-500">Signing you in…</p>
+            <p className="text-sm text-gray-500">{t('verify.signingIn')}</p>
           </>
         )}
 
         {status === 'saving' && (
           <>
             <div className="w-8 h-8 border-2 border-[#48C4B0] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm text-gray-500">Saving your plan…</p>
+            <p className="text-sm text-gray-500">{t('verify.savingPlan')}</p>
           </>
         )}
 
         {status === 'error' && (
           <>
-            <p className="text-base font-bold text-[#1B1B1B] mb-2">This link has expired</p>
+            <p className="text-base font-bold text-[#1B1B1B] mb-2">{t('verify.expiredTitle')}</p>
             <p className="text-sm text-gray-500 mb-6">
-              Magic links are valid for 15 minutes and can only be used once.
+              {t('verify.expiredBody')}
             </p>
             <a
               href="/auth/login"
               className="inline-block px-6 py-3 bg-[#48C4B0] text-white rounded-xl
                          text-sm font-semibold hover:bg-[#3db09d] transition-colors"
             >
-              Request a new link
+              {t('verify.requestNew')}
             </a>
           </>
         )}

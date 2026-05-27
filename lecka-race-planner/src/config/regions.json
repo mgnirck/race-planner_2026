@@ -67,6 +67,13 @@
     "type": "distributor",
     "direct_link": true
   },
+  "kh": {
+    "store_url": "https://lecka-cambodia.myshopify.com",
+    "currency": "USD",
+    "currency_symbol": "$",
+    "label": "Cambodia",
+    "type": "shopify"
+  },
   "international": {
     "store_url": "https://www.getlecka.com",
     "currency": null,

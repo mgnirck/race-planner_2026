@@ -2,11 +2,13 @@ import React, { useState, useMemo } from 'react'
 import { isAvailableInRegion } from '../engine/region-utils.js'
 import FALLBACK_PRODUCTS from '../config/products.json'
 
-const ADDON_CATALOG = [
+export const ADDON_CATALOG = [
   { id: 'maurten-160',     display_name: 'Maurten 160',     brand: 'Maurten', type: 'drink_mix', carbs_per_unit: 38, note: 'drink mix' },
   { id: 'maurten-gel-100', display_name: 'Maurten Gel 100', brand: 'Maurten', type: 'gel',       carbs_per_unit: 25, note: 'gel' },
   { id: 'sis-beta-fuel',   display_name: 'SiS Beta Fuel',   brand: 'SiS',     type: 'gel',       carbs_per_unit: 40, note: 'gel' },
   { id: 'huma-gel',        display_name: 'Huma Gel',        brand: 'Huma',    type: 'gel',       carbs_per_unit: 23, note: 'real fruit gel' },
+  { id: 'nuun-sport',      display_name: 'Nuun Sport Tab',  brand: 'Nuun',    type: 'tab',       category: 'electrolyte', carbs_per_unit: 1,  sodium_per_unit: 300,  note: 'electrolyte tab' },
+  { id: 'precision-h1500', display_name: 'Precision Hydration PH 1500', brand: 'Precision Hydration', type: 'tab', category: 'electrolyte', carbs_per_unit: 0, sodium_per_unit: 1500, note: 'high-sodium electrolyte tab' },
 ]
 
 function formatTimingLabel(minutes) {
@@ -23,10 +25,7 @@ function timingSummary(leckaSelection, productId) {
   if (!item || !item.timing_minutes || item.timing_minutes.length === 0) return ''
   const times = [...item.timing_minutes].sort((a, b) => a - b)
   if (times.length === 1) return `at ${formatTimingLabel(times[0])}`
-  const intervals = times.slice(1).map((t, i) => t - times[i])
-  const allSame = intervals.every(iv => iv === intervals[0])
-  if (allSame) return `every ${intervals[0]}m from ${formatTimingLabel(times[0])}`
-  return times.slice(0, 2).map(formatTimingLabel).join(' · ')
+  return times.map(formatTimingLabel).join(' · ')
 }
 
 function ProductIcon({ product }) {

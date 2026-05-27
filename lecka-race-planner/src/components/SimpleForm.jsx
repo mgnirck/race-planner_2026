@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Nav from './Nav.jsx'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
@@ -11,15 +12,22 @@ import { getSavedRegion, saveRegion } from '../embed.js'
 import regionsConfig from '../config/regions.json'
 
 const RACE_OPTIONS = [
-  { key: '5k',              label: '5 km' },
-  { key: '10k',             label: '10 km' },
-  { key: 'half_marathon',   label: 'Half marathon' },
-  { key: 'marathon',        label: 'Marathon' },
-  { key: 'ultra_50k',       label: 'Ultra 50 km' },
-  { key: 'ultra_100k',      label: 'Ultra 100 km+' },
-  { key: 'triathlon_70_3',  label: '70.3 Triathlon' },
-  { key: 'triathlon_140_6', label: 'Ironman 140.6' },
-  { key: 'custom',          label: 'Other / Custom' },
+  { key: '5k',            label: '5 km'          },
+  { key: '10k',           label: '10 km'         },
+  { key: 'half_marathon', label: 'Half marathon' },
+  { key: 'marathon',      label: 'Marathon'      },
+  { key: 'ultra_50k',     label: 'Ultra 50 km'   },
+  { key: 'ultra_100k',    label: 'Ultra 100 km+' },
+  { key: 'cycling',       label: 'Cycling'       },
+  { key: 'triathlon',     label: 'Triathlon'     },
+  { key: 'custom',        label: 'Other / Custom'},
+]
+
+const TRIATHLON_OPTIONS = [
+  { key: 'triathlon_sprint',  label: 'Sprint',  sublabel: '750m swim · 20km bike · 5km run',    km: 51   },
+  { key: 'triathlon_olympic', label: 'Olympic', sublabel: '1.5km swim · 40km bike · 10km run',  km: 51.5 },
+  { key: 'triathlon_70_3',    label: '70.3',    sublabel: '1.9km swim · 90km bike · 21km run',  km: 113  },
+  { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226  },
 ]
 
 const TEMPERATURE_OPTIONS = [
@@ -92,6 +100,7 @@ const DEFAULT_FORM = {
   race_name:              '',
   race_date:              '',
   race_type:              '',
+  triathlon_type:         '',
   custom_race_km:         '',
   custom_race_unit:       'km',
   goal_time_h:            '',
@@ -108,6 +117,7 @@ const DEFAULT_FORM = {
 }
 
 export default function SimpleForm({ onComplete }) {
+  const { t } = useTranslation(['form', 'common'])
   const [form,       setForm]       = useState(DEFAULT_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [region,     setRegion]     = useState(() => getSavedRegion() ?? null)
@@ -119,6 +129,25 @@ export default function SimpleForm({ onComplete }) {
 
   const { products: liveProducts } = useProducts()
   const catalog = liveProducts ?? FALLBACK_PRODUCTS
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('lecka_homepage_prefill')
+      if (!raw) return
+      sessionStorage.removeItem('lecka_homepage_prefill')
+      const prefill = JSON.parse(raw)
+      const isTriSub = TRIATHLON_OPTIONS.some(o => o.key === prefill.race_type)
+      setForm(f => ({
+        ...f,
+        race_type:      isTriSub ? 'triathlon' : (prefill.race_type ?? f.race_type),
+        triathlon_type: isTriSub ? prefill.race_type : (prefill.triathlon_type ?? f.triathlon_type ?? ''),
+        goal_time_h:    prefill.goal_time_h ?? f.goal_time_h,
+        goal_time_m:    prefill.goal_time_m ?? f.goal_time_m,
+      }))
+    } catch {
+      // malformed sessionStorage — silently ignore
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const userId = localStorage.getItem('lecka_user_id')
@@ -162,9 +191,12 @@ export default function SimpleForm({ onComplete }) {
         ? parseFloat(form.custom_race_km) * 1.60934
         : parseFloat(form.custom_race_km))
     : null
-  const resolvedRaceType = form.race_type === 'custom'
-    ? (customKm > 0 ? mapCustomDistToRaceType(customKm) : '')
-    : form.race_type
+  const resolvedRaceType =
+    form.race_type === 'custom'
+      ? (customKm > 0 ? mapCustomDistToRaceType(customKm) : '')
+      : form.race_type === 'triathlon'
+        ? (form.triathlon_type || '')
+        : form.race_type
 
   const canSubmit = resolvedRaceType !== '' && goalValid && !submitting &&
     (form.race_type !== 'custom' || (parseFloat(form.custom_race_km) > 0))
@@ -194,6 +226,10 @@ export default function SimpleForm({ onComplete }) {
       ? []
       : form.preferred_product_ids
 
+    const triathlonKm = form.race_type === 'triathlon'
+      ? (TRIATHLON_OPTIONS.find(o => o.key === form.triathlon_type)?.km ?? 0)
+      : null
+
     const engineInputs = {
       race_type:        resolvedRaceType,
       goal_minutes:     goalMinutes,
@@ -203,7 +239,7 @@ export default function SimpleForm({ onComplete }) {
       effort:           SIMPLE_DEFAULTS.effort,
       caffeine_ok,
       elevation_gain_m: SIMPLE_DEFAULTS.elevation_gain_m,
-      distance_km:      customKm ?? SIMPLE_DEFAULTS.distance_km,
+      distance_km:      triathlonKm ?? customKm ?? SIMPLE_DEFAULTS.distance_km,
       athlete_profile:  SIMPLE_DEFAULTS.athlete_profile,
       training_mode:    SIMPLE_DEFAULTS.training_mode,
     }
@@ -235,7 +271,7 @@ export default function SimpleForm({ onComplete }) {
       caffeine_ok,
       preferred_product_ids,
       product_preference_mode: form.product_preference_mode,
-      surface_type:           '',
+      surface_type:           form.race_type === 'triathlon' ? 'road' : '',
       elevation_gain_m:       0,
       dist_unit:              'km',
       fuelling_style:         'gels_only',
@@ -264,7 +300,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 0. Region */}
           <div className="mb-8">
-            <SectionLabel>Where are you based?</SectionLabel>
+            <SectionLabel>{t('form:steps.region')}</SectionLabel>
             <p className="text-xs text-gray-400 mb-3">We use this to show you available products and local pricing.</p>
 
             {/* All non-international countries */}
@@ -317,7 +353,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 1. Race name */}
           <div className="mb-8">
-            <SectionLabel>Race name</SectionLabel>
+            <SectionLabel>{t('form:simple.raceName')}</SectionLabel>
             <input
               type="text"
               placeholder="e.g. Cape Town Marathon 2026"
@@ -331,7 +367,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 2. Race date */}
           <div className="mb-8">
-            <SectionLabel>Race date</SectionLabel>
+            <SectionLabel>{t('form:simple.raceDate')}</SectionLabel>
             <input
               type="date"
               value={form.race_date}
@@ -345,17 +381,48 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 3. Race type */}
           <div className="mb-8">
-            <SectionLabel>What are you racing?</SectionLabel>
+            <SectionLabel>{t('form:simple.raceType')}</SectionLabel>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {RACE_OPTIONS.map(opt => (
                 <Pill
                   key={opt.key}
                   label={opt.label}
                   selected={form.race_type === opt.key}
-                  onClick={() => setForm(f => ({ ...f, race_type: opt.key }))}
+                  onClick={() => setForm(f => ({ ...f, race_type: opt.key, triathlon_type: '' }))}
                 />
               ))}
             </div>
+
+            {/* Triathlon sub-options */}
+            {form.race_type === 'triathlon' && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {TRIATHLON_OPTIONS.map(opt => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem('lecka_pro_prefill', JSON.stringify({
+                          sport: 'triathlon',
+                          triathlon_type: opt.key,
+                          race_type: opt.key,
+                        }))
+                      } catch {}
+                      window.location.assign('/planner/pro')
+                    }}
+                    className={[
+                      'px-3 py-1.5 rounded-full border-2 text-xs font-semibold transition-colors',
+                      form.triathlon_type === opt.key
+                        ? 'bg-[#48C4B0] border-[#48C4B0] text-white'
+                        : 'bg-white border-gray-200 text-gray-600',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                    <span className="font-normal opacity-60 ml-1">{opt.sublabel}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Custom distance input */}
             {form.race_type === 'custom' && (
@@ -395,7 +462,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 4. Goal time */}
           <div className="mb-8">
-            <SectionLabel>Your goal time</SectionLabel>
+            <SectionLabel>{t('form:simple.goalTime')}</SectionLabel>
             <div className="flex items-center gap-3">
               <div className="flex-1">
                 <input
@@ -436,7 +503,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 5. Race conditions */}
           <div className="mb-8">
-            <SectionLabel>Expected conditions on race day</SectionLabel>
+            <SectionLabel>{t('form:simple.conditions')}</SectionLabel>
 
             {/* Temperature */}
             <p className="text-xs text-gray-400 mb-2">Temperature</p>
@@ -486,7 +553,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 6. Gender */}
           <div className="mb-8">
-            <SectionLabel>You are</SectionLabel>
+            <SectionLabel>{t('form:simple.gender')}</SectionLabel>
             <div className="flex gap-2">
               {[
                 { key: 'female', label: 'Female' },
@@ -504,7 +571,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 7. Weight */}
           <div className="mb-8">
-            <SectionLabel>Your weight</SectionLabel>
+            <SectionLabel>{t('form:simple.weight')}</SectionLabel>
             <WeightInput
               value={form.weight_value}
               unit={form.weight_unit}
@@ -517,7 +584,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 8. Caffeine */}
           <div className="mb-8">
-            <SectionLabel>Caffeine during racing?</SectionLabel>
+            <SectionLabel>{t('form:simple.caffeine')}</SectionLabel>
             <div className="flex gap-2">
               <div className="flex-1">
                 <Pill
@@ -539,7 +606,7 @@ export default function SimpleForm({ onComplete }) {
 
           {/* 9. Lecka flavour preference */}
           <div className="mb-8">
-            <SectionLabel>Lecka flavour preference</SectionLabel>
+            <SectionLabel>{t('form:simple.flavour')}</SectionLabel>
             <div className="space-y-2">
               <button
                 type="button"
@@ -552,9 +619,9 @@ export default function SimpleForm({ onComplete }) {
                 ].join(' ')}
               >
                 <p className={`text-sm font-semibold ${form.product_preference_mode === 'suggested' ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
-                  Suggest for me
+                  {t('form:simple.suggestForMe')}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">We'll choose a balanced mix based on your plan.</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('form:simple.suggestForMe.desc')}</p>
               </button>
               <button
                 type="button"
@@ -567,9 +634,9 @@ export default function SimpleForm({ onComplete }) {
                 ].join(' ')}
               >
                 <p className={`text-sm font-semibold ${form.product_preference_mode === 'pick' ? 'text-[#48C4B0]' : 'text-[#1B1B1B]'}`}>
-                  I'll pick my favourites
+                  {t('form:simple.pickFavourites')}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">Choose the flavours you want in your plan.</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('form:simple.pickFavourites.desc')}</p>
               </button>
             </div>
             {form.product_preference_mode === 'pick' && (
@@ -594,7 +661,7 @@ export default function SimpleForm({ onComplete }) {
           {/* 10. Email (optional) */}
           <div className="mb-8">
             <p className="text-xs text-gray-400 mb-2">
-              Your email — get your plan as a PDF
+              {t('form:simple.email')}
             </p>
             <input
               type="email"
@@ -615,7 +682,7 @@ export default function SimpleForm({ onComplete }) {
                        rounded-2xl text-base font-bold transition-colors
                        disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {submitting ? 'Building your plan…' : 'Build my plan →'}
+            {submitting ? t('form:simple.buildingPlan') : t('form:simple.buildPlan')}
           </button>
 
         </form>

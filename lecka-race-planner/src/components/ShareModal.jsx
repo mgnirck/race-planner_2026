@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import SharePlanImage from './SharePlanImage'
 
 export default function ShareModal({ onClose, plan: planProp, planProps, planUrl: planUrlProp }) {
+  const { t } = useTranslation('results')
   // Support both old API (planProps + planUrl) and new API (plan)
   const plan = planProp ?? { ...planProps, planUrl: planUrlProp || planProps?.planUrl || 'https://plan.getlecka.com' }
 
@@ -82,7 +84,7 @@ export default function ShareModal({ onClose, plan: planProp, planProps, planUrl
           borderBottom: '0.5px solid #e5e7eb',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <span style={{ fontSize: 15, fontWeight: 500 }}>Share my plan</span>
+          <span style={{ fontSize: 15, fontWeight: 500 }}>{t('share.button')}</span>
           <button
             onClick={onClose}
             style={{
@@ -104,7 +106,7 @@ export default function ShareModal({ onClose, plan: planProp, planProps, planUrl
           }}>
             {generating ? (
               <div style={{ textAlign: 'center', color: '#fff' }}>
-                <div style={{ fontSize: 13, marginTop: 8 }}>Generating your plan card...</div>
+                <div style={{ fontSize: 13, marginTop: 8 }}>{t('share.generating')}</div>
               </div>
             ) : (
               <img src={dataUrl} style={{ width: '100%', display: 'block', borderRadius: 12 }} />
@@ -126,7 +128,7 @@ export default function ShareModal({ onClose, plan: planProp, planProps, planUrl
                   color: format === f ? '#fff' : '#6b7280',
                 }}
               >
-                {f === 'square' ? 'Square 1:1' : 'Story 9:16'}
+                {f === 'square' ? t('share.formatSquare') : t('share.formatStory')}
               </button>
             ))}
           </div>
@@ -145,15 +147,15 @@ export default function ShareModal({ onClose, plan: planProp, planProps, planUrl
               boxSizing: 'border-box',
             }}
           >
-            ↓ Download PNG
+            ↓ {t('share.download')}
           </a>
 
           {/* 2×2 share grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
             {[
-              { label: 'Facebook', onClick: () => window.open(fbUrl, '_blank') },
-              { label: copied ? 'Copied ✓' : 'Copy link', onClick: handleCopy },
-              { label: 'Email', onClick: () => window.open(mailUrl) },
+              { label: t('share.facebook'), onClick: () => window.open(fbUrl, '_blank') },
+              { label: copied ? t('share.copied') : t('share.copyLink'), onClick: handleCopy },
+              { label: t('share.email'), onClick: () => window.open(mailUrl) },
               null,
             ].map((btn, i) =>
               btn ? (
@@ -175,10 +177,10 @@ export default function ShareModal({ onClose, plan: planProp, planProps, planUrl
 
           {/* Instagram hint + footer */}
           <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
-            For Instagram: download and post to your Stories or Feed
+            {t('share.instagramHint')}
           </p>
           <p style={{ fontSize: 11, color: '#d1d5db', textAlign: 'center', margin: '6px 0 16px' }}>
-            Free race plans at plan.getlecka.com
+            {t('share.footer')}
           </p>
         </div>
       </div>

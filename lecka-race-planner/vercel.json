@@ -5,6 +5,9 @@
   "functions": {
     "api/send-plan.js": {
       "maxDuration": 30
+    },
+    "api/coach-copy.js": {
+      "maxDuration": 25
     }
   },
   "headers": [
