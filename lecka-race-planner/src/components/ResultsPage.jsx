@@ -1408,6 +1408,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           setProCoachCopy(data.copy)
           setProWatchOut(data.watch_out ?? null)
           setProCoachCache(cacheKey, { copy: data.copy, watch_out: data.watch_out ?? null })
+        } else {
+          setProCoachFailed(true)
         }
         setProCoachLoading(false)
       })
