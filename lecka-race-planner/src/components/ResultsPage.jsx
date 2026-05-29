@@ -644,6 +644,14 @@ function RaceTimelineV2({ events, totalDuration, totalKm }) {
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-[#1B1B1B]">{group.product.name}</p>
         <p className="text-[10px] text-gray-400">{group.scheduleText}</p>
+        {(group.product.carbs_per_unit > 0 || group.product.sodium_per_unit > 0) && (
+          <p className="text-[10px]">
+            <span className="text-gray-500">{group.product.carbs_per_unit}g carbs</span>
+            {group.product.sodium_per_unit > 0 && (
+              <span className="text-gray-400"> · {group.product.sodium_per_unit}mg sodium</span>
+            )}
+          </p>
+        )}
         {group.isAddon && (
           <span className="text-[10px] text-gray-400 italic">Add-on — buy separately</span>
         )}
