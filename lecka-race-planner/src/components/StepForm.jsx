@@ -1879,7 +1879,7 @@ export default function StepForm({ onComplete }) {
     const run_minutes  = form.sport === 'triathlon' ? (goalMinutesFromFields(form.run_time_h,  form.run_time_m)  ?? 0) : undefined
 
     const conditions = deriveConditionsFromForm(form)
-    const targets = calculateTargets({
+    const modelTargets = calculateTargets({
       race_type:        form.race_type,
       goal_minutes,
       weight_kg,
@@ -1892,6 +1892,30 @@ export default function StepForm({ onComplete }) {
       distance_km:      parseFloat(form.custom_km) || 0,
       training_mode:    form.training_mode,
     })
+
+    const useCustomTargets =
+      form.custom_targets_mode === true &&
+      parseInt(form.custom_carb_ph,   10) > 0 &&
+      parseInt(form.custom_sodium_ph, 10) > 0 &&
+      parseInt(form.custom_fluid_ph,  10) > 0
+
+    let targets
+    if (useCustomTargets) {
+      const customCarb    = parseInt(form.custom_carb_ph,   10)
+      const customSodium  = parseInt(form.custom_sodium_ph, 10)
+      const customFluid   = parseInt(form.custom_fluid_ph,  10)
+      const durationHours = goal_minutes / 60
+      targets = {
+        ...modelTargets,
+        carb_per_hour:     customCarb,
+        sodium_per_hour:   customSodium,
+        fluid_ml_per_hour: customFluid,
+        total_carbs:       Math.round(customCarb   * durationHours),
+        total_sodium:      Math.round(customSodium * durationHours),
+      }
+    } else {
+      targets = modelTargets
+    }
 
     const allAddonProducts = [
       ...competitorProducts,
@@ -1932,6 +1956,9 @@ export default function StepForm({ onComplete }) {
         addon_carbs_per_hour:      Math.round(addonCoverage.carbs_per_hour ?? 0),
         foundation_carbs_per_hour: foundationTargets.carb_per_hour,
         custom_products:           form.custom_products ?? [],
+        model_targets: useCustomTargets
+          ? { carb_per_hour: modelTargets.carb_per_hour, sodium_per_hour: modelTargets.sodium_per_hour, fluid_ml_per_hour: modelTargets.fluid_ml_per_hour }
+          : null,
       },
     })
   }

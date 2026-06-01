@@ -401,7 +401,7 @@ function nutritionStatusLabel(provided, target, t) {
   return t('nutrition.status.over')
 }
 
-function NutritionSummary({ targets, provided, foundationTargets, addonCoverage }) {
+function NutritionSummary({ targets, provided, foundationTargets, addonCoverage, modelTargets = null }) {
   const { t } = useTranslation('results')
   const showProvided = provided.carbs_per_hour_provided > 0 || provided.sodium_per_hour_provided > 0
 
@@ -418,6 +418,12 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage 
     return 'About 2–3 gels per hour'
   })()
 
+  const customWarnings = modelTargets ? [
+    targets.carb_per_hour   > 120  && 'carbs',
+    targets.sodium_per_hour > 1800 && 'sodium',
+    targets.fluid_ml_per_hour > 1500 && 'fluid',
+  ].filter(Boolean) : []
+
   return (
     <section>
       <SectionLabel>{t('section.nutritionTargets')}</SectionLabel>
@@ -430,19 +436,36 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage 
             <div>
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.carb_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.carbsPerHour')}</p>
-              <p className="text-xs text-gray-400 italic mt-1 leading-tight">{carbHint}</p>
+              {modelTargets ? (
+                <p className="text-xs text-gray-400 mt-1 leading-tight">Model suggested: {modelTargets.carb_per_hour}g/h</p>
+              ) : (
+                <p className="text-xs text-gray-400 italic mt-1 leading-tight">{carbHint}</p>
+              )}
             </div>
             <div>
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.sodium_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.sodiumPerHour')}</p>
-              <p className="text-xs text-gray-400 italic mt-1 leading-tight">From gels + electrolytes</p>
+              {modelTargets ? (
+                <p className="text-xs text-gray-400 mt-1 leading-tight">Model suggested: {modelTargets.sodium_per_hour}mg/h</p>
+              ) : (
+                <p className="text-xs text-gray-400 italic mt-1 leading-tight">From gels + electrolytes</p>
+              )}
             </div>
             <div>
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.fluid_ml_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.fluidPerHour')}</p>
-              <p className="text-xs text-gray-400 italic mt-1 leading-tight">{t('nutrition.fluidNote')}</p>
+              {modelTargets ? (
+                <p className="text-xs text-gray-400 mt-1 leading-tight">Model suggested: {modelTargets.fluid_ml_per_hour}ml/h</p>
+              ) : (
+                <p className="text-xs text-gray-400 italic mt-1 leading-tight">{t('nutrition.fluidNote')}</p>
+              )}
             </div>
           </div>
+          {customWarnings.length > 0 && (
+            <p className="text-xs text-amber-600 mt-3 leading-snug">
+              This is above typical research guidelines — make sure you&apos;ve trained at this intake.
+            </p>
+          )}
         </div>
 
         {/* Foundation / addon split row */}
@@ -1332,6 +1355,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const { products: liveProducts } = useProducts()
   const allProductsCatalog = liveProducts ?? FALLBACK_PRODUCTS
 
+  const formModelTargets = form?.model_targets ?? null
+
   // Reset manual overrides when plan inputs change
   useEffect(() => { setManualQty(null) }, [selection, region])
 
@@ -2031,25 +2056,35 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       </div>
 
       {/* ── Desktop 3-stat strip ─────────────────────────────────────────────── */}
-      <div className="hidden lg:grid grid-cols-3 border-b border-gray-100">
-        {[
-          { value: targets.carb_per_hour,     unit: 'g',  label: 'carbs / hour',   sub: `${targets.total_carbs}g total` },
-          { value: targets.sodium_per_hour,   unit: 'mg', label: 'sodium / hour',  sub: `${targets.total_sodium}mg total` },
-          { value: targets.fluid_ml_per_hour, unit: 'ml', label: 'fluid / hour',   sub: null },
-        ].map((m, i) => (
-          <div key={m.label} className={`px-4 py-3 text-center ${i < 2 ? 'border-r border-gray-100' : ''}`}>
-            <p className="text-[10px] font-medium uppercase tracking-[.07em] text-gray-400 mb-1">
-              {m.label}
-            </p>
-            <p className="text-2xl font-bold text-[#1B1B1B] leading-none">
-              {m.value}
-              <span className="text-sm text-gray-400 font-normal">{m.unit}</span>
-            </p>
-            {m.sub && (
-              <p className="text-[10px] text-gray-300 mt-1">{m.sub}</p>
-            )}
-          </div>
-        ))}
+      <div className="hidden lg:block border-b border-gray-100">
+        <div className="grid grid-cols-3">
+          {[
+            { value: targets.carb_per_hour,     unit: 'g',  label: 'carbs / hour',   sub: `${targets.total_carbs}g total`,   modelValue: formModelTargets?.carb_per_hour,     overRange: targets.carb_per_hour > 120 },
+            { value: targets.sodium_per_hour,   unit: 'mg', label: 'sodium / hour',  sub: `${targets.total_sodium}mg total`,  modelValue: formModelTargets?.sodium_per_hour,   overRange: targets.sodium_per_hour > 1800 },
+            { value: targets.fluid_ml_per_hour, unit: 'ml', label: 'fluid / hour',   sub: null,                               modelValue: formModelTargets?.fluid_ml_per_hour, overRange: targets.fluid_ml_per_hour > 1500 },
+          ].map((m, i) => (
+            <div key={m.label} className={`px-4 py-3 text-center ${i < 2 ? 'border-r border-gray-100' : ''}`}>
+              <p className="text-[10px] font-medium uppercase tracking-[.07em] text-gray-400 mb-1">
+                {m.label}
+              </p>
+              <p className="text-2xl font-bold text-[#1B1B1B] leading-none">
+                {m.value}
+                <span className="text-sm text-gray-400 font-normal">{m.unit}</span>
+              </p>
+              {m.sub && (
+                <p className="text-[10px] text-gray-300 mt-1">{m.sub}</p>
+              )}
+              {m.modelValue != null && (
+                <p className="text-xs text-gray-400 mt-1">Model suggested: {m.modelValue}{m.unit}/h</p>
+              )}
+            </div>
+          ))}
+        </div>
+        {formModelTargets && (targets.carb_per_hour > 120 || targets.sodium_per_hour > 1800 || targets.fluid_ml_per_hour > 1500) && (
+          <p className="text-xs text-amber-600 text-center px-4 pb-2">
+            This is above typical research guidelines — make sure you&apos;ve trained at this intake.
+          </p>
+        )}
       </div>
 
       {/* ── Mobile view (<1024px) ───────────────────────────────────────────── */}
@@ -2161,7 +2196,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           {mobileTab === 'timeline' && timelineTabContent}
           {mobileTab === 'products' && (
             <div className="space-y-6">
-              <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} />
+              <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} modelTargets={formModelTargets} />
               <section>
                 <SectionLabel>
                   {form.fuelling_style === 'gels_only'       ? 'Your gels'
