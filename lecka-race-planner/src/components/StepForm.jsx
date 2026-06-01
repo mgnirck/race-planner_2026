@@ -126,6 +126,10 @@ const DEFAULT_FORM = {
   athlete_profile: '',
   caffeine_ok:     null,
   training_mode:   false,
+  custom_targets_mode: false,
+  custom_carb_ph:      '',
+  custom_sodium_ph:    '',
+  custom_fluid_ph:     '',
   // Step 3
   preferred_product_ids: [],
   fuelling_style: 'gels_only',
@@ -879,6 +883,33 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
         </div>
       )}
 
+      {/* Custom targets toggle */}
+      <div className="flex items-start justify-between gap-4 p-4 rounded-xl border-2 border-gray-100 bg-gray-50">
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-[#1B1B1B]">I already know my targets</p>
+          <p className="text-xs text-gray-400 mt-0.5">Enter your carb, sodium, and fluid targets directly — we'll map them to products</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setForm(f => ({ ...f, custom_targets_mode: !f.custom_targets_mode }))}
+          className={[
+            'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent',
+            'transition-colors duration-200 ease-in-out focus:outline-none mt-0.5',
+            form.custom_targets_mode ? 'bg-[#48C4B0]' : 'bg-gray-200',
+          ].join(' ')}
+          role="switch"
+          aria-checked={form.custom_targets_mode}
+        >
+          <span
+            className={[
+              'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0',
+              'transition duration-200 ease-in-out',
+              form.custom_targets_mode ? 'translate-x-5' : 'translate-x-0',
+            ].join(' ')}
+          />
+        </button>
+      </div>
+
       {/* Weight */}
       <div>
         <FieldLabel>{t('form:field.weight')}</FieldLabel>
@@ -907,112 +938,170 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
         </div>
       </div>
 
-      {/* Race conditions */}
-      <div>
-        <FieldLabel>{t('form:field.conditions')}</FieldLabel>
-
-        <p className="text-xs text-gray-400 mb-2">Temperature</p>
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          {[
-            { key: 'cool', emoji: '❄️', label: 'Cool', range: '< 10 °C' },
-            { key: 'mild', emoji: '🌤', label: 'Mild', range: '10–20 °C' },
-            { key: 'warm', emoji: '☀️', label: 'Warm', range: '20–28 °C' },
-            { key: 'hot',  emoji: '🔥', label: 'Hot',  range: '> 28 °C' },
-          ].map(c => (
-            <button
-              key={c.key}
-              type="button"
-              onClick={() => setForm(f => ({ ...f, temperature: c.key }))}
-              className={[
-                'flex flex-col items-center justify-center gap-0.5',
-                'min-h-[64px] rounded-xl border-2 transition-colors px-1',
-                form.temperature === c.key
-                  ? 'border-[#48C4B0] bg-[#48C4B0]/10'
-                  : 'border-gray-200 bg-white',
-              ].join(' ')}
-            >
-              <span className="text-xl">{c.emoji}</span>
-              <span className="text-xs font-medium text-gray-700">{c.label}</span>
-              <span className="text-[10px] text-gray-400">{c.range}</span>
-            </button>
-          ))}
+      {form.custom_targets_mode ? (
+        <div className="space-y-6">
+          {/* Carbs per hour */}
+          <div>
+            <FieldLabel>Carbs per hour</FieldLabel>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="e.g. 60"
+                value={form.custom_carb_ph}
+                onChange={e => setForm(f => ({ ...f, custom_carb_ph: e.target.value }))}
+                className="w-28 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
+              />
+              <span className="text-sm text-gray-400">g/h</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">Typical range: 30–120 g/h</p>
+          </div>
+          {/* Sodium per hour */}
+          <div>
+            <FieldLabel>Sodium per hour</FieldLabel>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="e.g. 500"
+                value={form.custom_sodium_ph}
+                onChange={e => setForm(f => ({ ...f, custom_sodium_ph: e.target.value }))}
+                className="w-28 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
+              />
+              <span className="text-sm text-gray-400">mg/h</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">Typical range: 200–1500 mg/h</p>
+          </div>
+          {/* Fluid per hour */}
+          <div>
+            <FieldLabel>Fluid per hour</FieldLabel>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="e.g. 500"
+                value={form.custom_fluid_ph}
+                onChange={e => setForm(f => ({ ...f, custom_fluid_ph: e.target.value }))}
+                className="w-28 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
+              />
+              <span className="text-sm text-gray-400">ml/h</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">Typical range: 300–1200 ml/h</p>
+          </div>
         </div>
+      ) : (
+        <>
+          {/* Race conditions */}
+          <div>
+            <FieldLabel>{t('form:field.conditions')}</FieldLabel>
 
-        <p className="text-xs text-gray-400 mb-2">Humidity</p>
-        <div className="flex gap-2">
-          {[
-            { key: 'dry',   label: 'Dry',   range: '< 60 %' },
-            { key: 'humid', label: 'Humid', range: '≥ 60 %' },
-          ].map(h => (
-            <button
-              key={h.key}
-              type="button"
-              onClick={() => setForm(f => ({ ...f, humidity: h.key }))}
-              className={[
-                'flex-1 flex flex-col items-center justify-center gap-0.5',
-                'min-h-[52px] rounded-xl border-2 transition-colors',
-                form.humidity === h.key
-                  ? 'border-[#48C4B0] bg-[#48C4B0]/10'
-                  : 'border-gray-200 bg-white',
-              ].join(' ')}
-            >
-              <span className="text-sm font-medium text-gray-700">{h.label}</span>
-              <span className="text-[10px] text-gray-400">{h.range}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+            <p className="text-xs text-gray-400 mb-2">Temperature</p>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[
+                { key: 'cool', emoji: '❄️', label: 'Cool', range: '< 10 °C' },
+                { key: 'mild', emoji: '🌤', label: 'Mild', range: '10–20 °C' },
+                { key: 'warm', emoji: '☀️', label: 'Warm', range: '20–28 °C' },
+                { key: 'hot',  emoji: '🔥', label: 'Hot',  range: '> 28 °C' },
+              ].map(c => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, temperature: c.key }))}
+                  className={[
+                    'flex flex-col items-center justify-center gap-0.5',
+                    'min-h-[64px] rounded-xl border-2 transition-colors px-1',
+                    form.temperature === c.key
+                      ? 'border-[#48C4B0] bg-[#48C4B0]/10'
+                      : 'border-gray-200 bg-white',
+                  ].join(' ')}
+                >
+                  <span className="text-xl">{c.emoji}</span>
+                  <span className="text-xs font-medium text-gray-700">{c.label}</span>
+                  <span className="text-[10px] text-gray-400">{c.range}</span>
+                </button>
+              ))}
+            </div>
 
-      {/* Effort level */}
-      <div>
-        <FieldLabel>{t('form:field.effort')}</FieldLabel>
-        <div className="space-y-2">
-          {[
-            { label: t('common:effort.easy'),      desc: t('form:field.effort.easy.desc'),      key: 'easy'      },
-            { label: t('common:effort.race_pace'), desc: t('form:field.effort.race_pace.desc'), key: 'race_pace' },
-            { label: t('common:effort.hard'),      desc: t('form:field.effort.hard.desc'),      key: 'hard'      },
-          ].map(e => (
-            <OptionCard
-              key={e.key}
-              label={e.label}
-              desc={e.desc}
-              selected={form.effort === e.key}
-              onClick={() => setForm(f => ({ ...f, effort: e.key }))}
-            />
-          ))}
-        </div>
-      </div>
+            <p className="text-xs text-gray-400 mb-2">Humidity</p>
+            <div className="flex gap-2">
+              {[
+                { key: 'dry',   label: 'Dry',   range: '< 60 %' },
+                { key: 'humid', label: 'Humid', range: '≥ 60 %' },
+              ].map(h => (
+                <button
+                  key={h.key}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, humidity: h.key }))}
+                  className={[
+                    'flex-1 flex flex-col items-center justify-center gap-0.5',
+                    'min-h-[52px] rounded-xl border-2 transition-colors',
+                    form.humidity === h.key
+                      ? 'border-[#48C4B0] bg-[#48C4B0]/10'
+                      : 'border-gray-200 bg-white',
+                  ].join(' ')}
+                >
+                  <span className="text-sm font-medium text-gray-700">{h.label}</span>
+                  <span className="text-[10px] text-gray-400">{h.range}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Training status */}
-      <div>
-        <FieldLabel>{t('form:field.training')}</FieldLabel>
-        <div className="space-y-2">
-          <OptionCard
-            label={t('form:field.training.untrained')}
-            desc={t('form:field.training.untrained.desc')}
-            selected={form.athlete_profile === 'untrained'}
-            onClick={() => setForm(f => ({ ...f, athlete_profile: 'untrained' }))}
-          />
-          <OptionCard
-            label={t('form:field.training.intermediate')}
-            desc={t('form:field.training.intermediate.desc')}
-            selected={form.athlete_profile === 'intermediate'}
-            onClick={() => setForm(f => ({ ...f, athlete_profile: 'intermediate' }))}
-          />
-          <OptionCard
-            label={t('form:field.training.trained')}
-            desc={t('form:field.training.trained.desc')}
-            selected={form.athlete_profile === 'trained'}
-            onClick={() => setForm(f => ({ ...f, athlete_profile: 'trained' }))}
-          />
-          <OptionCard
-            label={t('form:field.training.elite')}
-            desc={t('form:field.training.elite.desc')}
-            selected={form.athlete_profile === 'elite'}
-            onClick={() => setForm(f => ({ ...f, athlete_profile: 'elite' }))}
-          />
-        </div>
-      </div>
+          {/* Effort level */}
+          <div>
+            <FieldLabel>{t('form:field.effort')}</FieldLabel>
+            <div className="space-y-2">
+              {[
+                { label: t('common:effort.easy'),      desc: t('form:field.effort.easy.desc'),      key: 'easy'      },
+                { label: t('common:effort.race_pace'), desc: t('form:field.effort.race_pace.desc'), key: 'race_pace' },
+                { label: t('common:effort.hard'),      desc: t('form:field.effort.hard.desc'),      key: 'hard'      },
+              ].map(e => (
+                <OptionCard
+                  key={e.key}
+                  label={e.label}
+                  desc={e.desc}
+                  selected={form.effort === e.key}
+                  onClick={() => setForm(f => ({ ...f, effort: e.key }))}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Training status */}
+          <div>
+            <FieldLabel>{t('form:field.training')}</FieldLabel>
+            <div className="space-y-2">
+              <OptionCard
+                label={t('form:field.training.untrained')}
+                desc={t('form:field.training.untrained.desc')}
+                selected={form.athlete_profile === 'untrained'}
+                onClick={() => setForm(f => ({ ...f, athlete_profile: 'untrained' }))}
+              />
+              <OptionCard
+                label={t('form:field.training.intermediate')}
+                desc={t('form:field.training.intermediate.desc')}
+                selected={form.athlete_profile === 'intermediate'}
+                onClick={() => setForm(f => ({ ...f, athlete_profile: 'intermediate' }))}
+              />
+              <OptionCard
+                label={t('form:field.training.trained')}
+                desc={t('form:field.training.trained.desc')}
+                selected={form.athlete_profile === 'trained'}
+                onClick={() => setForm(f => ({ ...f, athlete_profile: 'trained' }))}
+              />
+              <OptionCard
+                label={t('form:field.training.elite')}
+                desc={t('form:field.training.elite.desc')}
+                selected={form.athlete_profile === 'elite'}
+                onClick={() => setForm(f => ({ ...f, athlete_profile: 'elite' }))}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Caffeine */}
       <div>
@@ -1629,13 +1718,28 @@ function deriveConditionsFromForm(form) {
 }
 
 function isStep2Valid(form) {
-  return (
+  const baseValid =
     toKg(form.weight_value, form.weight_unit) !== null &&
-    form.gender          !== '' &&
+    form.gender      !== '' &&
+    form.caffeine_ok !== null
+
+  if (form.custom_targets_mode) {
+    const carb   = parseInt(form.custom_carb_ph,   10)
+    const sodium = parseInt(form.custom_sodium_ph,  10)
+    const fluid  = parseInt(form.custom_fluid_ph,   10)
+    return (
+      baseValid &&
+      Number.isFinite(carb)   && carb   > 0 &&
+      Number.isFinite(sodium) && sodium > 0 &&
+      Number.isFinite(fluid)  && fluid  > 0
+    )
+  }
+
+  return (
+    baseValid &&
     form.temperature     !== '' &&
     form.effort          !== '' &&
-    form.athlete_profile !== '' &&
-    form.caffeine_ok     !== null
+    form.athlete_profile !== ''
   )
 }
 
