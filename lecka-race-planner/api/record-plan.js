@@ -46,6 +46,9 @@ async function handleAnalytics(req, res) {
     by_month,
     by_temperature,
     by_humidity,
+    by_plan_mode,
+    avg_nutrition_targets,
+    by_surface_type,
   ] = await Promise.all([
     safe(async () => {
       const { rows } = await sql`
@@ -248,6 +251,47 @@ async function handleAnalytics(req, res) {
       `
       return rows
     }),
+    safe(async () => {
+      const { rows } = await sql`
+        SELECT
+          COALESCE(inputs->>'mode', 'unknown') AS key,
+          COUNT(*)::int AS count,
+          ROUND(COUNT(*)::numeric / SUM(COUNT(*)) OVER () * 100, 1) AS pct
+        FROM plans
+        GROUP BY inputs->>'mode'
+        ORDER BY count DESC
+      `
+      return rows
+    }),
+    safe(async () => {
+      const { rows } = await sql`
+        SELECT
+          race_type,
+          ROUND(AVG((targets->>'carb_per_hour')::numeric))::int AS avg_carb_ph,
+          ROUND(AVG((targets->>'sodium_per_hour')::numeric))::int AS avg_sodium_ph,
+          ROUND(AVG((targets->>'fluid_ml_per_hour')::numeric))::int AS avg_fluid_ph,
+          COUNT(*)::int AS count
+        FROM plans
+        WHERE race_type IS NOT NULL
+          AND targets->>'carb_per_hour' IS NOT NULL
+        GROUP BY race_type
+        ORDER BY avg_carb_ph DESC
+      `
+      return rows
+    }),
+    safe(async () => {
+      const { rows } = await sql`
+        SELECT
+          inputs->>'surface_type' AS key,
+          COUNT(*)::int AS count,
+          ROUND(COUNT(*)::numeric / SUM(COUNT(*)) OVER () * 100, 1) AS pct
+        FROM plans
+        WHERE inputs->>'surface_type' IS NOT NULL
+        GROUP BY inputs->>'surface_type'
+        ORDER BY count DESC
+      `
+      return rows
+    }),
   ])
 
   res.setHeader('Cache-Control', 'no-store')
@@ -256,7 +300,8 @@ async function handleAnalytics(req, res) {
     by_conditions, by_effort, by_fuelling_style, avg_goal_time_by_race_type,
     preferred_products, addon_usage, plans_over_time, elevation_usage,
     caffeine_usage, training_mode_usage, addon_product_breakdown, by_month,
-    by_temperature, by_humidity,
+    by_temperature, by_humidity, by_plan_mode, avg_nutrition_targets,
+    by_surface_type,
   })
 }
 

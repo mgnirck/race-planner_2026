@@ -255,6 +255,8 @@ function OverviewTab({ data }) {
   const caffeine = data.caffeine_usage
   const byTemperature = data.by_temperature
   const byHumidity = data.by_humidity
+  const planMode = data.by_plan_mode
+  const surfaceType = data.by_surface_type
 
   return (
     <div className="space-y-8">
@@ -427,6 +429,40 @@ function OverviewTab({ data }) {
           <DataUnavailable />
         )}
       </section>
+
+      {/* Row 7 — Quick vs Pro */}
+      {planMode && planMode.length > 0 && (
+        <section>
+          <SectionLabel>Plan type (Quick vs Pro)</SectionLabel>
+          <div className="grid grid-cols-2 gap-3">
+            {planMode.map(r => (
+              <MetricCard
+                key={r.key}
+                value={r.count}
+                label={r.key === 'pro' ? 'Pro plans' : r.key === 'quick' ? 'Quick plans' : r.key}
+                sub={`${r.pct}%`}
+                highlight={r.key === 'pro'}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Row 8 — Surface type */}
+      {surfaceType && surfaceType.length > 0 && (
+        <section>
+          <SectionLabel>Surface type</SectionLabel>
+          {surfaceType.map(r => (
+            <BarRow
+              key={r.key}
+              label={r.key === 'road' ? 'Road' : r.key === 'trail' ? 'Trail' : r.key}
+              count={r.count}
+              pct={r.pct}
+              color="teal"
+            />
+          ))}
+        </section>
+      )}
     </div>
   )
 }
@@ -441,6 +477,7 @@ function AthletesTab({ data }) {
   const goalTimes = data.avg_goal_time_by_race_type
   const elevation = data.elevation_usage
   const training = data.training_mode_usage
+  const nutritionTargets = data.avg_nutrition_targets
 
   const showTraining =
     training != null &&
@@ -574,6 +611,39 @@ function AthletesTab({ data }) {
                 label={r.key === 'training_mode' ? 'Training mode' : 'Race mode'}
               />
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Row 8 — Avg nutrition targets by race type */}
+      {nutritionTargets && nutritionTargets.length > 0 && (
+        <section>
+          <SectionLabel>Avg nutrition targets by race type</SectionLabel>
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full min-w-[420px] text-left">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="pb-2 pr-3 text-xs font-semibold text-gray-500">Race type</th>
+                  <th className="pb-2 px-2 text-xs font-semibold text-gray-500 text-center">Carb/h (g)</th>
+                  <th className="pb-2 px-2 text-xs font-semibold text-gray-500 text-center">Sodium/h (mg)</th>
+                  <th className="pb-2 px-2 text-xs font-semibold text-gray-500 text-center">Fluid/h (ml)</th>
+                  <th className="pb-2 pl-2 text-xs font-semibold text-gray-500 text-center">Plans</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nutritionTargets.map(r => (
+                  <tr key={r.race_type} className="border-t border-gray-100">
+                    <td className="py-2 pr-3 text-sm font-medium text-gray-800">
+                      {RACE_TYPE_LABELS[r.race_type] ?? r.race_type}
+                    </td>
+                    <td className="py-2 px-2 text-sm text-center text-gray-700 font-semibold">{r.avg_carb_ph ?? '—'}</td>
+                    <td className="py-2 px-2 text-sm text-center text-gray-600">{r.avg_sodium_ph ?? '—'}</td>
+                    <td className="py-2 px-2 text-sm text-center text-gray-600">{r.avg_fluid_ph ?? '—'}</td>
+                    <td className="py-2 pl-2 text-sm text-center text-gray-400">{r.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
       )}
