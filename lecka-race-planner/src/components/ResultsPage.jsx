@@ -1458,17 +1458,15 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     }
   }, [coachRetryKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Silent plan save for logged-in users — only for fresh plans, not when viewing a saved plan
+  // Silent plan save — all users; anonymous plans saved with user_id = NULL
   useEffect(() => {
     if (isPublicView || planIdProp) return
     const userId = localStorage.getItem('lecka_user_id')
-    if (!userId) {
-      localStorage.setItem('lecka_plan_needs_save', 'true')
-      return
-    }
+    const headers = { 'Content-Type': 'application/json' }
+    if (userId) headers['Authorization'] = `Bearer ${userId}`
     fetch('/api/plans', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userId}` },
+      headers,
       body:    JSON.stringify({
         inputs:    { ...form, addon_items: form.addon_items ?? [], mode: 'pro' },
         targets,

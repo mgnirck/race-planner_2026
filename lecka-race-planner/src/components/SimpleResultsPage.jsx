@@ -32,6 +32,20 @@ const CONDITION_LABELS = {
   humid: '💧 Humid',
 }
 
+const RACE_DISTANCE_KM = {
+  '5k':              5,
+  '10k':             10,
+  'half_marathon':   21.1,
+  'marathon':        42.2,
+  'ultra_50k':       50,
+  'ultra_100k':      100,
+  'ultra_marathon':  60,
+  'triathlon_sprint':   25.75,
+  'triathlon_olympic':  51.5,
+  'triathlon_70_3':     113,
+  'triathlon_140_6':    226,
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDuration(minutes) {
@@ -58,31 +72,10 @@ function formatTimeLabel(minutes) {
   return `${minutes}m`
 }
 
-function buildPlainTiming(item) {
-  const timings = item.timing_minutes ?? []
-  if (!timings.length) return ''
-
-  const duringTimings = timings.filter(t => t >= 0)
-  const beforeTimings = timings.filter(t => t < 0)
-
-  if (duringTimings.length === 0 && beforeTimings.length > 0) {
-    const abs = Math.abs(beforeTimings[0])
-    return `${abs} min before your start`
-  }
-
-  if (duringTimings.length === 1) {
-    if (duringTimings[0] === 0) return 'at race start'
-    return `at ${duringTimings[0]} min`
-  }
-
-  const intervals = duringTimings.slice(1).map((t, i) => t - duringTimings[i])
-  const allSame = intervals.every(iv => iv === intervals[0])
-  if (allSame && intervals.length > 0) {
-    const start = duringTimings[0]
-    return `every ${intervals[0]} min from ${start} min in`
-  }
-
-  return `at ${duringTimings.slice(0, 3).map(t => `${t} min`).join(', ')}`
+function minutesToKm(minutes, totalMinutes, totalKm) {
+  if (!totalKm || totalKm <= 0 || minutes < 0) return null
+  const fraction = minutes / totalMinutes
+  return Math.round(fraction * totalKm * 10) / 10
 }
 
 function aggregateByProduct(selection, region, catalog = FALLBACK_PRODUCTS) {
@@ -116,6 +109,22 @@ function daysUntilRace(dateStr) {
   return Math.round((race - today) / (1000 * 60 * 60 * 24))
 }
 
+function productEmoji(product) {
+  const type = (product.type ?? '').toLowerCase()
+  if (type.includes('gel')) return '🟢'
+  if (type.includes('bar')) return '🍫'
+  if (type.includes('chew')) return '🟡'
+  if (type.includes('electrolyte') || type.includes('drink') || type.includes('mix')) return '💧'
+  return '⚪'
+}
+
+function hasCaffeine(product) {
+  if (product.has_caffeine) return true
+  if (product.caffeine_mg > 0) return true
+  const name = (product.name ?? '').toLowerCase()
+  return name.includes('caffeine') || name.includes('cola') || name.includes('coffee') || name.includes('espresso')
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }) {
@@ -129,21 +138,24 @@ function SectionLabel({ children }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SimpleResultsPage({ targets, selection, form, onBack }) {
-  const [region,        setRegion]        = useState(getSavedRegion())
-  const [emailInput,    setEmailInput]    = useState('')
-  const [emailState,    setEmailState]    = useState('idle')
-  const [planSent,      setPlanSent]      = useState(false)
-  const [chatSummary,   setChatSummary]   = useState(null)
+  const [region,         setRegion]         = useState(getSavedRegion())
+  const [emailInput,     setEmailInput]     = useState('')
+  const [emailState,     setEmailState]     = useState('idle')
+  const [planSent,       setPlanSent]       = useState(false)
+  const [chatSummary,    setChatSummary]    = useState(null)
   const [showShareModal, setShowShareModal] = useState(false)
-  const [navigating,    setNavigating]    = useState(false)
   const [coachCopy,      setCoachCopy]      = useState(null)
   const [coachLoading,   setCoachLoading]   = useState(true)
   const [coachFailed,    setCoachFailed]    = useState(false)
   const [coachRetryKey,  setCoachRetryKey]  = useState(0)
+  const [coachExpanded,  setCoachExpanded]  = useState(false)
+  const [timeUnit,       setTimeUnit]       = useState(
+    () => { try { return localStorage.getItem('lecka_time_unit') ?? 'min' } catch { return 'min' } }
+  )
   const emailRef = useRef(null)
 
   const { products: liveProducts } = useProducts()
-  const catalog    = liveProducts ?? FALLBACK_PRODUCTS
+  const catalog      = liveProducts ?? FALLBACK_PRODUCTS
   const regionConfig = getRegionConfig(region)
   const regionType   = regionsConfig[region]?.type ?? null
 
@@ -163,7 +175,9 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
   )
 
   const cartURL = useMemo(
-    () => (region && regionType === 'shopify') ? embedCartURL(buildCartURLFromAggregated(aggregated, region === 'us' ? 'NUTRIPLAN10' : '', '', region)) : null,
+    () => (region && regionType === 'shopify')
+      ? embedCartURL(buildCartURLFromAggregated(aggregated, region === 'us' ? 'NUTRIPLAN10' : '', '', region))
+      : null,
     [aggregated, region]
   )
 
@@ -178,13 +192,30 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
     return events
   }, [leckaSelection])
 
-  const providedCarbs = useMemo(
-    () => leckaSelection.reduce((sum, i) => sum + i.quantity * (i.product.carbs_per_unit ?? 30), 0),
-    [leckaSelection]
-  )
+  const packingList = useMemo(() => {
+    const map = {}
+    for (const item of leckaSelection) {
+      const id = item.product.id
+      if (!map[id]) map[id] = { product: item.product, totalUnits: 0 }
+      map[id].totalUnits += item.quantity
+    }
+    return Object.values(map).map(({ product, totalUnits }) => {
+      let cartUnits = 0
+      if (region) {
+        try {
+          const cartItems = computeCartItems(product, region, totalUnits)
+          cartUnits = cartItems.reduce((s, ci) => s + ci.quantity * ci.units_per_pack, 0)
+        } catch {}
+      }
+      return { product, totalUnits, cartUnits }
+    })
+  }, [leckaSelection, region])
+
+  const totalKm = form.custom_race_km ?? RACE_DISTANCE_KM[targets.race_type] ?? null
 
   const heroTitle     = (form.race_name && form.race_name.trim()) || (RACE_LABELS[targets.race_type] ?? targets.race_type)
   const conditionText = CONDITION_LABELS[targets.conditions] ?? targets.conditions
+  const dayCount      = form.race_date ? daysUntilRace(form.race_date) : null
 
   // ── Auto-send plan if email provided in form ──────────────────────────────
   useEffect(() => {
@@ -193,32 +224,27 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        email:            form.email,
+        email:               form.email,
         targets,
-        inputs:           form,
-        selectedProducts: selection,
-        region:           region ?? 'us',
-        lang:             i18n.language,
+        inputs:              form,
+        selectedProducts:    selection,
+        region:              region ?? 'us',
+        lang:                i18n.language,
         addon_items_summary: formatAddonSummary([]),
       }),
     })
       .then(r => r.ok ? setPlanSent(true) : null)
       .catch(() => {})
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Silent plan save for logged-in users ──────────────────────────────────
+  // ── Silent plan save ────────────────────────────────────────────────────────
   useEffect(() => {
-    const userId = localStorage.getItem('lecka_user_id')
-    if (!userId) {
-      localStorage.setItem('lecka_plan_needs_save', 'true')
-      return
-    }
+    const userId  = localStorage.getItem('lecka_user_id')
+    const headers = { 'Content-Type': 'application/json' }
+    if (userId) headers['Authorization'] = `Bearer ${userId}`
     fetch('/api/plans', {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${userId}`,
-      },
+      method: 'POST',
+      headers,
       body: JSON.stringify({
         inputs:    { ...form, addon_items: [], mode: 'quick' },
         targets,
@@ -227,9 +253,9 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
         lang:      i18n.language,
       }),
     }).catch(() => {})
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch coach notes for the simple plan
+  // ── Fetch coach notes ──────────────────────────────────────────────────────
   useEffect(() => {
     const gelCount = leckaSelection
       .filter(i => i.product.type === 'gel' || i.product.type === 'ultra_gel')
@@ -324,12 +350,12 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          email:            emailVal,
+          email:               emailVal,
           targets,
-          inputs:           form,
-          selectedProducts: selection,
-          region:           region ?? 'us',
-          lang:             i18n.language,
+          inputs:              form,
+          selectedProducts:    selection,
+          region:              region ?? 'us',
+          lang:                i18n.language,
           addon_items_summary: formatAddonSummary([]),
         }),
       })
@@ -337,33 +363,6 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
     } catch {
       setEmailState('error')
     }
-  }
-
-  function handleBuildProPlan() {
-    setNavigating(true)
-    const draft = {
-      race_name:              form.race_name ?? '',
-      race_date:              form.race_date ?? '',
-      race_type:              form.race_type ?? '',
-      goal_time_h:            form.goal_time_h ?? '',
-      goal_time_m:            form.goal_time_m ?? '',
-      conditions:             form.conditions ?? 'mild',
-      temperature:            form.temperature ?? 'mild',
-      humidity:               form.humidity ?? 'dry',
-      surface_type:           form.surface_type ?? '',
-      dist_unit:              form.dist_unit ?? 'km',
-      weight_value:           form.weight_value ?? '',
-      weight_unit:            form.weight_unit ?? 'kg',
-      gender:                 form.gender ?? '',
-      caffeine_ok:            form.caffeine_ok !== undefined ? form.caffeine_ok : null,
-      preferred_product_ids:  form.preferred_product_ids ?? [],
-      fuelling_style:         form.fuelling_style ?? 'gels_only',
-      _from_simple:           true,
-    }
-    try {
-      sessionStorage.setItem('lecka_form_draft', JSON.stringify(draft))
-    } catch {}
-    window.location.href = '/planner/pro'
   }
 
   const sharePlan = {
@@ -381,25 +380,34 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
     region,
   }
 
-  const carbPct = targets.total_carbs > 0
-    ? Math.min(100, Math.round((providedCarbs / targets.total_carbs) * 100))
-    : 0
+  // Coach notes split
+  const coachParagraphs = coachCopy ? coachCopy.split(/\n\n+/).filter(Boolean) : []
+  const teaserParas     = coachParagraphs.slice(0, 1)
+  const restParas       = coachParagraphs.slice(1)
+  const hasMoreCoach    = restParas.length > 0
 
-  const dayCount = form.race_date ? daysUntilRace(form.race_date) : null
+  const showKmFallback = timeUnit === 'km' && totalKm === null
+
+  const formattedSubtotal = formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)
+
+  function getTimeLabel(event) {
+    if (event.time < 0) return `${Math.abs(event.time)} min before start`
+    if (timeUnit === 'km' && totalKm !== null) {
+      const km = minutesToKm(event.time, targets.total_duration_minutes, totalKm)
+      return km !== null ? `km ${km}` : formatTimeLabel(event.time)
+    }
+    return formatTimeLabel(event.time)
+  }
 
   return (
     <div className="bg-white min-h-screen">
-      {/* Share modal */}
       {showShareModal && (
-        <ShareModal
-          plan={sharePlan}
-          onClose={() => setShowShareModal(false)}
-        />
+        <ShareModal plan={sharePlan} onClose={() => setShowShareModal(false)} />
       )}
 
       <Nav />
 
-      {/* ── Action bar ──────────────────────────────────────────────────────── */}
+      {/* Action bar */}
       <div className="sticky top-[53px] z-10 bg-white border-b border-gray-100 flex items-center justify-end gap-2 px-4 py-2">
         <button
           type="button"
@@ -428,35 +436,34 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
         </button>
       </div>
 
-      {/* ── Single column content ────────────────────────────────────────────── */}
       <div style={{ maxWidth: 672, margin: '0 auto', padding: '0 16px 64px' }}>
 
-        {/* ── Section 1: Race hero ─────────────────────────────────────────── */}
-        <div style={{ paddingTop: 28, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{
-              fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
-              color: '#48C4B0',
-            }}>
-              Quick plan
-            </span>
-          </div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#1B1B1B', lineHeight: 1.2, margin: '0 0 8px' }}>
+        {/* ── Section 1: Compact hero ─────────────────────────────────────── */}
+        <div style={{ paddingTop: 20, paddingBottom: 20, borderBottom: '1px solid #f3f4f6' }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: '#1B1B1B', lineHeight: 1.2, margin: '0 0 4px' }}>
             {heroTitle}
           </h1>
-          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>
+          <p className="text-sm text-gray-400" style={{ margin: '0 0 10px' }}>
             {formatDuration(targets.total_duration_minutes)} · {conditionText}
           </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: form.race_date ? 10 : 0 }}>
+            <span style={{ background: '#f9fafb', border: '1px solid #f3f4f6', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#1B1B1B' }}>
+              {targets.carb_per_hour}g carbs/hr
+            </span>
+            <span style={{ background: '#f9fafb', border: '1px solid #f3f4f6', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#1B1B1B' }}>
+              {targets.sodium_per_hour}mg sodium/hr
+            </span>
+            <span style={{ background: '#f9fafb', border: '1px solid #f3f4f6', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#1B1B1B' }}>
+              {targets.fluid_ml_per_hour}ml fluid/hr
+            </span>
+          </div>
           {form.race_date && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 13, color: '#9ca3af' }}>
                 📅 {formatRaceDate(form.race_date)}
               </span>
               {dayCount !== null && dayCount > 0 && (
-                <span style={{
-                  fontSize: 12, fontWeight: 600, color: '#fff',
-                  background: '#48C4B0', padding: '2px 10px', borderRadius: 20,
-                }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#48C4B0', padding: '2px 10px', borderRadius: 20 }}>
                   {dayCount}d to go
                 </span>
               )}
@@ -464,238 +471,146 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           )}
         </div>
 
-        {/* ── Section 2: Nutrition targets ─────────────────────────────── */}
+        {/* ── Section 2: Race plan ─────────────────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <SectionLabel>Your targets</SectionLabel>
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 8, textAlign: 'center',
-            border: '2px solid #f3f4f6', borderRadius: 16, padding: '20px 8px',
-          }}>
-            <div>
-              <p style={{ fontSize: 28, fontWeight: 800, color: '#48C4B0', margin: 0 }}>
-                {targets.carb_per_hour}
-              </p>
-              <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, lineHeight: 1.4 }}>
-                g carbs<br/>per hour
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: 28, fontWeight: 800, color: '#48C4B0', margin: 0 }}>
-                {targets.sodium_per_hour}
-              </p>
-              <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, lineHeight: 1.4 }}>
-                mg sodium<br/>per hour
-              </p>
-            </div>
-            <div>
-              <p style={{ fontSize: 28, fontWeight: 800, color: '#48C4B0', margin: 0 }}>
-                {targets.fluid_ml_per_hour}
-              </p>
-              <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, lineHeight: 1.4 }}>
-                ml fluid<br/>per hour
-              </p>
-            </div>
-          </div>
-          <div style={{ borderTop: '1px solid #f3f4f6', marginTop: 12, paddingTop: 10,
-            display: 'flex', justifyContent: 'center', gap: 16,
-            fontSize: 12, color: '#9ca3af' }}>
-            <span>Total carbs: <strong style={{ color: '#1B1B1B' }}>{targets.total_carbs}g</strong></span>
-            <span>·</span>
-            <span>Total sodium: <strong style={{ color: '#1B1B1B' }}>{targets.total_sodium}mg</strong></span>
-          </div>
+          <SectionLabel>Your race plan</SectionLabel>
 
-        </div>
-
-        {/* ── Section 3: Pro plan upsell card ─────────────────────────────── */}
-        <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <div style={{
-            border: '1.5px solid #48C4B0',
-            borderRadius: 12,
-            padding: '20px 24px',
-            background: '#E1F5EE',
-          }}>
-            <p style={{ fontSize: 16, fontWeight: 500, color: '#085041', marginBottom: 8, marginTop: 0 }}>
-              Get exact targets for your body
-            </p>
-            <p style={{ fontSize: 13, color: '#0F6E56', lineHeight: 1.6, marginBottom: 16, marginTop: 0 }}>
-              Pro plan uses your actual weight, fitness level, elevation, and effort to personalise every number.
-              Also unlocks gut training schedule, checkpoint planning, and support for adding other nutrition
-              brands alongside Lecka.
-            </p>
-            <button
-              type="button"
-              onClick={handleBuildProPlan}
-              disabled={navigating}
-              style={{
-                background: '#48C4B0', color: '#fff', fontSize: 14, fontWeight: 500,
-                padding: '12px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                width: '100%', opacity: navigating ? 0.6 : 1,
-              }}
-            >
-              {navigating ? 'Opening Pro planner…' : 'Get my precise plan — takes 3 minutes →'}
-            </button>
-          </div>
-        </div>
-
-        {/* ── Section 4: Lecka products list ──────────────────────────────── */}
-        <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <SectionLabel>What to take</SectionLabel>
-          <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, overflow: 'hidden' }}>
-            {leckaSelection.map((item, i) => (
-              <div
-                key={`${item.product.id}-${i}`}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', padding: '12px 16px',
-                  borderBottom: i < leckaSelection.length - 1 ? '1px solid #f3f4f6' : 'none',
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#1B1B1B', margin: '0 0 2px' }}>
-                    {item.product.name} × {item.quantity}
-                  </p>
-                  <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>
-                    {buildPlainTiming(item)}
-                  </p>
-                </div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#48C4B0', flexShrink: 0, margin: 0, paddingLeft: 12 }}>
-                  {item.quantity * (item.product.carbs_per_unit ?? 30)}g carbs
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Progress bar */}
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>
-              <span>{providedCarbs}g carbs provided</span>
-              <span>{targets.total_carbs}g target</span>
-            </div>
-            <div style={{ background: '#f3f4f6', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-              <div style={{
-                width: `${carbPct}%`, height: '100%',
-                background: carbPct >= 90 ? '#48C4B0' : carbPct >= 70 ? '#f59e0b' : '#ef4444',
-                borderRadius: 4, transition: 'width 0.3s',
-              }} />
-            </div>
-          </div>
-        </div>
-
-        {/* ── Section 5: Coach notes ──────────────────────────────────────── */}
-        <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <SectionLabel>Coach notes</SectionLabel>
-          {coachLoading ? (
-            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '2px 8px', borderRadius: 20, background: '#f5f3ff',
-                  border: '1px solid #ddd6fe', fontSize: 10, fontWeight: 600, color: '#7c3aed',
-                }}>
-                  AI · Lecka knowledge
-                </span>
-              </div>
-              <div style={{ background: '#f3f4f6', borderRadius: 4, height: 10, marginBottom: 8, width: '100%', animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <div style={{ background: '#f3f4f6', borderRadius: 4, height: 10, marginBottom: 8, width: '80%', animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <div style={{ background: '#f3f4f6', borderRadius: 4, height: 10, width: '60%', animation: 'pulse 1.5s ease-in-out infinite' }} />
-            </div>
-          ) : coachFailed || !coachCopy ? (
-            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 14, color: '#9ca3af', margin: '0 0 8px' }}>Coach notes couldn&apos;t load this time.</p>
-              <button
-                type="button"
-                onClick={() => { setCoachFailed(false); setCoachLoading(true); setCoachCopy(null); setCoachRetryKey(k => k + 1) }}
-                style={{ fontSize: 12, fontWeight: 600, color: '#48C4B0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              >
-                Retry →
-              </button>
-            </div>
-          ) : (
-            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '2px 8px', borderRadius: 20, background: '#f5f3ff',
-                  border: '1px solid #ddd6fe', fontSize: 10, fontWeight: 600, color: '#7c3aed',
-                }}>
-                  AI · Lecka knowledge
-                </span>
-              </div>
-              {coachCopy.split(/\n\n+/).filter(Boolean).map((para, i) => (
-                <p key={i} style={{
-                  fontSize: 14, color: '#374151', lineHeight: 1.7,
-                  borderLeft: '2px solid #48C4B0', paddingLeft: 12, marginBottom: 16, marginTop: 0,
-                }}>
-                  {para}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── Section 6: Pre-fueling ──────────────────────────────────────── */}
-        <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <PreFuelSection targets={targets} form={form} />
-        </div>
-
-        {/* ── Section 7: Simple flat timeline ─────────────────────────────── */}
-        {timelineEvents.length > 0 && (
-          <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-            <SectionLabel>Race day timeline</SectionLabel>
-            <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {timelineEvents.map((event, i) => (
-                <li
-                  key={i}
+          {/* 2a: Packing list */}
+          <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, overflow: 'hidden', marginBottom: 24 }}>
+            {packingList.map((row, i) => {
+              const extra = row.cartUnits > row.totalUnits ? row.cartUnits - row.totalUnits : 0
+              return (
+                <div
+                  key={row.product.id}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 0',
-                    borderBottom: i < timelineEvents.length - 1 ? '1px solid #f9fafb' : 'none',
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+                    borderBottom: i < packingList.length - 1 ? '1px solid #f3f4f6' : 'none',
                   }}
                 >
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, color: '#fff',
-                    background: '#48C4B0', borderRadius: 6,
-                    padding: '3px 8px', flexShrink: 0, minWidth: 44,
-                    textAlign: 'center',
-                  }}>
-                    {formatTimeLabel(event.time)}
+                  <span style={{ fontSize: 20, flexShrink: 0, width: 24, textAlign: 'center', lineHeight: 1 }}>
+                    {productEmoji(row.product)}
                   </span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#1B1B1B', flex: 1 }}>
-                    {event.product.name}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#1B1B1B', margin: 0 }}>
+                      {row.product.name}
+                    </p>
+                    {extra > 0 && (
+                      <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0' }}>
+                        +{extra} for training
+                      </p>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#48C4B0', flexShrink: 0 }}>
+                    ×{row.totalUnits}
                   </span>
-                  {event.note && (
-                    <span style={{ fontSize: 12, color: '#9ca3af', flexShrink: 0 }}>
-                      {event.note}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ol>
+                </div>
+              )
+            })}
           </div>
-        )}
 
-        {/* ── Section 8: Order card ────────────────────────────────────────── */}
+          {/* 2b: Intake schedule */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showKmFallback ? 6 : 12 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9ca3af', margin: 0 }}>
+              When to take them
+            </p>
+            <div style={{ display: 'flex', gap: 0, border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+              <button
+                type="button"
+                onClick={() => { setTimeUnit('min'); try { localStorage.setItem('lecka_time_unit', 'min') } catch {} }}
+                style={{
+                  padding: '3px 10px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: timeUnit === 'min' ? '#1B1B1B' : 'transparent',
+                  color:      timeUnit === 'min' ? '#fff'    : '#6b7280',
+                }}
+              >min</button>
+              <button
+                type="button"
+                onClick={() => { setTimeUnit('km'); try { localStorage.setItem('lecka_time_unit', 'km') } catch {} }}
+                style={{
+                  padding: '3px 10px', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: timeUnit === 'km' ? '#1B1B1B' : 'transparent',
+                  color:      timeUnit === 'km' ? '#fff'    : '#6b7280',
+                }}
+              >km</button>
+            </div>
+          </div>
+
+          {showKmFallback && (
+            <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 10 }}>
+              No distance data — showing minutes
+            </p>
+          )}
+
+          <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {timelineEvents.map((event, i) => {
+              const isPreRace    = event.time < 0
+              const showSeparator = i > 0 && timelineEvents[i - 1].time < 0 && event.time >= 0
+              return (
+                <React.Fragment key={i}>
+                  {showSeparator && (
+                    <li style={{ padding: '10px 0' }}>
+                      <div style={{ borderTop: '1px solid #f3f4f6' }} />
+                      <p style={{
+                        textAlign: 'center', fontSize: 10, color: '#9ca3af',
+                        textTransform: 'uppercase', letterSpacing: '0.1em',
+                        margin: '6px 0 0',
+                      }}>
+                        Race start ↓
+                      </p>
+                    </li>
+                  )}
+                  <li style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0',
+                    borderBottom: i < timelineEvents.length - 1 ? '1px solid #f9fafb' : 'none',
+                  }}>
+                    <span style={{
+                      color: isPreRace ? '#d1d5db' : '#48C4B0',
+                      fontSize: 8, marginTop: 6, flexShrink: 0,
+                    }}>●</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', flexShrink: 0, minWidth: 72 }}>
+                      {getTimeLabel(event)}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 14, color: '#1B1B1B' }}>
+                        {event.product.name}
+                      </span>
+                      {hasCaffeine(event.product) && (
+                        <span style={{ fontSize: 11, color: '#48C4B0', marginLeft: 4 }}>☕</span>
+                      )}
+                      {(event.product.carbs_per_unit ?? 0) > 0 && (
+                        <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0' }}>
+                          {event.product.carbs_per_unit}g carbs
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                </React.Fragment>
+              )
+            })}
+          </ol>
+        </div>
+
+        {/* ── Section 3: Buy ──────────────────────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
           <SectionLabel>Get your products</SectionLabel>
 
-          {/* Region picker */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <select
+            value={region ?? ''}
+            onChange={e => { if (e.target.value) handleRegionChange(e.target.value) }}
+            style={{
+              width: '100%', padding: '10px 14px', borderRadius: 12,
+              border: '1.5px solid #e5e7eb', fontSize: 14, color: '#1B1B1B',
+              background: 'white', cursor: 'pointer', appearance: 'none',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C%2Fsvg%3E")`,
+              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center',
+              paddingRight: 36, marginBottom: 16,
+            }}
+          >
+            <option value="" disabled>Select your region…</option>
             {Object.entries(regionsConfig).map(([key, cfg]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleRegionChange(key)}
-                className={[
-                  'px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-colors',
-                  region === key
-                    ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                    : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                ].join(' ')}
-              >
-                {cfg.label}
-              </button>
+              <option key={key} value={key}>{cfg.label}</option>
             ))}
-          </div>
+          </select>
 
           {region == null ? (
             <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20, textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
@@ -707,8 +622,12 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               <p style={{ fontSize: 14, color: '#1B1B1B', lineHeight: 1.6, marginTop: 0 }}>
                 Lecka isn&apos;t available in your country yet — use this plan with any real food gel matching the targets above.
               </p>
-              <a href="https://www.getlecka.com" target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors">
+              <a
+                href="https://www.getlecka.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
+              >
                 Find Lecka → getlecka.com
               </a>
             </div>
@@ -741,17 +660,22 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: 12, marginBottom: 16 }}>
                 <span style={{ fontSize: 13, color: '#6b7280' }}>{totalPacks} pack{totalPacks !== 1 ? 's' : ''}</span>
                 <span style={{ fontSize: 18, fontWeight: 800, color: '#1B1B1B' }}>
-                  {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
+                  {formattedSubtotal}
                 </span>
               </div>
+
               {regionType === 'haravan' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <button onClick={() => handleChatClick(regionConfig.zalo_url)}
-                    className="flex items-center justify-center w-full min-h-[48px] bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl text-sm font-bold transition-colors">
+                  <button
+                    onClick={() => handleChatClick(regionConfig.zalo_url)}
+                    className="flex items-center justify-center w-full min-h-[48px] bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl text-sm font-bold transition-colors"
+                  >
                     Order via Zalo
                   </button>
-                  <button onClick={() => handleChatClick(regionConfig.facebook_url)}
-                    className="flex items-center justify-center w-full min-h-[48px] bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl text-sm font-bold transition-colors">
+                  <button
+                    onClick={() => handleChatClick(regionConfig.facebook_url)}
+                    className="flex items-center justify-center w-full min-h-[48px] bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl text-sm font-bold transition-colors"
+                  >
                     Order via Facebook
                   </button>
                   {chatSummary && (
@@ -762,11 +686,16 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                   )}
                 </div>
               )}
+
               {regionType === 'shopify' && cartURL && (
                 <>
-                  <a href={cartURL} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors">
-                    Get your products →
+                  <a
+                    href={cartURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
+                  >
+                    Buy my plan — {formattedSubtotal} →
                   </a>
                   {region === 'us' && (
                     <p style={{ fontSize: 12, fontWeight: 600, color: '#48C4B0', textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
@@ -775,9 +704,14 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                   )}
                 </>
               )}
+
               {regionType === 'distributor' && (
-                <a href={regionConfig.store_url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors">
+                <a
+                  href={regionConfig.store_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
+                >
                   Shop at {regionConfig.label} →
                 </a>
               )}
@@ -785,7 +719,69 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           )}
         </div>
 
-        {/* ── Section 9: Share button ──────────────────────────────────────── */}
+        {/* ── Section 4: Pre-fueling ──────────────────────────────────────── */}
+        <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
+          <PreFuelSection targets={targets} form={form} />
+        </div>
+
+        {/* ── Section 5: Coach notes ──────────────────────────────────────── */}
+        <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
+          <SectionLabel>Coach notes</SectionLabel>
+          {coachLoading ? (
+            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
+              <div className="animate-pulse bg-gray-100 rounded h-3 w-full mb-2" />
+              <div className="animate-pulse bg-gray-100 rounded h-3" style={{ width: '80%' }} />
+            </div>
+          ) : coachFailed || !coachCopy ? (
+            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
+              <p style={{ fontSize: 14, color: '#9ca3af', margin: '0 0 8px' }}>Coach notes couldn&apos;t load.</p>
+              <button
+                type="button"
+                onClick={() => { setCoachFailed(false); setCoachLoading(true); setCoachCopy(null); setCoachRetryKey(k => k + 1) }}
+                style={{ fontSize: 12, fontWeight: 600, color: '#48C4B0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                Retry →
+              </button>
+            </div>
+          ) : (
+            <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 8px', borderRadius: 20, background: '#f5f3ff',
+                border: '1px solid #ddd6fe', fontSize: 10, fontWeight: 600, color: '#7c3aed',
+              }}>
+                AI · Lecka knowledge
+              </span>
+              {teaserParas.map((para, i) => (
+                <p key={i} style={{
+                  fontSize: 14, color: '#374151', lineHeight: 1.7,
+                  borderLeft: '2px solid #48C4B0', paddingLeft: 12, marginBottom: 16, marginTop: 12,
+                }}>
+                  {para}
+                </p>
+              ))}
+              {coachExpanded && restParas.map((para, i) => (
+                <p key={i} style={{
+                  fontSize: 14, color: '#374151', lineHeight: 1.7,
+                  borderLeft: '2px solid #48C4B0', paddingLeft: 12, marginBottom: 16, marginTop: 0,
+                }}>
+                  {para}
+                </p>
+              ))}
+              {hasMoreCoach && (
+                <button
+                  type="button"
+                  onClick={() => setCoachExpanded(v => !v)}
+                  style={{ fontSize: 12, fontWeight: 600, color: '#48C4B0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                >
+                  {coachExpanded ? 'Show less ↑' : 'Read more →'}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Section 6: Email / Share ─────────────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
           <button
             type="button"
@@ -806,7 +802,6 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           </button>
         </div>
 
-        {/* ── Section 10: Email capture ────────────────────────────────────── */}
         <div ref={emailRef} style={{ paddingTop: 24 }}>
           <SectionLabel>Get your plan by email</SectionLabel>
           {form.email && planSent ? (
@@ -832,7 +827,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                     opacity: emailState === 'sending' ? 0.5 : 1,
                   }}
                   onFocus={e => e.target.style.borderColor = '#48C4B0'}
-                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                  onBlur={e  => e.target.style.borderColor = '#e5e7eb'}
                 />
                 <button
                   type="submit"

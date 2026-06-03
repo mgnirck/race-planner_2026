@@ -63,10 +63,9 @@ export default async function handler(req, res) {
       return res.status(200).json(rows)
     }
 
-    // ── POST — save new plan (requires auth) ──────────────────────────────────
+    // ── POST — save new plan (auth optional; anonymous plans saved with user_id = NULL) ──
     if (req.method === 'POST') {
       const user = await getUser(req)
-      if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
       const { inputs = {}, targets = {}, selection, region = 'us', lang = 'en' } = req.body ?? {}
 
@@ -76,7 +75,7 @@ export default async function handler(req, res) {
           goal_minutes, conditions, effort,
           inputs, targets, selection, region, lang
         ) VALUES (
-          ${user.id},
+          ${user?.id ?? null},
           ${inputs.race_name || null},
           ${inputs.race_date || null},
           ${targets.race_type ?? inputs.race_type ?? null},
