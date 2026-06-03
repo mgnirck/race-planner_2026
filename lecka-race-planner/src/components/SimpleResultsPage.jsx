@@ -211,7 +211,8 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
     })
   }, [leckaSelection, region])
 
-  const totalKm = form.custom_race_km ?? RACE_DISTANCE_KM[targets.race_type] ?? null
+  const rawCustomKm = parseFloat(form.custom_race_km)
+  const totalKm = (rawCustomKm > 0) ? rawCustomKm : (RACE_DISTANCE_KM[targets.race_type] ?? null)
 
   const heroTitle     = (form.race_name && form.race_name.trim()) || (RACE_LABELS[targets.race_type] ?? targets.race_type)
   const conditionText = CONDITION_LABELS[targets.conditions] ?? targets.conditions

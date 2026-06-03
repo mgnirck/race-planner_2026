@@ -30,6 +30,15 @@ const TRIATHLON_OPTIONS = [
   { key: 'triathlon_140_6',   label: 'Ironman', sublabel: '3.8km swim · 180km bike · 42km run', km: 226  },
 ]
 
+const PACE_BOUNDS = {
+  '5k':            { min: 12,  max: 120  },
+  '10k':           { min: 27,  max: 180  },
+  'half_marathon': { min: 58,  max: 360  },
+  'marathon':      { min: 120, max: 720  },
+  'ultra_50k':     { min: 210, max: 1200 },
+  'ultra_100k':    { min: 480, max: 2400 },
+}
+
 const TEMPERATURE_OPTIONS = [
   { key: 'cool', emoji: '❄️', label: 'Cool', range: '< 10 °C' },
   { key: 'mild', emoji: '🌤', label: 'Mild', range: '10–20 °C' },
@@ -302,53 +311,23 @@ export default function SimpleForm({ onComplete }) {
           <div className="mb-8">
             <SectionLabel>{t('form:steps.region')}</SectionLabel>
             <p className="text-xs text-gray-400 mb-3">We use this to show you available products and local pricing.</p>
-
-            {/* All non-international countries */}
-            <div className="flex flex-wrap gap-2 mb-3">
-              {Object.entries(regionsConfig)
-                .filter(([, cfg]) => cfg.type !== 'international')
-                .map(([key, cfg]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => handleRegionSelect(key)}
-                    className={[
-                      'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
-                      region === key
-                        ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                        : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                    ].join(' ')}
-                  >
-                    {cfg.label}
-                  </button>
-                ))}
-            </div>
-
-            {/* International */}
-            {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'international') && (
-              <div>
-                <p className="text-xs font-medium text-gray-400 mb-2">Other</p>
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(regionsConfig)
-                    .filter(([, cfg]) => cfg.type === 'international')
-                    .map(([key, cfg]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => handleRegionSelect(key)}
-                        className={[
-                          'px-4 py-2 rounded-full border-2 text-sm font-medium transition-colors',
-                          region === key
-                            ? 'border-[#48C4B0] bg-[#48C4B0] text-white'
-                            : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
-                        ].join(' ')}
-                      >
-                        {cfg.label}
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
+            <select
+              value={region ?? ''}
+              onChange={e => { if (e.target.value) handleRegionSelect(e.target.value) }}
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 12,
+                border: '1.5px solid #e5e7eb', fontSize: 14, color: '#1B1B1B',
+                background: 'white', cursor: 'pointer', appearance: 'none',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C%2Fsvg%3E")`,
+                backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center',
+                paddingRight: 36,
+              }}
+            >
+              <option value="" disabled>Select your region…</option>
+              {Object.entries(regionsConfig).map(([key, cfg]) => (
+                <option key={key} value={key}>{cfg.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* 1. Race name */}
@@ -499,6 +478,35 @@ export default function SimpleForm({ onComplete }) {
                 {buildGoalLabel()} — your plan will be built for this finish time.
               </p>
             )}
+            {goalValid && resolvedRaceType && (() => {
+              const bounds = PACE_BOUNDS[resolvedRaceType]
+              if (bounds) {
+                if (goalMinutes < bounds.min) return (
+                  <p className="text-xs text-red-500 mt-2">
+                    That&apos;s a very fast target for this distance — double-check your goal time before continuing.
+                  </p>
+                )
+                if (goalMinutes > bounds.max) return (
+                  <p className="text-xs text-red-500 mt-2">
+                    That&apos;s a very slow target for this distance — double-check your goal time before continuing.
+                  </p>
+                )
+              }
+              if (form.race_type === 'custom' && customKm > 0) {
+                const pacePerKm = goalMinutes / customKm
+                if (pacePerKm < 2) return (
+                  <p className="text-xs text-red-500 mt-2">
+                    That pace is faster than any known human — check your distance and time.
+                  </p>
+                )
+                if (pacePerKm > 25) return (
+                  <p className="text-xs text-red-500 mt-2">
+                    That pace is very slow for a race — check your distance and time.
+                  </p>
+                )
+              }
+              return null
+            })()}
           </div>
 
           {/* 5. Race conditions */}
