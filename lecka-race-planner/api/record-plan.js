@@ -250,6 +250,7 @@ async function handleAnalytics(req, res) {
     }),
   ])
 
+  res.setHeader('Cache-Control', 'no-store')
   return res.status(200).json({
     overview, by_race_type, by_region, by_gender, by_athlete_profile,
     by_conditions, by_effort, by_fuelling_style, avg_goal_time_by_race_type,

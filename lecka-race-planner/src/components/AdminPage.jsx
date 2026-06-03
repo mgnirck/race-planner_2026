@@ -1249,7 +1249,8 @@ export default function AdminPage() {
     if (!gate.unlocked) return
     setAnalyticsLoading(true)
     setAnalyticsError(null)
-    fetch('/api/record-plan?analytics=1', {
+    fetch(`/api/record-plan?analytics=1&t=${Date.now()}`, {
+      cache: 'no-store',
       headers: { 'X-Admin-Password': gate.entered },
     })
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
