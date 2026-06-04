@@ -24,6 +24,11 @@
     ],
     "lab_report": "AR-25-VD-249580-01-EN",
     "lab_date": "2025-12-24",
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Passion Fruit (37%)", "Cane Sugar", "Tapioca Syrup", "Basil Seeds", "Sodium Citrate", "Salt", "Citric Acid", "Magnesium Gluconate", "Potassium Citrate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": [
@@ -164,6 +169,11 @@
     ],
     "lab_report": "AR-25-VD-258719-01-EN",
     "lab_date": "2025-12-31",
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Filtered Water", "Cane Sugar", "Tapioca Syrup", "Cacao Powder (7%)", "Pumpkin Seed Butter", "Robusta Coffee (2%)", "Sodium Citrate", "Salt", "Vanilla Extract", "Magnesium Gluconate", "Caffeine", "Potassium Citrate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": [
@@ -310,6 +320,11 @@
     ],
     "lab_report": "AR-25-VD-249581-01-EN",
     "lab_date": "2025-12-24",
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Cane Sugar", "Banana (29%)", "Filtered Water", "Tapioca Syrup", "Passion Fruit", "Basil Seeds", "Sodium Citrate", "Salt", "Citric Acid", "Magnesium Gluconate", "Potassium Citrate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": [
@@ -456,6 +471,11 @@
     ],
     "lab_report": "AR-25-VD-251832-01-EN",
     "lab_date": "2025-12-24",
+    "vegan": false,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Honey", "Tapioca Syrup", "Lime (16%)", "Filtered Water", "Ginger Extract (1%)", "Basil Seeds", "Sodium Citrate", "Salt", "Magnesium Gluconate", "Potassium Citrate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": [
@@ -602,6 +622,11 @@
     ],
     "lab_report": "AR-25-VD-251833-01-EN",
     "lab_date": "2025-12-24",
+    "vegan": false,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Honey (48%)", "Tapioca Syrup", "Kumquat (22%)", "Filtered Water", "Basil Seeds", "Sodium Citrate", "Salt", "Ginger Extract", "Magnesium Gluconate", "Potassium Citrate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": [
@@ -732,6 +757,9 @@
     "ideal_time": [
       "during"
     ],
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "packaging_format": "single-serve pouch",
     "contains": {
       "us": {
         "gel-passion-fruit": 3,
@@ -851,6 +879,9 @@
       "during",
       "after"
     ],
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "packaging_format": "single-serve pouch",
     "contains": {
       "dk": {
         "gel-banana": 1,
@@ -927,6 +958,11 @@
     ],
     "lab_report": "AR-25-VD-256496-01-EN",
     "lab_date": "2026-01-08",
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Cane Sugar", "Passion Fruit (26%)", "Tapioca Syrup", "Mango (16%)", "Rice Flour", "Sodium Citrate", "Salt", "Magnesium Gluconate", "Potassium Citrate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": []
@@ -1044,11 +1080,15 @@
     "allergens": [
       "peanuts"
     ],
-    "ingredients": "Cane Sugar, Banana (27%), Tapioca Syrup, Peanuts (12%), Filtered Water, Sodium Citrate, Glutinous Rice Flour, Salt, Cinnamon, Magnesium Gluconate, Potassium Citrate",
     "potassium_per_unit": null,
     "magnesium_per_unit": null,
     "lab_report": "AR-26-VD-082550-01-EN",
     "lab_date": "2026-04-13",
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Cane Sugar", "Banana (27%)", "Tapioca Syrup", "Peanuts (12%)", "Filtered Water", "Sodium Citrate", "Glutinous Rice Flour", "Salt", "Cinnamon", "Magnesium Gluconate", "Potassium Citrate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": []
@@ -1097,6 +1137,9 @@
       "before",
       "after"
     ],
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "packaging_format": "single-serve pouch",
     "contains": {
       "vn": {
         "bar-mango-coconut": 3,
@@ -1176,6 +1219,11 @@
       "before",
       "after"
     ],
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Dried Mango (40%)", "Prunes", "Cashews", "Coconut Flakes (7%)", "Dried Banana", "Pumpkin Seeds", "Brown Rice Syrup", "Sunflower Lecithin", "Salt", "Vitamin E", "Citric Acid", "Potassium Sorbate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": [
@@ -1306,6 +1354,11 @@
       "before",
       "after"
     ],
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Dried Banana (48%)", "Cashews", "Cacao Butter (9%)", "Cacao Powder (8%)", "Pumpkin Seeds", "Cacao Nibs (5%)", "Brown Rice Syrup", "Sunflower Lecithin", "Salt", "Vitamin E", "Citric Acid", "Potassium Sorbate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": []
@@ -1430,6 +1483,11 @@
       "before",
       "after"
     ],
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Dried Banana (57%)", "Prunes", "Pumpkin Seeds", "Peanut Butter", "Brown Rice Syrup", "Puffed Rice", "Cinnamon (0.6%)", "Sunflower Lecithin", "Salt", "Vitamin E", "Citric Acid", "Potassium Sorbate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": []
@@ -1538,6 +1596,11 @@
       "before",
       "after"
     ],
+    "vegan": true,
+    "gluten_free": true,
+    "maltodextrin_free": true,
+    "ingredients": ["Dried Pineapple (32%)", "Dried Banana (31%)", "Prunes (19%)", "Pumpkin Seeds", "Cashew Butter", "Puffed Rice", "Brown Rice Syrup", "Sunflower Lecithin", "Salt", "Vitamin E", "Citric Acid", "Potassium Sorbate"],
+    "packaging_format": "single-serve pouch",
     "regions": {
       "us": {
         "variants": [
