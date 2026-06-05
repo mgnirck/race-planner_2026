@@ -13,6 +13,7 @@ import LoginPage        from './components/LoginPage'
 import PlanViewPage     from './components/PlanViewPage'
 import CheckpointPage   from './components/CheckpointPage'
 import FeedbackWidget   from './components/FeedbackWidget'
+import ClaudePage       from './components/ClaudePage'
 import { isEmbedded, getSavedRegion } from './embed.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
@@ -75,6 +76,7 @@ export default function App() {
     }
   }, [])
 
+  if (PATH === '/claude')       return <ClaudePage />
   if (PATH === '/admin')        return <><AdminPage /><FeedbackWidget /></>
   if (PATH === '/auth/verify')  return <><VerifyPage /><FeedbackWidget /></>
   if (PATH === '/auth/login')   return <><LoginPage /><FeedbackWidget /></>

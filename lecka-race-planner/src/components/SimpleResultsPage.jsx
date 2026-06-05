@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Nav from './Nav.jsx'
 import { buildCartURLFromAggregated } from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice } from '../engine/region-utils.js'
-import { embedCartURL, getSavedRegion, saveRegion, getRegionConfig } from '../embed.js'
+import { isEmbedded, embedCartURL, getSavedRegion, saveRegion, getRegionConfig } from '../embed.js'
 import { useProducts } from '../hooks/useProducts.js'
 import FALLBACK_PRODUCTS from '../config/products.json'
 import regionsConfig from '../config/regions.json'
@@ -10,6 +10,41 @@ import i18n from '../i18n.js'
 import { formatAddonSummary } from '../engine/kit-calculator.js'
 import ShareModal from './ShareModal.jsx'
 import PreFuelSection from './PreFuelSection.jsx'
+
+// ── ClaudeBanner ──────────────────────────────────────────────────────────────
+
+function ClaudeBanner() {
+  if (isEmbedded) return null
+  return (
+    <div className="mt-8 rounded-2xl border border-gray-100 bg-[#F9F9F9] px-5 py-5">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-[#48C4B0] mb-1">
+        Powered by Lecka
+      </p>
+      <p className="text-sm font-bold text-[#1B1B1B] mb-1">
+        Ask Claude about your plan
+      </p>
+      <p className="text-xs text-gray-500 leading-relaxed mb-4">
+        Lecka's nutrition tools are available inside Claude. Ask follow-up questions,
+        adjust for your conditions, or explore product options — in natural conversation.
+      </p>
+      <a
+        href="https://claude.ai/new?hint=lecka+race+nutrition"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 bg-[#1B1B1B] text-white text-xs
+                   font-semibold rounded-full px-4 py-2.5 hover:opacity-80 transition-opacity"
+      >
+        Open in Claude →
+      </a>
+      <a
+        href="/claude"
+        className="ml-4 text-xs text-gray-400 hover:text-gray-600 underline"
+      >
+        What is this?
+      </a>
+    </div>
+  )
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -851,6 +886,8 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
             </form>
           )}
         </div>
+
+        <ClaudeBanner />
 
       </div>
     </div>
