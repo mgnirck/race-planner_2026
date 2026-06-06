@@ -505,6 +505,15 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               )}
             </div>
           )}
+
+          {/* Confidence context */}
+          <p style={{
+            fontSize: 11, color: '#9ca3af', textAlign: 'center',
+            marginTop: 10, marginBottom: 2, lineHeight: 1.5,
+            paddingLeft: 8, paddingRight: 8,
+          }}>
+            Built for your inputs. Adjust ±10–15% based on how your stomach responds in training.
+          </p>
         </div>
 
         {/* ── Section 2: Race plan ─────────────────────────────────────────── */}
