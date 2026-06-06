@@ -580,7 +580,7 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             </svg>
             <p className="text-xs leading-relaxed" style={{ color: AMBER_DARK }}>
               <Trans
-                i18nKey="hero.weather.upcoming"
+                i18nKey="dashboard:hero.weather.upcoming"
                 values={{ city, date: weatherWindowStr }}
                 components={{ bold: <strong className="font-semibold" /> }}
               />
