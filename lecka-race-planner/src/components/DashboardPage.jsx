@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import Nav from './Nav.jsx'
 import { calculateTargets } from '../engine/nutrition-engine'
 
@@ -579,7 +579,11 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <p className="text-xs leading-relaxed" style={{ color: AMBER_DARK }}>
-              {t('hero.weather.upcoming', { city, date: weatherWindowStr })}
+              <Trans
+                i18nKey="hero.weather.upcoming"
+                values={{ city, date: weatherWindowStr }}
+                components={{ bold: <strong className="font-semibold" /> }}
+              />
             </p>
           </div>
         )}

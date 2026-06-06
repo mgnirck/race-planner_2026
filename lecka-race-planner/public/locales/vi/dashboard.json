@@ -10,7 +10,7 @@
   "hero.badge.live": "trực tiếp",
   "hero.badge.updated": "↑ cập nhật",
   "hero.forecast.source": "Dự báo từ Open-Meteo · {{updated}}",
-  "hero.weather.upcoming": "Thời tiết dựa trên ước tính của bạn. Dự báo trực tiếp cho <1>{{city}}</1> mở khóa vào <1>{{date}}</1> — chúng tôi sẽ cập nhật kế hoạch của bạn tự động.",
+  "hero.weather.upcoming": "Thời tiết dựa trên ước tính của bạn. Dự báo trực tiếp cho <bold>{{city}}</bold> mở khóa vào <bold>{{date}}</bold> — chúng tôi sẽ cập nhật kế hoạch của bạn tự động.",
   "hero.viewPlan": "Xem kế hoạch đầy đủ",
   "hero.downloadPdf": "Tải PDF",
   "hero.generating": "Đang tạo…",
