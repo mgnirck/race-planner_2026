@@ -344,11 +344,14 @@ export default function HomePage() {
             </div>
           </div>
 
-          <p className="text-center mt-6">
+          <div className="flex justify-center gap-4 mt-6">
+            <a href="/nutrition-research" className="text-[10px] text-gray-400 hover:text-gray-600">
+              Nutrition research →
+            </a>
             <a href="/claude" className="text-[10px] text-gray-400 hover:text-gray-600">
               Use Lecka in Claude →
             </a>
-          </p>
+          </div>
 
         </div>
       </footer>
