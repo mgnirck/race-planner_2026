@@ -503,6 +503,11 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
           )}
         </div>
 
+        {/* Confidence context */}
+        <p className="text-xs text-gray-400 text-center leading-relaxed pt-1">
+          {t('nutrition.confidenceNote')}
+        </p>
+
         {/* Foundation / addon split row */}
         {addonCoverage && addonCoverage.items?.length > 0 && foundationTargets && (() => {
           const total = targets.carb_per_hour
