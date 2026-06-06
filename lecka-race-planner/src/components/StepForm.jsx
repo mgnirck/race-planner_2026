@@ -120,6 +120,7 @@ const DEFAULT_FORM = {
   weight_value:    '70',
   weight_unit:     'kg',
   gender:          '',
+  age_bracket:     null,
   temperature:     '',
   humidity:        'dry',
   effort:          '',
@@ -933,6 +934,32 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
               label={g.label}
               selected={form.gender === g.key}
               onClick={() => setForm(f => ({ ...f, gender: g.key }))}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Age bracket (optional) */}
+      <div>
+        <FieldLabel>Age bracket <span className="text-gray-400 font-normal">(optional)</span></FieldLabel>
+        <p className="text-xs text-gray-400 mb-2">
+          Masters athletes absorb carbohydrates at a lower rate. Select your age group to adjust your targets.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { key: 'under_40', label: 'Under 40' },
+            { key: '40_to_50', label: '40–49' },
+            { key: '50_to_60', label: '50–59' },
+            { key: 'over_60',  label: '60+' },
+          ].map(a => (
+            <Pill
+              key={a.key}
+              label={a.label}
+              selected={form.age_bracket === a.key}
+              onClick={() => setForm(f => ({
+                ...f,
+                age_bracket: f.age_bracket === a.key ? null : a.key,
+              }))}
             />
           ))}
         </div>
@@ -1853,6 +1880,7 @@ export default function StepForm({ onComplete }) {
           athlete_profile:  form.athlete_profile,
           elevation_gain_m: form.elevation_gain_m,
           distance_km:      parseFloat(form.custom_km) || 0,
+          age_bracket:      form.age_bracket ?? null,
         })
         setPreviewTargets(preview)
       } catch {
@@ -1891,6 +1919,7 @@ export default function StepForm({ onComplete }) {
       elevation_gain_m: form.elevation_gain_m,
       distance_km:      parseFloat(form.custom_km) || 0,
       training_mode:    form.training_mode,
+      age_bracket:      form.age_bracket ?? null,
     })
 
     const useCustomTargets =

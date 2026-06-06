@@ -1,6 +1,6 @@
 # Nutrition Plan Logic — Research & Methodology
 
-**Date:** April 2026 (updated April 25, 2026)
+**Date:** April 2026 (updated June 2026)
 **Purpose:** Transparent documentation of how Lecka calculates carbohydrate, sodium, and fluid targets — cross-referenced against current sports science research. Every number on your plan comes from here.
 
 ---
@@ -16,12 +16,16 @@ Lecka's nutrition plan is built on **ISSN 2018, Burke et al. (IOC 2019), and ACS
 - Hilly and mountain courses increase carb and sodium targets (climbing burns more glycogen and raises core temperature)
 - Product quantities are calibrated to actually deliver your carb target — not based on a fixed cadence
 - Your plan page shows a live "Provided vs. Target" breakdown so you can see exactly how well your selected products match your needs
+- Age bracket (optional): masters athletes 40+ receive adjusted carb targets reflecting lower max CHO oxidation rates — a 3–12% reduction depending on age group
+- Sodium targets scale with race duration — events under 90 minutes receive a partial sodium target reflecting actual sweat sodium losses
 
 **Known simplifications (honest limitations):**
 - Conditions are categorical (cool / mild / warm / hot / humid) — continuous temperature input would allow more precise sweat-rate modelling
 - Gender modifier is a simplified proxy (female = 0.9×) — fitness level predicts sweat rate better than gender alone
 - No individual sweat-rate measurement — field-tested sweat rate would be the single biggest accuracy improvement
 - No formula versioning — plans generated at different times may differ slightly if research anchors are updated
+- Age modifier is bracket-based (under 40 / 40–49 / 50–59 / 60+), not continuous — a continuous VO2max-decline curve would be more precise
+- Salty sweater self-report has not yet been implemented — individual sweat sodium concentration remains the largest unmodelled variable
 
 ---
 
@@ -38,7 +42,8 @@ Step 1 — Base rate from race duration (linear interpolation):
   ────────────────────────────
   0–30 min  →   0 g/h   (sufficient muscle glycogen; no exogenous carbs needed)
     45 min  →  20 g/h   (marginal SGLT1 benefit begins)
-    60 min  →  35 g/h   (single-transporter threshold)
+    60 min  →  42 g/h   (updated from 35 g/h — aligns with Jeukendrup 2004,
+                          Rollo & Williams 2011 on 45–60 min mouth-rinsing benefit)
     90 min  →  50 g/h
    120 min  →  58 g/h   (2-hour zone)
    180 min  →  63 g/h   (3-hour / marathon–ultra transition)
@@ -103,17 +108,32 @@ Total carbs for race = carb_per_hour × (goal_minutes / 60)
 | Race | Typical finish time | Lecka rate | ISSN range | Alignment |
 |------|---------------------|-----------|------------|-----------|
 | 5K | 22 min | **0 g/h** | 0 g/h | ✓ |
-| 10K | 50 min | **25 g/h** | 30–45 g/h | ⚠️ Slightly conservative |
+| 10K | 50 min | **~30 g/h** | 30–45 g/h | ✓ (interpolated from 20 g/h at 45 min and 42 g/h at 60 min) |
 | Half marathon | 105 min | **54 g/h** | 55–65 g/h | ✓ |
 | Marathon | 210 min | **65 g/h** | 60–75 g/h | ✓ |
 | Ultra 50K | 360 min | **74 g/h** | 60–90 g/h | ✓ |
 | Ultra 100K | 600 min | **79 g/h** | 60–90 g/h | ✓ |
 
-> **Note on 10K:** The curve is intentionally conservative at 45–60 minutes to avoid GI distress at short, fast efforts. Athletes with trained gut absorption can select "trained" profile or "hard" effort to reach 30–35 g/h.
+> **Note on 10K:** The 60-minute anchor was updated from 35 g/h to 42 g/h in June 2026, aligning with Jeukendrup & Chambers (2004) and Rollo & Williams (2011) on mouth-rinsing and gut-priming benefit at 45–60 minutes. A 50-minute 10K now outputs approximately 30 g/h (interpolated).
+
+### Masters athlete carb modifier (new — June 2026)
+
+An optional age bracket input applies a downward modifier to carb_per_hour only:
+
+| Age bracket | Carb modifier | Rationale |
+|-------------|--------------|-----------|
+| Under 40    | × 1.00       | Baseline — no change |
+| 40–49       | × 0.97       | Marginal decline in max CHO oxidation |
+| 50–59       | × 0.93       | Meaningful reduction in absorption capacity and gut motility |
+| 60+         | × 0.88       | Masters athletes: lower VO2max ceiling, slower gastric emptying |
+
+**Research basis:** Coyle et al. (Masters Athletes review, 2020) documents ~1% per year VO2max decline after age 30, with associated reductions in maximum carbohydrate oxidation rates. Gastric emptying slows with age independent of training status. The modifiers are intentionally conservative — they reflect population averages, not individual variation. An elite 58-year-old may require no reduction.
+
+**Input is optional.** If age bracket is not provided, no modifier is applied and the plan defaults to the under-40 baseline.
 
 ### Known limitations
 1. **No carbohydrate type guidance** — dual-transporter CHO (glucose + fructose, 2:1) enables up to 90 g/h for events > 2.5 h; current products are single-source glucose-dominant
-2. **Effort modifier does not vary by duration** — research suggests effort matters less as duration increases (a 12-hour ultra at "easy" pace still demands near-maximum carbs regardless); future update could reduce the effort band for very long events
+2. **Effort modifier tapers at ultra durations** — above 240 minutes, the ±15% effort band is progressively compressed to ±6% by 480 minutes. This reflects the research consensus that duration dominates effort as a carbohydrate driver for ultra-distance events. The tapering factor reaches its minimum (40% of the raw deviation) at 480 minutes and holds there for longer races.
 
 ---
 
@@ -184,6 +204,21 @@ Worked example — 70 kg male, hot, intermediate, flat:
 | 60 kg female, cool, intermediate | 367 mg/h | 240–480 | ✓ |
 | 70 kg male, mountain, intermediate | 840 × 1.18 = 991 mg/h | 500–1200 | ✓ |
 
+### Sodium duration scaling (new — June 2026)
+
+For events under 90 minutes, the sodium target is scaled down to reflect actual sweat sodium losses at short durations:
+
+| Duration | Sodium scale |
+|----------|-------------|
+| 0 min    | × 0.0       |
+| 45 min   | × 0.40      |
+| 60 min   | × 0.65      |
+| ≥ 90 min | × 1.00 (full rate) |
+
+Between anchors, linear interpolation is used. For all events 90 minutes and above, the model is unchanged.
+
+**Rationale:** Sweat sodium losses at sub-45-minute efforts are negligible — total race sweat volume is too low for sodium depletion to be a meaningful concern. Surfacing a 500+ mg/h target for a 22-minute 5K is both misleading and not clinically supported. The 90-minute threshold aligns with the ISSN 2015 guideline that electrolyte replacement becomes meaningful for events exceeding 1 hour in moderate conditions.
+
 ### Known limitations
 1. **Gender modifier is a simplified proxy** — fitness level and VO2max predict sweat rate more accurately than gender alone; a trained female often sweats more than an untrained male
 2. **Heat acclimatisation not captured** — acclimatised athletes have higher pre-race sweat rates even before conditions shift
@@ -203,7 +238,9 @@ fluid_ml_per_hour =
   × condition_modifier
   × athlete_profile_modifier
 
-  Clamped to 400–1000 ml/h
+  Clamped to sport-specific ceiling (updated June 2026):
+  - Running events:                  400–800 ml/h
+  - Triathlon (bike leg) / cycling:  400–1000 ml/h
 
   Note: Elevation is NOT applied to fluid. The effect of altitude and
   gradient on sweat rate is complex and does not follow a reliable linear
@@ -232,11 +269,18 @@ Worked example — 70 kg male, warm, trained:
 | 70 kg, mild, intermediate | 560 ml/h | 400–800 | ✓ |
 | 70 kg, hot, intermediate | 784 ml/h | 500–1000 | ✓ |
 | 70 kg, hot, trained | 862 ml/h | 600–1000 | ✓ |
-| 100 kg, hot, intermediate | 1120 → **1000 ml/h** (clamped) | 600–1200 | ✓ (clamped) |
+| 100 kg, hot, marathon (running) | 1120 → **800 ml/h** (clamped) | 600–1000 | ✓ (running ceiling) |
+| 100 kg, hot, triathlon_140_6 | 1120 → **1000 ml/h** (clamped) | 600–1200 | ✓ (cycling ceiling) |
+
+**Maximum cap — sport-specific (updated June 2026):**
+- Running events: 800 ml/h (reflects gastric emptying ceiling at race pace — approximately 600–800 ml/h during running due to reduced splanchnic blood flow)
+- Triathlon (bike leg) and cycling: 1000 ml/h (convective cooling from speed allows higher effort with greater fluid tolerance)
+
+The previous universal cap of 1000 ml/h has been replaced with this sport-aware ceiling. Large athletes running in hot conditions are now capped at 800 ml/h rather than receiving a 1000 ml/h target that is practically unachievable and GI-risky at race pace.
 
 ### Known limitations
 1. **No individual sweat-rate measurement** — field test (weigh before/after + fluid consumed) would dramatically improve accuracy
-2. **Sport-specific variation not captured** — cycling generates better convective cooling than running; triathletes face different demands across disciplines
+2. **Sport-specific variation not captured for within-triathlon disciplines** — the fluid ceiling applies per race type; per-leg variation in a triathlon is not modelled
 
 ---
 
@@ -396,12 +440,18 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 - [x] "Provided vs. target" display on plan page
 - [x] Carb rate validation and warnings for events < 45 min
 - [x] Pre-race sodium loading guidance for hot/humid ultras > 4 hours
+- [x] Effort modifier tapering for ultra-duration events (> 240 min)
+- [x] Masters athlete age bracket modifier (carbs only, optional input)
+- [x] Sodium duration scaling (events < 90 min receive proportionally reduced target)
+- [x] Sport-aware fluid ceiling (800 ml/h running, 1000 ml/h cycling/triathlon bike)
+- [x] Gut training mode safety cap for events > 180 min (minimum 85% of normal target)
+- [x] 60-minute carb anchor corrected from 35 g/h to 42 g/h
 
 ### Pending
 - [ ] Continuous temperature input (replaces categorical conditions)
 - [ ] Individual sweat-rate estimator tool (weigh before/after field test → feeds sodium/fluid targets)
 - [ ] Formula versioning (reproducible plans even after research updates)
-- [ ] Sport-specific fluid modifiers (running vs. cycling vs. triathlon)
+- [ ] Salty sweater self-report input (binary flag → sodium ×1.3 multiplier) — highest-priority accuracy improvement for sodium model
 
 ---
 
@@ -412,6 +462,9 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 3. **Sawka et al. (ACSM 2007)** — Position Stand on Fluid Replacement During Exercise — sweat rate variability and hyponatremia risk
 4. **ISSN 2015** — Position Stand on Sodium and Fluid in Exercise
 5. **Marino et al. (2021)** — Sodium and Hydration in Endurance Sports — pre-race loading protocols and heat acclimatisation effects
+6. **Jeukendrup & Chambers (2004)** — Oral carbohydrate sensing and exercise performance — basis for 45–60 min mouth-rinsing benefit
+7. **Rollo & Williams (2011)** — Influence of mouth-rinsing a carbohydrate solution on 1 h running performance — CNS activation at sub-1-hour durations
+8. **Coyle et al. / Masters Athletes Review (2020)** — Carbohydrate oxidation rates in masters endurance athletes — age-based CHO modifier rationale
 
 ---
 
@@ -424,5 +477,5 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 
 ---
 
-**Last updated:** April 25, 2026
-**Next review:** April 2027, or upon major ISSN / IOC guideline update
+**Last updated:** June 2026
+**Next review:** June 2027, or upon major ISSN / IOC guideline update

@@ -119,6 +119,7 @@ const DEFAULT_FORM = {
   gender:                 '',
   weight_value:           '',
   weight_unit:            'kg',
+  age_bracket:            null,
   caffeine_ok:            null,
   product_preference_mode: 'suggested',
   preferred_product_ids:  [],
@@ -251,6 +252,7 @@ export default function SimpleForm({ onComplete }) {
       distance_km:      triathlonKm ?? customKm ?? SIMPLE_DEFAULTS.distance_km,
       athlete_profile:  SIMPLE_DEFAULTS.athlete_profile,
       training_mode:    SIMPLE_DEFAULTS.training_mode,
+      age_bracket:      form.age_bracket ?? null,
     }
 
     const targets   = calculateTargets(engineInputs)
@@ -285,6 +287,7 @@ export default function SimpleForm({ onComplete }) {
       dist_unit:              'km',
       fuelling_style:         'gels_only',
       addon_items:            [],
+      age_bracket:            form.age_bracket ?? null,
     }
 
     onComplete({
@@ -575,6 +578,47 @@ export default function SimpleForm({ onComplete }) {
                 />
               ))}
             </div>
+          </div>
+
+          {/* 6b. Age bracket (optional) */}
+          <div className="mb-8">
+            <SectionLabel>Age (optional)</SectionLabel>
+            <p className="text-xs text-gray-400 mb-3">
+              Helps personalise your carb targets — masters athletes absorb carbs differently.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'under_40', label: 'Under 40' },
+                { key: '40_to_50', label: '40–49' },
+                { key: '50_to_60', label: '50–59' },
+                { key: 'over_60',  label: '60+' },
+              ].map(a => (
+                <button
+                  key={a.key}
+                  type="button"
+                  onClick={() => setForm(f => ({
+                    ...f,
+                    age_bracket: f.age_bracket === a.key ? null : a.key,
+                  }))}
+                  className={[
+                    'min-h-[44px] px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors',
+                    form.age_bracket === a.key
+                      ? 'border-[#48C4B0] bg-[#48C4B0]/10 text-[#48C4B0]'
+                      : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]/50',
+                  ].join(' ')}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            {form.age_bracket && (
+              <p className="text-xs text-[#48C4B0] mt-2">
+                {form.age_bracket === 'under_40'  && 'Standard targets applied.'}
+                {form.age_bracket === '40_to_50'  && 'Carb target slightly reduced for masters physiology.'}
+                {form.age_bracket === '50_to_60'  && 'Carb target reduced — gut absorption slows with age.'}
+                {form.age_bracket === 'over_60'   && 'Carb target adjusted for masters athletes 60+.'}
+              </p>
+            )}
           </div>
 
           {/* 7. Weight */}

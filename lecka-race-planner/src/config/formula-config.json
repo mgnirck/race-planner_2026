@@ -49,11 +49,25 @@
     "maximum":     1500
   },
 
+  "sodium_duration_scale": {
+    "_comment": "Scales the sodium target down for short events where sodium replacement is not physiologically meaningful. At <45 min, sweat losses are negligible. Ramps to full rate by 90 min. Applied as a multiplier before condition and profile modifiers.",
+    "anchors": [
+      { "minutes": 0,  "multiplier": 0.0 },
+      { "minutes": 45, "multiplier": 0.4 },
+      { "minutes": 60, "multiplier": 0.65 },
+      { "minutes": 90, "multiplier": 1.0 }
+    ],
+    "_note": "For events >= 90 min the multiplier is 1.0 — full rate applies. Linear interpolation between anchors."
+  },
+
   "fluid_targets_ml_per_hour": {
     "_comment": "Base fluid target before condition modifier. Scales with body weight.",
     "base_per_kg": 8,
     "minimum":     400,
-    "maximum":     1000
+    "maximum":     1000,
+    "maximum_running": 800,
+    "maximum_cycling_and_bike_leg": 1000,
+    "_note": "Running ceiling is 800 ml/h — gastric emptying at race pace is limited to ~600–800 ml/h. Cycling/triathlon bike leg ceiling remains 1000 ml/h due to convective cooling."
   },
 
   "gender_modifiers": {
@@ -152,6 +166,14 @@
       "fluid_modifier": 1.15,
       "description": "Optimized sweat control, maximum absorption capacity"
     }
+  },
+
+  "age_modifiers": {
+    "_comment": "Optional. Applied to carb_per_hour only. Research: VO2max declines ~1%/year after 30; masters athletes have lower max CHO oxidation rates and slower gut motility (Coyle et al., Masters Athletes review 2020). No modifier = under-40 default. Age does not reliably modify sodium/fluid at population level.",
+    "under_40":  { "carb_modifier": 1.00, "label": "Under 40" },
+    "40_to_50":  { "carb_modifier": 0.97, "label": "40–49" },
+    "50_to_60":  { "carb_modifier": 0.93, "label": "50–59" },
+    "over_60":   { "carb_modifier": 0.88, "label": "60 and over" }
   },
 
   "vo2max_modifiers": {

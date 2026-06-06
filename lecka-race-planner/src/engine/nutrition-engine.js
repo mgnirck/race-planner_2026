@@ -51,6 +51,7 @@ export function calculateTargets(inputs) {
     athlete_profile = 'intermediate',
     elevation_gain_m = 0,
     distance_km = 0,
+    age_bracket = null,
   } = inputs
 
   // ── 1. Validate required inputs ──────────────────────────────────────────
@@ -67,6 +68,19 @@ export function calculateTargets(inputs) {
   const strategyName = formulaConfig.carb_calculation_strategy.selected
   let carb_per_hour = carbStrategies.selectCarbStrategy(strategyName, inputs, formulaConfig)
 
+  // ── 2a. Gut training mode safety cap ─────────────────────────────────────────
+  // training_mode applies a 0.70 multiplier in the strategy layer.
+  // For events > 180 min, cap the reduction so carbs never fall below 85% of the
+  // non-training target. Fuelling is safety-critical in long events.
+  if (inputs.training_mode && goal_minutes > 180) {
+    const nonTrainingInputs = { ...inputs, training_mode: false }
+    const uncappedBase = carbStrategies.selectCarbStrategy(strategyName, nonTrainingInputs, formulaConfig)
+    const minAllowed = Math.round(uncappedBase * 0.85)
+    if (carb_per_hour < minAllowed) {
+      carb_per_hour = minAllowed
+    }
+  }
+
   // Apply athlete profile modifier (trained athletes can absorb more)
   const profileMods = formulaConfig.athlete_profiles[athlete_profile]
   if (profileMods) {
@@ -76,6 +90,13 @@ export function calculateTargets(inputs) {
   }
 
   carb_per_hour = Math.round(carb_per_hour)
+
+  // ── 2c. Age modifier (optional) ──────────────────────────────────────────────
+  // Only applied when age_bracket is explicitly provided. Null = no change.
+  if (age_bracket && formulaConfig.age_modifiers?.[age_bracket]) {
+    const ageMod = formulaConfig.age_modifiers[age_bracket].carb_modifier
+    carb_per_hour = Math.round(carb_per_hour * ageMod)
+  }
 
   // ── 2b. Elevation modifier ────────────────────────────────────────────────
   let elevation_tier = 'flat'
@@ -122,6 +143,27 @@ export function calculateTargets(inputs) {
     Math.min(Math.max(sodium_per_hour, sodiumConfig.minimum), sodiumConfig.maximum)
   )
 
+  // ── 3b. Sodium duration scaling ───────────────────────────────────────────────
+  // Short events don't require meaningful sodium replacement.
+  // Scale the target down for events under 90 minutes.
+  const sodiumDurationAnchors = formulaConfig.sodium_duration_scale?.anchors
+  if (sodiumDurationAnchors && sodiumDurationAnchors.length > 0) {
+    const lastAnchor = sodiumDurationAnchors[sodiumDurationAnchors.length - 1]
+    if (goal_minutes < lastAnchor.minutes) {
+      let sodiumScale = 1.0
+      for (let i = 1; i < sodiumDurationAnchors.length; i++) {
+        const prev = sodiumDurationAnchors[i - 1]
+        const curr = sodiumDurationAnchors[i]
+        if (goal_minutes >= prev.minutes && goal_minutes <= curr.minutes) {
+          const ratio = (goal_minutes - prev.minutes) / (curr.minutes - prev.minutes)
+          sodiumScale = prev.multiplier + ratio * (curr.multiplier - prev.multiplier)
+          break
+        }
+      }
+      sodium_per_hour = Math.round(sodium_per_hour * sodiumScale)
+    }
+  }
+
   // ── 4. Fluid rate ─────────────────────────────────────────────────────────
   const fluidConfig = formulaConfig.fluid_targets_ml_per_hour
   let fluid_ml_per_hour = weight_kg * fluidConfig.base_per_kg * genderMod * condMod.fluid_multiplier
@@ -131,8 +173,15 @@ export function calculateTargets(inputs) {
     fluid_ml_per_hour *= profileMods.fluid_modifier
   }
 
+  // Use a lower fluid ceiling for running events (gastric emptying limit at race pace).
+  // Triathlon bike leg and cycling retain the higher 1000 ml/h ceiling.
+  const isCyclingContext = race_type?.includes('triathlon') || race_type === 'cycling'
+  const fluidMax = isCyclingContext
+    ? (fluidConfig.maximum_cycling_and_bike_leg ?? fluidConfig.maximum)
+    : (fluidConfig.maximum_running ?? fluidConfig.maximum)
+
   fluid_ml_per_hour = Math.round(
-    Math.min(Math.max(fluid_ml_per_hour, fluidConfig.minimum), fluidConfig.maximum)
+    Math.min(Math.max(fluid_ml_per_hour, fluidConfig.minimum), fluidMax)
   )
 
   // ── 5. Race totals ────────────────────────────────────────────────────────
@@ -184,6 +233,15 @@ export function calculateTargets(inputs) {
     }
   }
 
+  // Training mode long race warning
+  if (inputs.training_mode && goal_minutes > 180) {
+    warnings.push({
+      type: 'training_mode_long_race',
+      message: 'Gut training mode is for training runs only — carb target has been raised to a minimum safe level for this race duration. Do not use training mode on race day.',
+      severity: 'warning',
+    })
+  }
+
   return {
     carb_per_hour,
     sodium_per_hour,
@@ -197,6 +255,7 @@ export function calculateTargets(inputs) {
     conditions,
     athlete_profile,
     carb_strategy: strategyName,
+    age_bracket: age_bracket ?? null,
     elevation_gain_m,
     avg_grade_pct: Math.round(avg_grade_pct * 10) / 10,
     elevation_tier,
