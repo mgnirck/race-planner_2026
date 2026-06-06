@@ -61,7 +61,7 @@ export default function ClaudePage() {
           </button>
         </div>
         <p className="text-[10px] text-gray-400 mb-2">
-          In Claude, go to Settings → Integrations → Add MCP Server and paste the URL above.
+          In Claude, go to Customize → Connectors → + → Add Manual Connector and paste the URL above.
         </p>
         <p className="text-[10px] text-gray-400 mb-8">
           If the tools stop responding mid-conversation, go to Settings → Integrations and reconnect the Lecka server. This is a known Claude limitation with remote connections.
