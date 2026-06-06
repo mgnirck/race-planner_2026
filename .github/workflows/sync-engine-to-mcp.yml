@@ -8,6 +8,7 @@ on:
       - 'src/engine/nutrition-engine.js'
       - 'src/strategies/carb-strategies.js'
       - 'src/config/formula-config.json'
+      - 'src/config/regions.json'
 
 jobs:
   sync:
@@ -31,6 +32,7 @@ jobs:
           cp planner/src/engine/nutrition-engine.js   mcp/engine/nutrition-engine.js
           cp planner/src/strategies/carb-strategies.js mcp/engine/carb-strategies.js
           cp planner/src/config/formula-config.json    mcp/config/formula-config.json
+          cp planner/src/config/regions.json           mcp/config/regions.json
 
       - name: Check for changes
         id: diff
@@ -53,6 +55,7 @@ jobs:
             - `engine/nutrition-engine.js`
             - `engine/carb-strategies.js`
             - `config/formula-config.json`
+            - `config/regions.json`
 
             Review the changes before merging. Merging will trigger a Vercel redeploy of the MCP server.
           commit-message: 'sync: update engine files from lecka-race-planner'
