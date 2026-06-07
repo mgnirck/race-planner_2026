@@ -1074,9 +1074,19 @@
       "dk": {
         "variants": [
           {
-            "shopify_variant_id": "PLACEHOLDER_DK_ULTRA_GEL_PFM",
+            "shopify_variant_id": "53036444025098",
             "units_per_pack": 1,
-            "price": 59.0
+            "price": 49.0
+          },
+          {
+            "shopify_variant_id": "53036444057866",
+            "units_per_pack": 3,
+            "price": 139.0
+          },
+          {
+            "shopify_variant_id": "53036444090634",
+            "units_per_pack": 6,
+            "price": 259.0
           }
         ]
       },
