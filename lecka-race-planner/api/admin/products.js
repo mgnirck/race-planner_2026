@@ -12,7 +12,7 @@
  * Auth: X-Admin-Password header on all requests.
  */
 
-import { sql, ensureMigrated } from '../db.js'
+import { sql, ensureMigrated } from '../_db.js'
 import { createRequire } from 'module'
 
 const _require = createRequire(import.meta.url)

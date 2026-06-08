@@ -4,23 +4,62 @@
  * POST { race_type, region }
  *   Records a plan event and returns 201.
  *
+ * POST ?migrate=1  +  X-Admin-Password header
+ *   Runs the full DB migration (idempotent).
+ *
  * GET (no auth)
  *   Returns lightweight aggregate stats from plan_events.
  *
  * GET ?analytics=1  +  X-Admin-Password header
- *   Returns rich analytics from the plans table (17 queries).
+ *   Returns rich analytics from the plans table.
+ *
+ * GET ?mcp=1  +  X-Admin-Password header
+ *   Proxies to lecka-mcp /api/mcp-usage (server-side, avoids CORS).
  */
 
-import { sql, ensureMigrated } from './db.js'
+import { sql, ensureMigrated } from './_db.js'
+
+const MCP_UPSTREAM = 'https://lecka-mcp.vercel.app/api/mcp-usage'
+
+function checkAdminPassword(req) {
+  const adminPassword = process.env.VITE_ADMIN_PASSWORD ?? ''
+  const provided = req.headers['x-admin-password'] ?? ''
+  return adminPassword && provided === adminPassword
+}
+
+// ── MCP usage proxy (admin-only) ─────────────────────────────────────────────
+
+async function handleMcpUsage(req, res) {
+  if (!checkAdminPassword(req)) return res.status(401).json({ error: 'Unauthorized' })
+  try {
+    const upstream = await fetch(MCP_UPSTREAM, {
+      headers: { 'X-Admin-Password': req.headers['x-admin-password'] },
+      cache: 'no-store',
+    })
+    const body = await upstream.json()
+    return res.status(upstream.status).json(body)
+  } catch (err) {
+    return res.status(502).json({ error: 'Could not reach MCP server', detail: err.message })
+  }
+}
+
+// ── DB migration (admin-only) ─────────────────────────────────────────────────
+
+async function handleMigrate(req, res) {
+  if (!checkAdminPassword(req)) return res.status(401).json({ error: 'Unauthorized' })
+  try {
+    await ensureMigrated()
+    return res.status(200).json({ ok: true, message: 'Migration complete' })
+  } catch (err) {
+    console.error('[migrate] error:', err)
+    return res.status(500).json({ error: 'Migration failed', detail: err.message })
+  }
+}
 
 // ── Rich analytics (admin-only) ───────────────────────────────────────────────
 
 async function handleAnalytics(req, res) {
-  const adminPassword = process.env.VITE_ADMIN_PASSWORD
-  const provided = req.headers['x-admin-password'] ?? ''
-  if (!adminPassword || provided !== adminPassword) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
+  if (!checkAdminPassword(req)) return res.status(401).json({ error: 'Unauthorized' })
 
   const safe = async (fn) => {
     try { return await fn() } catch (e) { console.error('[analytics] query error:', e); return null }
@@ -313,6 +352,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Password')
 
   if (req.method === 'OPTIONS') return res.status(204).end()
+
+  // ── Admin sub-routes ────────────────────────────────────────────────────────
+  if (req.query?.mcp === '1')     return handleMcpUsage(req, res)
+  if (req.query?.migrate === '1') return handleMigrate(req, res)
 
   // ── POST — record a new plan ────────────────────────────────────────────────
   if (req.method === 'POST') {

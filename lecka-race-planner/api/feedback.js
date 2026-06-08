@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { sql, ensureMigrated } from './db.js'
+import { sql, ensureMigrated } from './_db.js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 

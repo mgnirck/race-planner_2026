@@ -63,7 +63,7 @@ async function getAllProducts() {
   }
 }
 import { getServerT } from './i18n-server.js'
-import { sql, ensureMigrated } from './db.js'
+import { sql, ensureMigrated } from './_db.js'
 
 const _validateLocale = (() => {
   const t = getServerT('en')

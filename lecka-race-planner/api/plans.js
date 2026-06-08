@@ -1,4 +1,4 @@
-import { sql, ensureMigrated } from './db.js'
+import { sql, ensureMigrated } from './_db.js'
 
 async function getUser(req) {
   const auth = req.headers.authorization ?? ''
