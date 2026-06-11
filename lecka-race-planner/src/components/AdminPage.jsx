@@ -75,7 +75,7 @@ const BAR_COLORS = {
   purple: '#534AB7',
 }
 
-const MCP_USAGE_URL = '/api/mcp-usage'
+const MCP_USAGE_URL = '/api/record-plan?action=mcp-usage'
 
 const TOOL_LABELS = {
   calculate_fueling_plan: 'Calculate fueling plan',

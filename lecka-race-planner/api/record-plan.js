@@ -347,6 +347,25 @@ export default async function handler(req, res) {
       return handleAnalytics(req, res)
     }
 
+    // MCP usage proxy — triggered by ?action=mcp-usage + password header
+    if (req.query?.action === 'mcp-usage') {
+      const adminPassword = process.env.VITE_ADMIN_PASSWORD ?? ''
+      const provided = req.headers['x-admin-password'] ?? ''
+      if (!adminPassword || provided !== adminPassword) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+      try {
+        const upstream = await fetch('https://lecka-mcp.vercel.app/api/mcp-usage', {
+          headers: { 'X-Admin-Password': provided },
+          cache: 'no-store',
+        })
+        const body = await upstream.json()
+        return res.status(upstream.status).json(body)
+      } catch (err) {
+        return res.status(502).json({ error: 'Could not reach MCP server', detail: err.message })
+      }
+    }
+
     // Public lightweight stats from plan_events
     try {
       const [totalRes, monthRes, byTypeRes, byRegionRes] = await Promise.all([
