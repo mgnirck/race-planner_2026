@@ -104,6 +104,8 @@ export default function FeedbackPage({ planId }) {
   const [giIssues,       setGiIssues]       = useState('')
   const [planFeltRight,  setPlanFeltRight]  = useState('')
   const [notes,          setNotes]          = useState('')
+  // product_log: { [productId]: { status: 'used'|'skipped'|'swapped', swap_note: string, planned_qty: number, actual_qty: number } }
+  const [productLog, setProductLog] = useState({})
 
   const userId = localStorage.getItem('lecka_user_id')
 
@@ -124,7 +126,26 @@ export default function FeedbackPage({ planId }) {
 
   if (!userId) return null
 
-  const canSubmit = rating > 0 && hitCarbTarget && giIssues && planFeltRight
+  // Build a flat list of products from plan.selection for the product log section.
+  // Each entry: { id, name, type, planned_qty }
+  const planProducts = React.useMemo(() => {
+    if (!plan?.selection) return []
+    return (plan.selection ?? []).map(item => ({
+      id:          item.product_id ?? item.product?.id ?? item.id ?? '',
+      name:        item.product?.name ?? item.name ?? item.product_id ?? 'Product',
+      type:        item.product?.type ?? item.type ?? '',
+      planned_qty: item.quantity ?? item.qty ?? 1,
+    })).filter(p => p.id)
+  }, [plan])
+
+  const canSubmit = rating > 0 && hitCarbTarget && giIssues
+
+  function updateProductLog(productId, patch) {
+    setProductLog(prev => ({
+      ...prev,
+      [productId]: { ...(prev[productId] ?? {}), ...patch },
+    }))
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -139,6 +160,7 @@ export default function FeedbackPage({ planId }) {
           'Content-Type':  'application/json',
           'Authorization': `Bearer ${userId}`,
         },
+        // Serialise productLog — only include entries the user actually interacted with
         body: JSON.stringify({
           planId,
           rating,
@@ -146,6 +168,7 @@ export default function FeedbackPage({ planId }) {
           gi_issues:       giIssues,
           plan_felt_right: planFeltRight,
           notes:           notes.trim() || null,
+          product_log:     Object.keys(productLog).length > 0 ? productLog : null,
         }),
       })
       if (!res.ok) throw new Error()
@@ -249,21 +272,116 @@ export default function FeedbackPage({ planId }) {
             />
           </div>
 
-          {/* 4 — Plan felt right */}
-          <div>
-            <FieldLabel>{t('feedback.planFelt')}</FieldLabel>
-            <OptionGroup
-              value={planFeltRight}
-              onChange={setPlanFeltRight}
-              options={[
-                { value: 'yes',    label: t('feedback.yes') },
-                { value: 'mostly', label: t('feedback.mostly') },
-                { value: 'no',     label: t('feedback.no') },
-              ]}
-            />
-          </div>
+          {/* Product log — only shown if the plan has products */}
+          {planProducts.length > 0 && (
+            <div>
+              <FieldLabel>What did you use?</FieldLabel>
+              <p className="text-xs text-gray-400 mb-3">
+                Mark each product from your plan. Tap +/- to log actual quantities.
+              </p>
+              <div className="space-y-3">
+                {planProducts.map(product => {
+                  const entry = productLog[product.id] ?? {}
+                  const status = entry.status ?? null
+                  const actualQty = entry.actual_qty ?? product.planned_qty
 
-          {/* 5 — Notes */}
+                  return (
+                    <div
+                      key={product.id}
+                      className="border-2 border-gray-100 rounded-xl p-4"
+                    >
+                      {/* Product name + planned qty */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[#1B1B1B] leading-tight">
+                            {product.name}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Planned: {product.planned_qty}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Status toggle: Used / Skipped / Swapped */}
+                      <div className="flex gap-2 flex-wrap mb-3">
+                        {[
+                          { value: 'used',    label: '✓ Used' },
+                          { value: 'skipped', label: '✗ Skipped' },
+                          { value: 'swapped', label: '↔ Swapped' },
+                        ].map(opt => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => updateProductLog(product.id, {
+                              status: status === opt.value ? null : opt.value,
+                              ...(opt.value !== 'swapped' ? { swap_note: '' } : {}),
+                            })}
+                            className={[
+                              'px-3 py-1.5 rounded-lg border-2 text-xs font-semibold transition-colors',
+                              status === opt.value
+                                ? 'border-[#48C4B0] bg-[#48C4B0]/10 text-[#48C4B0]'
+                                : 'border-gray-200 bg-white text-gray-500 hover:border-[#48C4B0]',
+                            ].join(' ')}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Swap note — only visible when status === 'swapped' */}
+                      {status === 'swapped' && (
+                        <input
+                          type="text"
+                          maxLength={100}
+                          placeholder="What did you use instead?"
+                          value={entry.swap_note ?? ''}
+                          onChange={e => updateProductLog(product.id, { swap_note: e.target.value })}
+                          className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm
+                                     focus:outline-none focus:border-[#48C4B0] mb-3"
+                        />
+                      )}
+
+                      {/* Actual quantity — only shown if status === 'used' or 'swapped' */}
+                      {(status === 'used' || status === 'swapped') && (
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500 flex-1">Actual quantity</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateProductLog(product.id, {
+                                actual_qty: Math.max(0, actualQty - 1),
+                              })}
+                              className="w-8 h-8 rounded-lg border-2 border-gray-200 text-gray-500
+                                         hover:border-[#48C4B0] hover:text-[#48C4B0] text-base
+                                         font-bold transition-colors flex items-center justify-center"
+                            >
+                              −
+                            </button>
+                            <span className="text-sm font-bold text-[#1B1B1B] w-6 text-center">
+                              {actualQty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => updateProductLog(product.id, {
+                                actual_qty: actualQty + 1,
+                              })}
+                              className="w-8 h-8 rounded-lg border-2 border-gray-200 text-gray-500
+                                         hover:border-[#48C4B0] hover:text-[#48C4B0] text-base
+                                         font-bold transition-colors flex items-center justify-center"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 4 — Notes */}
           <div>
             <FieldLabel>{t('feedback.notes')}</FieldLabel>
             <textarea
