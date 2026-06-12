@@ -8,7 +8,7 @@
  * Cache-Control: public, max-age=300 (5 min) — changes infrequently.
  */
 
-import { sql } from './db.js'
+import { sql } from './_lib/db.js'
 import { createRequire } from 'module'
 
 const _require = createRequire(import.meta.url)

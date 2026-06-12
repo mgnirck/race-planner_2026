@@ -11,7 +11,7 @@
  *   Returns rich analytics from the plans table (17 queries).
  */
 
-import { sql, ensureMigrated } from './db.js'
+import { sql, ensureMigrated } from './_lib/db.js'
 
 // ── Rich analytics (admin-only) ───────────────────────────────────────────────
 

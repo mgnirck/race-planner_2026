@@ -1,4 +1,4 @@
-import { sql, ensureMigrated } from '../db.js'
+import { sql, ensureMigrated } from '../_lib/db.js'
 import regionsConfig from '../../src/config/regions.json' assert { type: 'json' }
 
 const SUPPORTED_LANGS = ['en', 'de', 'da', 'fr', 'vi']

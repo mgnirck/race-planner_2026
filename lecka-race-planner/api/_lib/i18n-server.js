@@ -9,7 +9,7 @@ const cache = {}
 function load(lng) {
   if (cache[lng] !== undefined) return cache[lng]
   try {
-    const filePath = join(__dirname, 'locales', lng, 'pdf.json')
+    const filePath = join(__dirname, '..', 'locales', lng, 'pdf.json')
     const raw = readFileSync(filePath, 'utf8')
     cache[lng] = JSON.parse(raw)
   } catch (err) {
