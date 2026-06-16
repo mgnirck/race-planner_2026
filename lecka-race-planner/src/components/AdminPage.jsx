@@ -75,6 +75,14 @@ const BAR_COLORS = {
   purple: '#534AB7',
 }
 
+const MCP_USAGE_URL = '/api/record-plan?action=mcp-usage'
+
+const TOOL_LABELS = {
+  calculate_fueling_plan: 'Calculate fueling plan',
+  get_nutrition_data: 'Get nutrition data',
+  get_products: 'Get products',
+}
+
 const productNameById = Object.fromEntries(
   allProducts.map(p => [p.id, p.name])
 )
@@ -1276,6 +1284,224 @@ function TimelineTab({ data }) {
   )
 }
 
+// ── Tab: MCP Server ───────────────────────────────────────────────────────────
+
+function McpTab({ password, refreshKey }) {
+  const canvasRef = useRef(null)
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setLoading(true)
+    setError(null)
+    setData(null)
+    fetch(MCP_USAGE_URL, {
+      cache: 'no-store',
+      headers: { 'X-Admin-Password': password },
+    })
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
+      .then(d => { setData(d); setLoading(false) })
+      .catch(err => { setError(err.message); setLoading(false) })
+  }, [refreshKey])
+
+  useEffect(() => {
+    if (!data?.daily_calls_90d || !canvasRef.current) return
+
+    const doRender = () => {
+      if (window.__leckaMcpChart) { window.__leckaMcpChart.destroy(); window.__leckaMcpChart = null }
+
+      const dates = []
+      for (let i = 89; i >= 0; i--) {
+        const d = new Date()
+        d.setDate(d.getDate() - i)
+        dates.push(d.toISOString().slice(0, 10))
+      }
+      const countMap = Object.fromEntries(data.daily_calls_90d.map(r => [dateToKey(r.date), r.count]))
+      const counts = dates.map(d => countMap[d] ?? 0)
+      const labels = dates.map(d =>
+        new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      )
+
+      window.__leckaMcpChart = new window.Chart(canvasRef.current, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: counts,
+            fill: true,
+            backgroundColor: 'rgba(72, 196, 176, 0.12)',
+            borderColor: '#48C4B0',
+            borderWidth: 2,
+            pointRadius: 2,
+            pointHoverRadius: 4,
+            tension: 0.3,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.parsed.y} calls`,
+                title: items => new Date(dates[items[0].dataIndex] + 'T12:00:00')
+                  .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+              },
+            },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { maxTicksLimit: 13 } },
+            y: { min: 0, ticks: { stepSize: 1, precision: 0 }, grid: { color: 'rgba(0,0,0,0.06)' } },
+          },
+        },
+      })
+    }
+
+    if (window.Chart) {
+      doRender()
+    } else {
+      const script = document.createElement('script')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js'
+      script.onload = doRender
+      document.head.appendChild(script)
+    }
+
+    return () => {
+      if (window.__leckaMcpChart) { window.__leckaMcpChart.destroy(); window.__leckaMcpChart = null }
+    }
+  }, [data])
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="bg-gray-50 rounded-2xl p-4 space-y-2">
+              <SkeletonBar h="h-3" w="w-3/4" />
+              <SkeletonBar h="h-8" />
+            </div>
+          ))}
+        </div>
+        <SectionSkeleton />
+        <SectionSkeleton />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-sm text-gray-500 mb-2">Could not load MCP usage data.</p>
+        <p className="text-xs text-gray-400 font-mono mb-3">{error}</p>
+        <p className="text-xs text-gray-400">
+          Make sure <code className="bg-gray-100 px-1 rounded">POSTGRES_URL</code> and{' '}
+          <code className="bg-gray-100 px-1 rounded">ADMIN_PASSWORD</code> are set on the MCP server.
+        </p>
+      </div>
+    )
+  }
+
+  if (!data) return null
+
+  const { totals, by_tool, by_region, by_race_type, by_product, error_rate } = data
+  const toolTotal    = by_tool?.reduce((s, r) => s + r.count, 0) ?? 0
+  const regionTotal  = by_region?.reduce((s, r) => s + r.count, 0) ?? 0
+  const raceTotal    = by_race_type?.reduce((s, r) => s + r.count, 0) ?? 0
+  const productTotal = by_product?.reduce((s, r) => s + r.count, 0) ?? 0
+
+  return (
+    <div className="space-y-8">
+      {/* Volume totals */}
+      <section>
+        <SectionLabel>Tool call volume</SectionLabel>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <MetricCard value={totals?.today ?? '—'} label="Today" />
+          <MetricCard value={totals?.this_month ?? '—'} label="This month" highlight />
+          <MetricCard value={totals?.all_time ?? '—'} label="All time" />
+          <MetricCard
+            value={error_rate != null ? `${(error_rate * 100).toFixed(1)}%` : '—'}
+            label="Error rate"
+          />
+        </div>
+      </section>
+
+      {/* Daily chart */}
+      <section>
+        <SectionLabel>Calls per day (last 90 days)</SectionLabel>
+        {data.daily_calls_90d ? (
+          <div style={{ height: 220 }}>
+            <canvas ref={canvasRef} />
+          </div>
+        ) : (
+          <DataUnavailable />
+        )}
+      </section>
+
+      {/* By tool */}
+      {by_tool?.length > 0 && (
+        <section>
+          <SectionLabel>By tool</SectionLabel>
+          {by_tool.map(r => (
+            <BarRow
+              key={r.tool}
+              label={TOOL_LABELS[r.tool] ?? r.tool}
+              count={r.count}
+              pct={toolTotal ? Math.round((r.count / toolTotal) * 100) : 0}
+            />
+          ))}
+        </section>
+      )}
+
+      {/* By region */}
+      {by_region?.length > 0 && (
+        <section>
+          <SectionLabel>By region</SectionLabel>
+          {by_region.map(r => (
+            <BarRow
+              key={r.region}
+              label={REGION_LABELS[r.region] ?? r.region.toUpperCase()}
+              count={r.count}
+              pct={regionTotal ? Math.round((r.count / regionTotal) * 100) : 0}
+            />
+          ))}
+        </section>
+      )}
+
+      {/* By race type — from calculate_fueling_plan calls */}
+      {by_race_type?.length > 0 && (
+        <section>
+          <SectionLabel>Race types requested</SectionLabel>
+          {by_race_type.map(r => (
+            <BarRow
+              key={r.race_type}
+              label={RACE_TYPE_LABELS[r.race_type] ?? r.race_type}
+              count={r.count}
+              pct={raceTotal ? Math.round((r.count / raceTotal) * 100) : 0}
+            />
+          ))}
+        </section>
+      )}
+
+      {/* By product — from get_nutrition_data calls */}
+      {by_product?.length > 0 && (
+        <section>
+          <SectionLabel>Products looked up</SectionLabel>
+          {by_product.map(r => (
+            <BarRow
+              key={r.product_id}
+              label={productNameById[r.product_id] ?? r.product_id}
+              count={r.count}
+              pct={productTotal ? Math.round((r.count / productTotal) * 100) : 0}
+            />
+          ))}
+        </section>
+      )}
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -1283,6 +1509,7 @@ const TABS = [
   { id: 'athletes', label: 'Athletes' },
   { id: 'products', label: 'Products' },
   { id: 'timeline', label: 'Timeline' },
+  { id: 'mcp', label: 'MCP Server' },
 ]
 
 export default function AdminPage() {
@@ -1461,8 +1688,8 @@ export default function AdminPage() {
 
       {/* Tab content */}
       <div className="max-w-3xl mx-auto px-5 py-8">
-        {/* Analytics loading / error states */}
-        {analyticsLoading && (
+        {/* Analytics loading / error states (planner data — not shown on MCP tab) */}
+        {analyticsLoading && activeTab !== 'mcp' && (
           <div className="space-y-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[0,1,2,3].map(i => (
@@ -1477,7 +1704,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {!analyticsLoading && analyticsError && (
+        {!analyticsLoading && analyticsError && activeTab !== 'mcp' && (
           <div className="text-center py-12">
             <p className="text-sm text-gray-500 mb-4">
               Could not load analytics. Check that the database is reachable.
@@ -1503,13 +1730,17 @@ export default function AdminPage() {
           </div>
         )}
 
-        {!analyticsLoading && !analyticsError && analyticsData && (
+        {!analyticsLoading && !analyticsError && analyticsData && activeTab !== 'mcp' && (
           <>
             {activeTab === 'overview' && <OverviewTab data={analyticsData} />}
             {activeTab === 'athletes' && <AthletesTab data={analyticsData} />}
             {activeTab === 'products' && <ProductsTab data={analyticsData} password={gate.entered} />}
             {activeTab === 'timeline' && <TimelineTab data={analyticsData} />}
           </>
+        )}
+
+        {activeTab === 'mcp' && (
+          <McpTab password={gate.entered} refreshKey={refreshKey} />
         )}
 
         {/* Footer */}

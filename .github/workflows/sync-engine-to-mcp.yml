@@ -1,0 +1,62 @@
+name: Sync engine to lecka-mcp
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/engine/nutrition-engine.js'
+      - 'src/strategies/carb-strategies.js'
+      - 'src/config/formula-config.json'
+      - 'src/config/regions.json'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout lecka-race-planner
+        uses: actions/checkout@v4
+        with:
+          path: planner
+
+      - name: Checkout lecka-mcp
+        uses: actions/checkout@v4
+        with:
+          repository: mgnirck/lecka-mcp
+          token: ${{ secrets.MCP_SYNC_TOKEN }}
+          path: mcp
+
+      - name: Copy updated engine files
+        run: |
+          cp planner/src/engine/nutrition-engine.js   mcp/engine/nutrition-engine.js
+          cp planner/src/strategies/carb-strategies.js mcp/engine/carb-strategies.js
+          cp planner/src/config/formula-config.json    mcp/config/formula-config.json
+          cp planner/src/config/regions.json           mcp/config/regions.json
+
+      - name: Check for changes
+        id: diff
+        run: |
+          cd mcp
+          git diff --quiet && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Create pull request in lecka-mcp
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.MCP_SYNC_TOKEN }}
+          path: mcp
+          branch: sync/engine-update
+          title: 'sync: update engine files from lecka-race-planner'
+          body: |
+            Automated sync from lecka-race-planner main branch.
+
+            Files updated:
+            - `engine/nutrition-engine.js`
+            - `engine/carb-strategies.js`
+            - `config/formula-config.json`
+            - `config/regions.json`
+
+            Review the changes before merging. Merging will trigger a Vercel redeploy of the MCP server.
+          commit-message: 'sync: update engine files from lecka-race-planner'
+          delete-branch: true

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation, Trans } from 'react-i18next'
 import Nav from './Nav.jsx'
 import { calculateTargets } from '../engine/nutrition-engine'
 
@@ -579,7 +579,11 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
             <p className="text-xs leading-relaxed" style={{ color: AMBER_DARK }}>
-              {t('hero.weather.upcoming', { city, date: weatherWindowStr })}
+              <Trans
+                i18nKey="dashboard:hero.weather.upcoming"
+                values={{ city, date: weatherWindowStr }}
+                components={{ bold: <strong className="font-semibold" /> }}
+              />
             </p>
           </div>
         )}
@@ -1182,6 +1186,80 @@ export default function DashboardPage() {
         )}
 
       </div>
+
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      <footer className="border-t border-gray-100 mt-8 pb-12">
+        <div className="max-w-lg mx-auto px-5 pt-8 space-y-6">
+
+          <div className="text-center space-y-1">
+            <p className="text-xs text-gray-400">Trusted by athletes who fuel with real food worldwide.</p>
+            <p className="text-xs text-gray-400">
+              Provided by{' '}
+              <a
+                href="https://www.getlecka.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#48C4B0] hover:underline"
+              >
+                www.getlecka.com
+              </a>
+            </p>
+          </div>
+
+          <div className="text-center space-y-1">
+            <p className="text-xs text-gray-400">
+              Questions?{' '}
+              <a href="mailto:info@getlecka.com" className="text-[#48C4B0] hover:underline">
+                info@getlecka.com
+              </a>
+              {' '}·{' '}
+              <a
+                href="https://www.instagram.com/leckanutrition"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#48C4B0] hover:underline"
+              >
+                @leckanutrition
+              </a>
+            </p>
+          </div>
+
+          <div className="text-center">
+            <p className="text-xs text-gray-400 mb-2">Find Lecka near you</p>
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
+              {[
+                { label: 'US',          href: 'https://www.getlecka.com' },
+                { label: 'Vietnam',     href: 'https://www.getlecka.vn' },
+                { label: 'Germany',     href: 'https://www.getlecka.de' },
+                { label: 'Denmark',     href: 'https://www.getlecka.dk' },
+                { label: 'Switzerland', href: 'https://www.getlecka.ch' },
+                { label: 'Singapore',   href: 'https://rdrc.sg/collections/lecka' },
+                { label: 'Hong Kong',   href: 'https://foodisdom.is/collections/lecka' },
+              ].map(({ label, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-400 hover:text-[#48C4B0] transition-colors"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-center gap-4">
+            <a href="/nutrition-research" className="text-[10px] text-gray-400 hover:text-gray-600">
+              Nutrition research →
+            </a>
+            <a href="/claude" className="text-[10px] text-gray-400 hover:text-gray-600">
+              Use Lecka in Claude →
+            </a>
+          </div>
+
+        </div>
+      </footer>
 
       {/* Edit modal */}
       {editingPlan && (

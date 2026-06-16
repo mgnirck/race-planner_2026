@@ -10,7 +10,7 @@
   "hero.badge.live": "live",
   "hero.badge.updated": "↑ updated",
   "hero.forecast.source": "Forecast via Open-Meteo · {{updated}}",
-  "hero.weather.upcoming": "Weather based on your estimate. Live forecast for <1>{{city}}</1> unlocks <1>{{date}}</1> — we'll update your plan automatically.",
+  "hero.weather.upcoming": "Weather based on your estimate. Live forecast for <bold>{{city}}</bold> unlocks <bold>{{date}}</bold> — we'll update your plan automatically.",
   "hero.viewPlan": "View full plan",
   "hero.downloadPdf": "Download PDF",
   "hero.generating": "Generating…",

@@ -62,8 +62,8 @@ async function getAllProducts() {
     return _require('../src/config/products.json')
   }
 }
-import { getServerT } from './i18n-server.js'
-import { sql, ensureMigrated } from './db.js'
+import { getServerT } from './_lib/i18n-server.js'
+import { sql, ensureMigrated } from './_lib/db.js'
 
 const _validateLocale = (() => {
   const t = getServerT('en')

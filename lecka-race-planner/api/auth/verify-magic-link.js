@@ -1,4 +1,4 @@
-import { sql, ensureMigrated } from '../db.js'
+import { sql, ensureMigrated } from '../_lib/db.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')

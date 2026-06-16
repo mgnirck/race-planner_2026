@@ -141,6 +141,8 @@ export async function ensureMigrated() {
   await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS weather_confirmed BOOLEAN DEFAULT false`
   await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS fuel_reminder_date DATE`
   await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS fuel_reminder_sent BOOLEAN DEFAULT FALSE`
+  await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS post_race_log_sent BOOLEAN DEFAULT FALSE`
+  await sql`ALTER TABLE feedback ADD COLUMN IF NOT EXISTS product_log JSONB`
 
   migrated = true
 }

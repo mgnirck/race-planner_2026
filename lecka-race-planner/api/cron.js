@@ -1,4 +1,4 @@
-import { sql, ensureMigrated } from './db.js'
+import { sql, ensureMigrated } from './_lib/db.js'
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -100,20 +100,74 @@ async function runSendReminders() {
   return { sent }
 }
 
+async function runSendPostRaceLogReminders() {
+  // Find plans where race_date was yesterday, no log email sent yet,
+  // and no feedback record exists.
+  const { rows } = await sql`
+    SELECT p.id, p.race_name, p.race_type,
+           u.email
+    FROM plans p
+    JOIN users u ON u.id = p.user_id
+    WHERE p.race_date = CURRENT_DATE - INTERVAL '1 day'
+      AND p.post_race_log_sent = false
+      AND u.email IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM feedback f WHERE f.plan_id = p.id
+      )
+    LIMIT 50
+  `
+
+  let sent = 0
+
+  for (const plan of rows) {
+    try {
+      const raceName = plan.race_name || plan.race_type?.replace(/_/g, ' ') || 'your race'
+      const logUrl = `https://plan.getlecka.com/feedback/${plan.id}`
+
+      await resend.emails.send({
+        from: 'Lecka <info@getlecka.com>',
+        to: [plan.email],
+        subject: `How did ${raceName} go?`,
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+            <img src="https://plan.getlecka.com/Lecka-Logo-New%20Green%20Font.png" alt="Lecka" style="height:28px;margin-bottom:24px" />
+            <p style="font-size:16px;color:#111">You raced <strong>${raceName}</strong> yesterday. Nice work getting to the start line.</p>
+            <p style="font-size:15px;color:#444;margin-top:12px">Log what you used, what you skipped, and how the nutrition held up. It takes 2 minutes and helps you race smarter next time.</p>
+            <a href="${logUrl}"
+               style="display:inline-block;margin:24px 0;padding:14px 28px;background:#1D9E75;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:15px">
+              Log my race →
+            </a>
+            <p style="font-size:13px;color:#666">Real food. Real performance.</p>
+          </div>
+        `,
+      })
+
+      await sql`UPDATE plans SET post_race_log_sent = true WHERE id = ${plan.id}`
+      sent++
+    } catch (err) {
+      console.error(`[cron/post-race-log] plan ${plan.id} failed:`, err.message)
+    }
+  }
+
+  return { sent }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).end()
 
   try {
     await ensureMigrated()
-    const [weather, reminders] = await Promise.allSettled([
+    const [weather, reminders, postRaceLog] = await Promise.allSettled([
       runWeatherUpdate(),
       runSendReminders(),
+      runSendPostRaceLogReminders(),
     ])
     return res.status(200).json({
       ok: true,
-      weather:   weather.status   === 'fulfilled' ? weather.value   : { error: weather.reason?.message },
-      reminders: reminders.status === 'fulfilled' ? reminders.value : { error: reminders.reason?.message },
+      weather:     weather.status     === 'fulfilled' ? weather.value     : { error: weather.reason?.message },
+      reminders:   reminders.status   === 'fulfilled' ? reminders.value   : { error: reminders.reason?.message },
+      postRaceLog: postRaceLog.status === 'fulfilled' ? postRaceLog.value : { error: postRaceLog.reason?.message },
     })
   } catch (err) {
     console.error('[cron] error:', err)

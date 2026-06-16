@@ -8,11 +8,12 @@
  * Cache-Control: public, max-age=300 (5 min) — changes infrequently.
  */
 
-import { sql } from './db.js'
+import { sql } from './_lib/db.js'
 import { createRequire } from 'module'
 
 const _require = createRequire(import.meta.url)
 const FALLBACK_PRODUCTS = _require('../src/config/products.json')
+const REGIONS = _require('../src/config/regions.json')
 const staticById = Object.fromEntries(FALLBACK_PRODUCTS.map(p => [p.id, p]))
 
 export default async function handler(req, res) {
@@ -21,6 +22,12 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
   if (req.method === 'OPTIONS') return res.status(204).end()
+
+  if (req.url?.includes('/api/regions')) {
+    if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+    return res.status(200).json(REGIONS)
+  }
+
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
   res.setHeader('Cache-Control', 'public, max-age=300')

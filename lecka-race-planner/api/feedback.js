@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { sql, ensureMigrated } from './db.js'
+import { sql, ensureMigrated } from './_lib/db.js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
 
   // ── POST ────────────────────────────────────────────────────────────────────
   if (req.method === 'POST') {
-    const { planId, rating, hit_carb_target, gi_issues, plan_felt_right, notes, message, page, senderEmail } = req.body ?? {}
+    const { planId, rating, hit_carb_target, gi_issues, plan_felt_right, notes, product_log, message, page, senderEmail } = req.body ?? {}
 
     // ── Widget feedback — unauthenticated, sends email to Markus ─────────────
     if (message !== undefined) {
@@ -114,8 +114,16 @@ export default async function handler(req, res) {
       if (planRows.length === 0) return res.status(404).json({ error: 'Plan not found' })
 
       await sql`
-        INSERT INTO feedback (plan_id, rating, hit_carb_target, gi_issues, plan_felt_right, notes)
-        VALUES (${planId}, ${rating}, ${hit_carb_target ?? null}, ${gi_issues ?? null}, ${plan_felt_right ?? null}, ${notes ?? null})
+        INSERT INTO feedback (plan_id, rating, hit_carb_target, gi_issues, plan_felt_right, notes, product_log)
+        VALUES (
+          ${planId},
+          ${rating},
+          ${hit_carb_target ?? null},
+          ${gi_issues ?? null},
+          ${plan_felt_right ?? null},
+          ${notes ?? null},
+          ${product_log ? JSON.stringify(product_log) : null}::jsonb
+        )
       `
       return res.status(200).json({ ok: true })
     } catch (err) {
