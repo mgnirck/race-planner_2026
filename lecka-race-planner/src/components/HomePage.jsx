@@ -9,6 +9,22 @@ const TRIATHLON_OPTIONS = [
   { key: 'triathlon_140_6',   sublabel: 'Full 140.6'          },
 ]
 
+const RACE_KM = {
+  '5k':            5,
+  '10k':           10,
+  'half_marathon': 21.1,
+  'marathon':      42.2,
+  'ultra_50k':     50,
+  'ultra_100k':    100,
+}
+
+const TRIATHLON_KM = {
+  'triathlon_sprint':  51,
+  'triathlon_olympic': 51.5,
+  'triathlon_70_3':    113,
+  'triathlon_140_6':   226,
+}
+
 const RACE_KEYS = [
   '5k', '10k', 'half_marathon', 'marathon',
   'ultra_50k', 'ultra_100k', 'cycling', 'triathlon', 'custom',
@@ -51,12 +67,14 @@ export default function HomePage() {
     e.preventDefault()
     if (!canSubmit) return
     const isTriathlon = raceType === 'triathlon'
+    const km = isTriathlon ? (TRIATHLON_KM[triathlonType] ?? null) : (RACE_KM[raceType] ?? null)
     const prefill = {
       sport:          isTriathlon ? 'triathlon' : 'running',
       race_type:      isTriathlon ? triathlonType : raceType,
       triathlon_type: isTriathlon ? triathlonType : '',
       goal_time_h:    goalH,
       goal_time_m:    goalM,
+      ...(km !== null ? { custom_km: String(km), custom_km_display: String(km) } : {}),
     }
     try {
       sessionStorage.setItem('lecka_pro_prefill', JSON.stringify(prefill))
@@ -262,10 +280,16 @@ export default function HomePage() {
             <p className="text-[10px] text-gray-400 text-center mt-2">
               {t('home.form.free')}
             </p>
+
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">or</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
             <p className="text-center mt-3">
               <a
                 href="/planner"
-                className="text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
+                className="text-xs font-medium text-gray-500 hover:text-[#48C4B0] transition-colors underline underline-offset-2"
               >
                 {t('home.quickplan.link')}
               </a>
