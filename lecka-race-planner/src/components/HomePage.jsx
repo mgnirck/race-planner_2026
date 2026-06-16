@@ -50,15 +50,18 @@ export default function HomePage() {
   function handleSubmit(e) {
     e.preventDefault()
     if (!canSubmit) return
-    const effectiveRaceType = raceType === 'triathlon' ? triathlonType : raceType
+    const isTriathlon = raceType === 'triathlon'
     const prefill = {
-      race_type:      effectiveRaceType,
-      triathlon_type: raceType === 'triathlon' ? triathlonType : '',
+      sport:          isTriathlon ? 'triathlon' : 'running',
+      race_type:      isTriathlon ? triathlonType : raceType,
+      triathlon_type: isTriathlon ? triathlonType : '',
       goal_time_h:    goalH,
       goal_time_m:    goalM,
     }
-    sessionStorage.setItem('lecka_homepage_prefill', JSON.stringify(prefill))
-    window.location.href = '/planner'
+    try {
+      sessionStorage.setItem('lecka_pro_prefill', JSON.stringify(prefill))
+    } catch {}
+    window.location.href = '/planner/pro'
   }
 
   function pillClass(selected) {
@@ -259,24 +262,14 @@ export default function HomePage() {
             <p className="text-[10px] text-gray-400 text-center mt-2">
               {t('home.form.free')}
             </p>
-
-            {/* Pro planner block */}
-            <div className="mt-5 bg-[#1a1a1a] rounded-xl px-4 py-3.5
-                            flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold text-white mb-0.5">{t('home.pro.title')}</p>
-                <p className="text-[10px] text-white/40 leading-relaxed">
-                  {t('home.pro.body')}
-                </p>
-              </div>
+            <p className="text-center mt-3">
               <a
-                href="/planner/pro"
-                className="flex-shrink-0 bg-[#48C4B0] text-white text-[11px]
-                           font-bold rounded-full px-3.5 py-1.5 whitespace-nowrap"
+                href="/planner"
+                className="text-[11px] text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
               >
-                {t('home.pro.cta')}
+                {t('home.quickplan.link')}
               </a>
-            </div>
+            </p>
 
           </form>
         </div>

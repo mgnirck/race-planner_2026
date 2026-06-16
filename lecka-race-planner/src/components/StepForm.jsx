@@ -1776,11 +1776,23 @@ function isStep3Valid(_form) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+// Capture whether a homepage prefill was present before the form useState consumes it
+let _hadHomepagePrefill = false
+try {
+  _hadHomepagePrefill = !!sessionStorage.getItem('lecka_pro_prefill')
+} catch {}
+
 export default function StepForm({ onComplete }) {
   const { t } = useTranslation(['form', 'common'])
   const { products: liveProducts } = useProducts()
   const allProducts = liveProducts ?? FALLBACK_PRODUCTS
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(() => {
+    try {
+      const hasRegion = !!localStorage.getItem('lecka_region')
+      if (_hadHomepagePrefill && hasRegion) return 1
+    } catch {}
+    return 0
+  })
   const [region, setRegion] = useState(() => getSavedRegion() ?? null)
   const [form, setForm] = useState(() => {
     try {
