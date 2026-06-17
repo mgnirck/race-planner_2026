@@ -154,5 +154,11 @@
   "gutTraining.week": "Week {{n}}",
   "gutTraining.weeks": "Weeks {{start}}–{{end}}",
   "gutTraining.day": "Day {{n}}",
-  "gutTraining.days": "Days {{start}}–{{end}}"
+  "gutTraining.days": "Days {{start}}–{{end}}",
+
+  "claude.banner.eyebrow": "Powered by Lecka",
+  "claude.banner.title": "Ask Claude about your plan",
+  "claude.banner.body": "Lecka's nutrition tools are available inside Claude. Ask follow-up questions, adjust for your conditions, or explore product options — in natural conversation.",
+  "claude.banner.cta": "Open in Claude →",
+  "claude.banner.whatIsThis": "What is this?"
 }

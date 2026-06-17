@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import Nav from './Nav.jsx'
 import { buildCartURLFromAggregated } from '../engine/shopify-link.js'
 import { computeCartItems, computeLinePrice } from '../engine/region-utils.js'
@@ -14,18 +15,18 @@ import PreFuelSection from './PreFuelSection.jsx'
 // ── ClaudeBanner ──────────────────────────────────────────────────────────────
 
 function ClaudeBanner() {
+  const { t } = useTranslation('results')
   if (isEmbedded) return null
   return (
     <div className="mt-8 rounded-2xl border border-gray-100 bg-[#F9F9F9] px-5 py-5">
       <p className="text-[11px] font-semibold uppercase tracking-widest text-[#48C4B0] mb-1">
-        Powered by Lecka
+        {t('claude.banner.eyebrow')}
       </p>
       <p className="text-sm font-bold text-[#1B1B1B] mb-1">
-        Ask Claude about your plan
+        {t('claude.banner.title')}
       </p>
       <p className="text-xs text-gray-500 leading-relaxed mb-4">
-        Lecka's nutrition tools are available inside Claude. Ask follow-up questions,
-        adjust for your conditions, or explore product options — in natural conversation.
+        {t('claude.banner.body')}
       </p>
       <a
         href="https://claude.ai/new?hint=lecka+race+nutrition"
@@ -34,13 +35,13 @@ function ClaudeBanner() {
         className="inline-flex items-center gap-2 bg-[#1B1B1B] text-white text-xs
                    font-semibold rounded-full px-4 py-2.5 hover:opacity-80 transition-opacity"
       >
-        Open in Claude →
+        {t('claude.banner.cta')}
       </a>
       <a
         href="/claude"
         className="ml-4 text-xs text-gray-400 hover:text-gray-600 underline"
       >
-        What is this?
+        {t('claude.banner.whatIsThis')}
       </a>
     </div>
   )

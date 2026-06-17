@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { isAvailableInRegion } from '../engine/region-utils.js'
 import FALLBACK_PRODUCTS from '../config/products.json'
 
@@ -99,6 +100,7 @@ export default function PlanProductEditor({
   provided,
   catalog,
 }) {
+  const { t } = useTranslation('results')
   const allProducts = catalog ?? FALLBACK_PRODUCTS
   const [showLeckaPicker, setShowLeckaPicker] = useState(false)
   const [showAddonPicker, setShowAddonPicker] = useState(false)
@@ -330,7 +332,7 @@ export default function PlanProductEditor({
               <div className="px-3 py-2 border-t border-gray-50 space-y-2">
                 <input
                   type="text"
-                  placeholder="Product name"
+                  placeholder={t('products.customName')}
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs
@@ -338,7 +340,7 @@ export default function PlanProductEditor({
                 />
                 <input
                   type="number"
-                  placeholder="Carbs per unit (g)"
+                  placeholder={t('products.customCarbs')}
                   value={customCarbs}
                   onChange={e => setCustomCarbs(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs

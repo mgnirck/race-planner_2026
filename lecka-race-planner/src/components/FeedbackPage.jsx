@@ -333,7 +333,7 @@ export default function FeedbackPage({ planId }) {
                         <input
                           type="text"
                           maxLength={100}
-                          placeholder="What did you use instead?"
+                          placeholder={t('feedback.swapPlaceholder')}
                           value={entry.swap_note ?? ''}
                           onChange={e => updateProductLog(product.id, { swap_note: e.target.value })}
                           className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm

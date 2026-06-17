@@ -363,10 +363,10 @@ export default function HomePage() {
 
           <div className="flex justify-center gap-4 mt-6">
             <a href="/nutrition-research" className="text-[10px] text-gray-400 hover:text-gray-600">
-              Nutrition research →
+              {t('footer.nutritionResearch')}
             </a>
             <a href="/claude" className="text-[10px] text-gray-400 hover:text-gray-600">
-              Use Lecka in Claude →
+              {t('footer.useLeckaInClaude')}
             </a>
           </div>
 
