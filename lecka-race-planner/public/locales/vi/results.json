@@ -164,5 +164,11 @@
   "gutTraining.week": "Tuần {{n}}",
   "gutTraining.weeks": "Tuần {{start}}–{{end}}",
   "gutTraining.day": "Ngày {{n}}",
-  "gutTraining.days": "Ngày {{start}}–{{end}}"
+  "gutTraining.days": "Ngày {{start}}–{{end}}",
+
+  "claude.banner.eyebrow": "Được cung cấp bởi Lecka",
+  "claude.banner.title": "Hỏi Claude về kế hoạch của bạn",
+  "claude.banner.body": "Công cụ dinh dưỡng của Lecka có sẵn trong Claude. Đặt câu hỏi tiếp theo, điều chỉnh cho điều kiện của bạn, hoặc khám phá các tùy chọn sản phẩm — trong cuộc trò chuyện tự nhiên.",
+  "claude.banner.cta": "Mở trong Claude →",
+  "claude.banner.whatIsThis": "Đây là gì?"
 }

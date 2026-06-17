@@ -39,7 +39,6 @@
   "hero.upgrade.title": "Nâng cấp lên kế hoạch Pro",
   "hero.upgrade.body": "Nhận mục tiêu natri & nước, thời tiết ngày đua trực tiếp, kế hoạch trạm tiếp nước và lịch tập luyện đường ruột — xây dựng trên những gì bạn đã nhập.",
   "hero.upgrade.cta": "Nâng cấp →",
-
   "upcoming": "Cuộc đua sắp tới",
   "past": "Cuộc đua đã qua",
   "noUpcoming": "Không có cuộc đua nào sắp tới.",
@@ -51,14 +50,12 @@
   "empty.title": "Chưa có kế hoạch nào",
   "empty.body": "Tạo kế hoạch dinh dưỡng đua đầu tiên của bạn.",
   "empty.cta": "Tạo kế hoạch đua đầu tiên →",
-
   "plan.goal": "Mục tiêu {{time}}",
   "plan.logged": "✓ Đã ghi",
   "plan.logDue": "Cần ghi",
   "plan.finish": "Hoàn thành {{time}}",
   "plan.view": "Xem →",
   "plan.log": "Ghi →",
-
   "edit.title": "Chỉnh sửa cuộc đua",
   "edit.raceName": "Tên cuộc đua",
   "edit.raceDate": "Ngày thi đấu",
@@ -66,14 +63,11 @@
   "edit.saving": "Đang lưu…",
   "edit.save": "Lưu",
   "edit.cancel": "Huỷ",
-
   "delete.title": "Xoá kế hoạch này?",
   "delete.body": "Không thể hoàn tác.",
   "delete.confirm": "Xoá",
   "delete.cancel": "Huỷ",
-
   "pdf.error": "Không thể tạo PDF. Vui lòng thử lại.",
-
   "coach.yourRace": "cuộc đua của bạn",
   "coach.hot": "{{name}} sẽ nóng — {{temp}}°C lúc xuất phát. Uống đủ nước buổi sáng trước ngày đua. Mang nước đến mọi trạm tiếp nước, đừng bỏ qua bất kỳ trạm nào. Carb vẫn giữ nguyên nhưng natri và nước tăng lên. Điều chỉnh trang bị phù hợp.",
   "coach.cool": "Tin tốt cho {{name}} — {{temp}}°C là thời tiết chạy lý tưởng. Mục tiêu nước của bạn giảm nhẹ. Bám sát kế hoạch.",
@@ -83,8 +77,14 @@
   "coach.pro.far": "{{days}} ngày đến {{name}} — còn nhiều thời gian. Tập trung vào luyện tập đường ruột với mục tiêu kế hoạch từ tuần thứ 8.",
   "coach.pro.near": "{{days}} ngày nữa. Tích hợp thời tiết đang hoạt động — chúng tôi sẽ cập nhật kế hoạch nếu điều kiện thay đổi đáng kể.",
   "coach.pro.raceWeek": "Tuần đua cho {{name}}. Bám sát chính xác kế hoạch của bạn. Không sản phẩm mới, không thay đổi gì.",
-
   "updated.today": "cập nhật hôm nay",
   "updated.yesterday": "cập nhật hôm qua",
-  "updated.date": "cập nhật {{date}}"
+  "updated.date": "cập nhật {{date}}",
+  "footer.questions": "Câu hỏi?",
+  "footer.findLecka": "Tìm Lecka gần bạn",
+  "footer.nutritionResearch": "Nghiên cứu dinh dưỡng →",
+  "footer.useLeckaInClaude": "Dùng Lecka trong Claude →",
+  "plan.delete": "Xóa",
+  "plan.editReminderDate": "Chỉnh sửa ngày nhắc nhở",
+  "plan.edit": "Chỉnh sửa"
 }

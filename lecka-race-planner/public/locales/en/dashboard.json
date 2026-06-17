@@ -39,7 +39,6 @@
   "hero.upgrade.title": "Upgrade to pro plan",
   "hero.upgrade.body": "Get sodium & fluid targets, live race-day weather, aid station plan, and gut training schedule — built on what you've already entered.",
   "hero.upgrade.cta": "Upgrade →",
-
   "upcoming": "Upcoming races",
   "past": "Past races",
   "noUpcoming": "No upcoming races.",
@@ -51,14 +50,12 @@
   "empty.title": "No plans yet",
   "empty.body": "Build your first race nutrition plan.",
   "empty.cta": "Build your first race plan →",
-
   "plan.goal": "Goal {{time}}",
   "plan.logged": "✓ Logged",
   "plan.logDue": "Log due",
   "plan.finish": "{{time}} finish",
   "plan.view": "View →",
   "plan.log": "Log →",
-
   "edit.title": "Edit race",
   "edit.raceName": "Race name",
   "edit.raceDate": "Race date",
@@ -66,14 +63,11 @@
   "edit.saving": "Saving…",
   "edit.save": "Save",
   "edit.cancel": "Cancel",
-
   "delete.title": "Delete this plan?",
   "delete.body": "This can't be undone.",
   "delete.confirm": "Delete",
   "delete.cancel": "Cancel",
-
   "pdf.error": "Could not generate PDF. Please try again.",
-
   "coach.yourRace": "your race",
   "coach.hot": "{{name}} is looking hot — {{temp}}°C at race start. Pre-hydrate the morning before. Carry fluid to every aid station, don't skip any. Your carbs stay the same but sodium and fluid are up. Adjust your kit accordingly.",
   "coach.cool": "Good news for {{name}} — {{temp}}°C is ideal running weather. Your fluid targets drop slightly. Stick to the plan.",
@@ -83,8 +77,14 @@
   "coach.pro.far": "{{days}} days to {{name}} — plenty of time. Focus on gut training with your plan targets from week 8 out.",
   "coach.pro.near": "{{days}} days out. Weather integration active — we'll update your plan if conditions shift significantly.",
   "coach.pro.raceWeek": "Race week for {{name}}. Stick exactly to your plan. No new products, no changes.",
-
   "updated.today": "updated today",
   "updated.yesterday": "updated yesterday",
-  "updated.date": "updated {{date}}"
+  "updated.date": "updated {{date}}",
+  "footer.questions": "Questions?",
+  "footer.findLecka": "Find Lecka near you",
+  "footer.nutritionResearch": "Nutrition research →",
+  "footer.useLeckaInClaude": "Use Lecka in Claude →",
+  "plan.delete": "Delete",
+  "plan.editReminderDate": "Edit reminder date",
+  "plan.edit": "Edit"
 }

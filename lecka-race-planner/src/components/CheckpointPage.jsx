@@ -855,7 +855,7 @@ export default function CheckpointPage({ planId }) {
                           inputMode="numeric"
                           value={cp.elevation}
                           onChange={e => updateCheckpoint(cp.id, 'elevation', e.target.value)}
-                          placeholder="elev m"
+                          placeholder={t('cp.elevPlaceholder')}
                           className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs
                                      focus:outline-none focus:border-[#48C4B0]"
                         />

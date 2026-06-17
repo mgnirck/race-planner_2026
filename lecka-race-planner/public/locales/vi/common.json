@@ -178,5 +178,17 @@
   "home.quickplan.link": "Chỉ cần kế hoạch nhanh 20 giây?",
   "racetype.cycling": "Đạp xe",
   "racetype.triathlon": "Triathlon",
-  "racetype.custom": "Khác"
+  "racetype.custom": "Khác",
+
+  "footer.nutritionResearch": "Nghiên cứu dinh dưỡng →",
+  "footer.useLeckaInClaude": "Dùng Lecka trong Claude →",
+  "footer.questions": "Câu hỏi?",
+  "footer.findLecka": "Tìm Lecka gần bạn",
+
+  "action.delete": "Xóa",
+  "action.editReminderDate": "Chỉnh sửa ngày nhắc nhở",
+
+  "cp.elevPlaceholder": "độ cao m",
+
+  "feedback.swapPlaceholder": "Bạn đã dùng gì thay thế?"
 }

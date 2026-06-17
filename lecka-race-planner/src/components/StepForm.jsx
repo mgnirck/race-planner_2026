@@ -1192,41 +1192,41 @@ function StepThree({ form, setForm }) {
       {/* Fuelling style — hidden for triathlon */}
       {!isTriathlon && (
         <div>
-          <FieldLabel>Fuelling style</FieldLabel>
+          <FieldLabel>{t('form:field.fuelStyle.title')}</FieldLabel>
           <div className="space-y-2">
             <OptionCard
-              label="Gels only"
-              desc="Simple and fast — gels are your primary fuel source throughout"
+              label={t('form:field.fuelStyle.gels_only.label')}
+              desc={t('form:field.fuelStyle.gels_only.desc')}
               selected={style === 'gels_only'}
               onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_only' }))}
             />
             <OptionCard
-              label="Gels + bars"
-              desc="Real food variety — bars for steady energy, gels when you need a boost"
+              label={t('form:field.fuelStyle.gels_and_bars.label')}
+              desc={t('form:field.fuelStyle.gels_and_bars.desc')}
               selected={style === 'gels_and_bars'}
               onClick={() => setForm(f => ({ ...f, fuelling_style: 'gels_and_bars' }))}
             />
             <OptionCard
-              label="Drink mix + gels"
-              desc="Continuous carbs from your bottle, gels for intensity spikes"
+              label={t('form:field.fuelStyle.drink_mix_base.label')}
+              desc={t('form:field.fuelStyle.drink_mix_base.desc')}
               selected={style === 'drink_mix_base'}
               onClick={() => setForm(f => ({ ...f, fuelling_style: 'drink_mix_base' }))}
             />
             <OptionCard
-              label="Whatever works"
-              desc="No strong preference — give me a solid starting plan I can adjust"
+              label={t('form:field.fuelStyle.flexible.label')}
+              desc={t('form:field.fuelStyle.flexible.desc')}
               selected={style === 'flexible'}
               onClick={() => setForm(f => ({ ...f, fuelling_style: 'flexible' }))}
             />
           </div>
           {style === 'drink_mix_base' && (
             <p className="text-xs text-[#48C4B0] mt-3">
-              Lecka's carb + hydration powder is coming soon.{' '}
+              {t('form:field.fuelStyle.comingSoon')}{' '}
               <a
                 href="mailto:info@getlecka.com?subject=Carb powder waitlist"
                 className="underline"
               >
-                Join the waitlist to be first →
+                {t('form:field.fuelStyle.waitlist')}
               </a>
             </p>
           )}
@@ -1359,6 +1359,7 @@ function AddonProductRow({ product, quantity, onChangeQty, onRemove }) {
 }
 
 function StepFour({ form, setForm, previewTargets }) {
+  const { t } = useTranslation(['form', 'common'])
   const [showElectrolytes, setShowElectrolytes] = useState(false)
   const [showScienceTooltip, setShowScienceTooltip] = useState(false)
   const [customName,     setCustomName]     = useState('')
@@ -1461,7 +1462,7 @@ function StepFour({ form, setForm, previewTargets }) {
         <div className="rounded-xl border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 px-4 py-4 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-[#1B1B1B]">
-              Your Lecka foundation covers {Math.min(65, previewTargets.carb_per_hour)}g carbs/hour
+              {t('form:field.addons.context.foundation', { carbs: Math.min(65, previewTargets.carb_per_hour) })}
             </p>
             <button
               type="button"
@@ -1477,28 +1478,21 @@ function StepFour({ form, setForm, previewTargets }) {
           {extraCarbs > 0 ? (
             <>
               <p className="text-sm text-gray-600 leading-relaxed">
-                For races this long, your body can absorb even more if you add a second type of fuel alongside your gels.
+                {t('form:field.addons.context.extraNeeded')}
               </p>
               <p className="text-sm text-gray-600 leading-relaxed">
-                Adding{' '}
-                <span className="font-semibold text-[#1B1B1B]">{extraCarbs}g/hour</span>{' '}
-                from the products below gets you to your full target.
+                {t('form:field.addons.context.addExtra', { extra: extraCarbs })}
               </p>
             </>
           ) : (
             <p className="text-sm text-gray-600 leading-relaxed">
-              Your Lecka gels cover your full target — the options below are optional extras.
+              {t('form:field.addons.context.covered')}
             </p>
           )}
           {showScienceTooltip && (
             <div className="mt-2 pt-3 border-t border-[#48C4B0]/30 text-xs text-gray-500 leading-relaxed space-y-1">
-              <p className="font-semibold text-gray-600">The science behind the limit</p>
-              <p>
-                Your gut absorbs glucose (from real food like Lecka) via one transporter (SGLT1),
-                which maxes out at around 60–65g carbs/hour. A second transporter (GLUT5) handles
-                fructose independently — so combining both types lets you absorb 90g/hour or more.
-                Sports scientists call this the dual-transporter protocol.
-              </p>
+              <p className="font-semibold text-gray-600">{t('form:field.addons.science.title')}</p>
+              <p>{t('form:field.addons.science.body')}</p>
             </div>
           )}
         </div>
@@ -1506,17 +1500,17 @@ function StepFour({ form, setForm, previewTargets }) {
 
       {/* Binary choice */}
       <div>
-        <FieldLabel>Want to add performance products?</FieldLabel>
+        <FieldLabel>{t('form:field.addons.wantTitle')}</FieldLabel>
         <div className="space-y-2">
           <OptionCard
-            label="Lecka gels are enough for me"
-            desc="I'll fuel with Lecka and manage the intensity on race day. I can always adjust my plan later."
+            label={t('form:field.addons.no.label')}
+            desc={t('form:field.addons.no.desc')}
             selected={!form.want_addons}
             onClick={() => setForm(f => ({ ...f, want_addons: false, addon_items: [] }))}
           />
           <OptionCard
-            label="Add performance products"
-            desc="I'll add high-carb products to reach my full target. Show me what athletes use."
+            label={t('form:field.addons.yes.label')}
+            desc={t('form:field.addons.yes.desc')}
             selected={form.want_addons}
             onClick={() => setForm(f => ({ ...f, want_addons: true }))}
           />
@@ -1529,9 +1523,9 @@ function StepFour({ form, setForm, previewTargets }) {
 
           {/* High-carb gels */}
           <div>
-            <FieldLabel>High-carb gels</FieldLabel>
+            <FieldLabel>{t('form:field.addons.highCarbGels')}</FieldLabel>
             <p className="text-xs text-gray-400 -mt-2 mb-3">
-              Dual-transporter carbs to reach 75–90g/hour alongside Lecka
+              {t('form:field.addons.highCarbGelsDesc')}
             </p>
             <div className="space-y-2">
               {highCarbGels.map(p => (
@@ -1549,7 +1543,7 @@ function StepFour({ form, setForm, previewTargets }) {
           <div>
             {isHotConditions ? (
               <>
-                <FieldLabel>Electrolyte top-up</FieldLabel>
+                <FieldLabel>{t('form:field.addons.electrolytes')}</FieldLabel>
                 <div className="space-y-2">
                   {electrolytes.map(p => (
                     <AddonProductRow
@@ -1569,11 +1563,11 @@ function StepFour({ form, setForm, previewTargets }) {
                     onClick={() => setShowElectrolytes(true)}
                     className="text-sm text-gray-400 hover:text-[#48C4B0] transition-colors"
                   >
-                    + Add electrolyte products (optional)
+                    {t('form:field.addons.addElectrolytes')}
                   </button>
                 ) : (
                   <>
-                    <FieldLabel>Electrolyte top-up</FieldLabel>
+                    <FieldLabel>{t('form:field.addons.electrolytes')}</FieldLabel>
                     <div className="space-y-2">
                       {electrolytes.map(p => (
                         <AddonProductRow
@@ -1592,9 +1586,9 @@ function StepFour({ form, setForm, previewTargets }) {
 
           {/* Real food extras */}
           <div>
-            <FieldLabel>Real food add-ons</FieldLabel>
+            <FieldLabel>{t('form:field.addons.realFood')}</FieldLabel>
             <p className="text-xs text-gray-400 -mt-2 mb-3">
-              Available at aid stations or easy to carry
+              {t('form:field.addons.realFoodDesc')}
             </p>
             <div className="space-y-2">
               {realFood.map(p => (
@@ -1607,14 +1601,14 @@ function StepFour({ form, setForm, previewTargets }) {
               ))}
             </div>
             <p className="text-xs text-gray-400 mt-3">
-              These fit Lecka's real food philosophy — no synthetic additives
+              {t('form:field.addons.realFoodPhilosophy')}
             </p>
           </div>
 
           {/* Custom products already added */}
           {(form.custom_products ?? []).length > 0 && (
             <div>
-              <FieldLabel>Your custom products</FieldLabel>
+              <FieldLabel>{t('form:field.addons.customProducts')}</FieldLabel>
               <div className="space-y-2">
                 {(form.custom_products ?? []).map(p => (
                   <AddonProductRow
@@ -1631,13 +1625,13 @@ function StepFour({ form, setForm, previewTargets }) {
 
           {/* Add your own product */}
           <div>
-            <FieldLabel>Add your own product</FieldLabel>
+            <FieldLabel>{t('form:field.addons.ownProduct')}</FieldLabel>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Product name</label>
+                <label className="text-xs text-gray-500 mb-1 block">{t('form:field.addons.productName')}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Maurten Gel 100"
+                  placeholder={t('form:field.addons.productNamePlaceholder')}
                   maxLength={60}
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
@@ -1647,7 +1641,7 @@ function StepFour({ form, setForm, previewTargets }) {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Carbs per unit (g)</label>
+                  <label className="text-xs text-gray-500 mb-1 block">{t('form:field.addons.carbsPerUnit')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1659,7 +1653,7 @@ function StepFour({ form, setForm, previewTargets }) {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Sodium (mg, opt.)</label>
+                  <label className="text-xs text-gray-500 mb-1 block">{t('form:field.addons.sodiumLabel')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1671,7 +1665,7 @@ function StepFour({ form, setForm, previewTargets }) {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Caffeine (mg, opt.)</label>
+                  <label className="text-xs text-gray-500 mb-1 block">{t('form:field.addons.caffeineLabel')}</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1696,7 +1690,7 @@ function StepFour({ form, setForm, previewTargets }) {
                     : 'border-[#48C4B0] text-[#48C4B0] hover:bg-[#48C4B0]/5',
                 ].join(' ')}
               >
-                {addedState ? 'Added ✓' : 'Add to plan'}
+                {addedState ? t('form:field.addons.added') : t('form:field.addons.addToPlan')}
               </button>
             </div>
           </div>

@@ -178,5 +178,17 @@
   "home.quickplan.link": "Just need a quick 20-second plan?",
   "racetype.cycling": "Cycling",
   "racetype.triathlon": "Triathlon",
-  "racetype.custom": "Other"
+  "racetype.custom": "Other",
+
+  "footer.nutritionResearch": "Nutrition research →",
+  "footer.useLeckaInClaude": "Use Lecka in Claude →",
+  "footer.questions": "Questions?",
+  "footer.findLecka": "Find Lecka near you",
+
+  "action.delete": "Delete",
+  "action.editReminderDate": "Edit reminder date",
+
+  "cp.elevPlaceholder": "elev m",
+
+  "feedback.swapPlaceholder": "What did you use instead?"
 }
