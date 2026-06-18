@@ -425,27 +425,27 @@ function StepOne({ form, setForm }) {
 
       {/* Race city / location */}
       <div>
-        <FieldLabel>Race city / location</FieldLabel>
+        <FieldLabel>{t('form:field.city.label')}</FieldLabel>
         <input
           type="text"
-          placeholder="e.g. Berlin, Germany"
+          placeholder={t('form:field.city.placeholder')}
           value={form.race_city ?? ''}
           onChange={e => setForm(f => ({ ...f, race_city: e.target.value }))}
           className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
         />
-        <p className="text-xs text-gray-400 mt-1.5">Used to fetch live race-day weather (Pro plans only)</p>
+        <p className="text-xs text-gray-400 mt-1.5">{t('form:field.city.hint')}</p>
       </div>
 
       {/* Race start time */}
       <div>
-        <FieldLabel>Race start time (optional)</FieldLabel>
+        <FieldLabel>{t('form:field.startTime.label')}</FieldLabel>
         <input
           type="time"
           value={form.race_start_time ?? ''}
           onChange={e => setForm(f => ({ ...f, race_start_time: e.target.value }))}
           className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
         />
-        <p className="text-xs text-gray-400 mt-1.5">Improves hourly forecast accuracy</p>
+        <p className="text-xs text-gray-400 mt-1.5">{t('form:field.startTime.hint')}</p>
       </div>
 
       {/* Sport selector */}
@@ -533,7 +533,7 @@ function StepOne({ form, setForm }) {
                 inputMode="decimal"
                 pattern="[0-9]*\.?[0-9]*"
                 maxLength={5}
-                placeholder="e.g. 42"
+                placeholder={t('form:field.customDist.placeholder')}
                 value={form.custom_km_display}
                 onChange={e => handleDistChange(e.target.value)}
                 className="w-32 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
@@ -565,8 +565,7 @@ function StepOne({ form, setForm }) {
             )}
             {form.dist_warning && (
               <p className="text-xs text-amber-600 mt-1.5">
-                That&apos;s a very long distance — your plan will be calculated as Ultra 100km+.
-                If this looks wrong, check your distance units.
+                {t('form:field.customDist.tooLong')}
               </p>
             )}
           </div>
@@ -661,12 +660,12 @@ function StepOne({ form, setForm }) {
       {/* Goal finish time — split fields for triathlon, single field otherwise */}
       {form.sport === 'triathlon' ? (
         <div>
-          <FieldLabel>Split times</FieldLabel>
+          <FieldLabel>{t('form:field.splits.label')}</FieldLabel>
           <div className="space-y-4">
 
             {/* Swim */}
             <div>
-              <span className="text-xs font-medium text-gray-500 mb-1.5 block">Swim</span>
+              <span className="text-xs font-medium text-gray-500 mb-1.5 block">{t('form:field.splits.swim')}</span>
               <div className="flex items-center gap-2">
                 <div className="flex flex-col items-center gap-1">
                   <input
@@ -682,7 +681,7 @@ function StepOne({ form, setForm }) {
                       swimOk ? 'border-[#48C4B0]' : swimError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
                     ].join(' ')}
                   />
-                  <span className="text-xs text-gray-400">min</span>
+                  <span className="text-xs text-gray-400">{t('form:field.splits.minUnit')}</span>
                 </div>
               </div>
               {swimError && <p className="text-xs text-red-400 mt-1">{swimError}</p>}
@@ -690,7 +689,7 @@ function StepOne({ form, setForm }) {
 
             {/* Bike */}
             <div>
-              <span className="text-xs font-medium text-gray-500 mb-1.5 block">Bike</span>
+              <span className="text-xs font-medium text-gray-500 mb-1.5 block">{t('form:field.splits.bike')}</span>
               <div className="flex items-center gap-2">
                 <div className="flex flex-col items-center gap-1">
                   <input
@@ -706,7 +705,7 @@ function StepOne({ form, setForm }) {
                       bikeOk ? 'border-[#48C4B0]' : bikeError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
                     ].join(' ')}
                   />
-                  <span className="text-xs text-gray-400">h</span>
+                  <span className="text-xs text-gray-400">{t('form:field.splits.hUnit')}</span>
                 </div>
                 <span className="text-lg font-semibold text-gray-300 pb-4">:</span>
                 <div className="flex flex-col items-center gap-1">
@@ -723,7 +722,7 @@ function StepOne({ form, setForm }) {
                       bikeOk ? 'border-[#48C4B0]' : bikeError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
                     ].join(' ')}
                   />
-                  <span className="text-xs text-gray-400">min</span>
+                  <span className="text-xs text-gray-400">{t('form:field.splits.minUnit')}</span>
                 </div>
               </div>
               {bikeError && <p className="text-xs text-red-400 mt-1">{bikeError}</p>}
@@ -731,7 +730,7 @@ function StepOne({ form, setForm }) {
 
             {/* Run */}
             <div>
-              <span className="text-xs font-medium text-gray-500 mb-1.5 block">Run</span>
+              <span className="text-xs font-medium text-gray-500 mb-1.5 block">{t('form:field.splits.run')}</span>
               <div className="flex items-center gap-2">
                 <div className="flex flex-col items-center gap-1">
                   <input
@@ -747,7 +746,7 @@ function StepOne({ form, setForm }) {
                       runOk ? 'border-[#48C4B0]' : runError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
                     ].join(' ')}
                   />
-                  <span className="text-xs text-gray-400">h</span>
+                  <span className="text-xs text-gray-400">{t('form:field.splits.hUnit')}</span>
                 </div>
                 <span className="text-lg font-semibold text-gray-300 pb-4">:</span>
                 <div className="flex flex-col items-center gap-1">
@@ -764,7 +763,7 @@ function StepOne({ form, setForm }) {
                       runOk ? 'border-[#48C4B0]' : runError ? 'border-red-300' : 'border-gray-200 focus:border-[#48C4B0]',
                     ].join(' ')}
                   />
-                  <span className="text-xs text-gray-400">min</span>
+                  <span className="text-xs text-gray-400">{t('form:field.splits.minUnit')}</span>
                 </div>
               </div>
               {runError && <p className="text-xs text-red-400 mt-1">{runError}</p>}
@@ -876,7 +875,7 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
           <button
             type="button"
             onClick={onDismissPrefill}
-            aria-label="Dismiss"
+            aria-label={t('action.dismiss')}
             className="text-[#48C4B0]/60 hover:text-[#48C4B0] text-sm leading-none"
           >
             ✕
@@ -969,54 +968,54 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
         <div className="space-y-6">
           {/* Carbs per hour */}
           <div>
-            <FieldLabel>Carbs per hour</FieldLabel>
+            <FieldLabel>{t('form:field.targets.carbs.label')}</FieldLabel>
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="e.g. 60"
+                placeholder={t('form:field.targets.carbs.placeholder')}
                 value={form.custom_carb_ph}
                 onChange={e => setForm(f => ({ ...f, custom_carb_ph: e.target.value }))}
                 className="w-28 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
               />
-              <span className="text-sm text-gray-400">g/h</span>
+              <span className="text-sm text-gray-400">{t('form:field.targets.carbs.unit')}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">Typical range: 30–120 g/h</p>
+            <p className="text-xs text-gray-400 mt-1.5">{t('form:field.targets.carbs.range')}</p>
           </div>
           {/* Sodium per hour */}
           <div>
-            <FieldLabel>Sodium per hour</FieldLabel>
+            <FieldLabel>{t('form:field.targets.sodium.label')}</FieldLabel>
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="e.g. 500"
+                placeholder={t('form:field.targets.sodium.placeholder')}
                 value={form.custom_sodium_ph}
                 onChange={e => setForm(f => ({ ...f, custom_sodium_ph: e.target.value }))}
                 className="w-28 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
               />
-              <span className="text-sm text-gray-400">mg/h</span>
+              <span className="text-sm text-gray-400">{t('form:field.targets.sodium.unit')}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">Typical range: 200–1500 mg/h</p>
+            <p className="text-xs text-gray-400 mt-1.5">{t('form:field.targets.sodium.range')}</p>
           </div>
           {/* Fluid per hour */}
           <div>
-            <FieldLabel>Fluid per hour</FieldLabel>
+            <FieldLabel>{t('form:field.targets.fluid.label')}</FieldLabel>
             <div className="flex items-center gap-3">
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="e.g. 500"
+                placeholder={t('form:field.targets.fluid.placeholder')}
                 value={form.custom_fluid_ph}
                 onChange={e => setForm(f => ({ ...f, custom_fluid_ph: e.target.value }))}
                 className="w-28 border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200 focus:outline-none focus:border-[#48C4B0]"
               />
-              <span className="text-sm text-gray-400">ml/h</span>
+              <span className="text-sm text-gray-400">{t('form:field.targets.fluid.unit')}</span>
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">Typical range: 300–1200 ml/h</p>
+            <p className="text-xs text-gray-400 mt-1.5">{t('form:field.targets.fluid.range')}</p>
           </div>
         </div>
       ) : (
@@ -1025,13 +1024,13 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
           <div>
             <FieldLabel>{t('form:field.conditions')}</FieldLabel>
 
-            <p className="text-xs text-gray-400 mb-2">Temperature</p>
+            <p className="text-xs text-gray-400 mb-2">{t('form:field.temp.label')}</p>
             <div className="grid grid-cols-4 gap-2 mb-4">
               {[
-                { key: 'cool', emoji: '❄️', label: 'Cool', range: '< 10 °C' },
-                { key: 'mild', emoji: '🌤', label: 'Mild', range: '10–20 °C' },
-                { key: 'warm', emoji: '☀️', label: 'Warm', range: '20–28 °C' },
-                { key: 'hot',  emoji: '🔥', label: 'Hot',  range: '> 28 °C' },
+                { key: 'cool', emoji: '❄️', label: t('form:field.temp.cool'), range: t('form:field.temp.cool.range') },
+                { key: 'mild', emoji: '🌤', label: t('form:field.temp.mild'), range: t('form:field.temp.mild.range') },
+                { key: 'warm', emoji: '☀️', label: t('form:field.temp.warm'), range: t('form:field.temp.warm.range') },
+                { key: 'hot',  emoji: '🔥', label: t('form:field.temp.hot'),  range: t('form:field.temp.hot.range') },
               ].map(c => (
                 <button
                   key={c.key}
@@ -1052,7 +1051,7 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
               ))}
             </div>
 
-            <p className="text-xs text-gray-400 mb-2">Humidity</p>
+            <p className="text-xs text-gray-400 mb-2">{t('form:field.humidity.label')}</p>
             <div className="flex gap-2">
               {[
                 { key: 'dry',   label: 'Dry',   range: '< 60 %' },
@@ -1149,18 +1148,18 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
 
       {/* Gut training mode */}
       <div>
-        <FieldLabel>Gut training mode</FieldLabel>
+        <FieldLabel>{t('form:field.gut.label')}</FieldLabel>
         <p className="text-xs text-gray-400 mb-2">
-          Reduce carb targets by 30% — for training runs before race day, not race day itself.
+          {t('form:field.gut.hint')}
         </p>
         <div className="flex gap-2">
           <Pill
-            label="Yes"
+            label={t('form:field.gut.yes')}
             selected={form.training_mode === true}
             onClick={() => setForm(f => ({ ...f, training_mode: true }))}
           />
           <Pill
-            label="No"
+            label={t('form:field.gut.no')}
             selected={form.training_mode === false}
             onClick={() => setForm(f => ({ ...f, training_mode: false }))}
           />
@@ -1346,7 +1345,7 @@ function AddonProductRow({ product, quantity, onChangeQty, onRemove }) {
             onClick={onRemove}
             className="w-8 h-8 ml-1 rounded-full border-2 border-gray-200 flex items-center
                        justify-center text-gray-400 hover:border-red-300 hover:text-red-400 transition-colors"
-            aria-label="Remove product"
+            aria-label={t('action.removeProduct')}
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
@@ -1468,7 +1467,7 @@ function StepFour({ form, setForm, previewTargets }) {
               type="button"
               onClick={() => setShowScienceTooltip(v => !v)}
               className="text-[#48C4B0] hover:text-[#3db09d] flex-shrink-0"
-              aria-label="Show absorption science"
+              aria-label={t('action.showScience')}
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
@@ -1645,7 +1644,7 @@ function StepFour({ form, setForm, previewTargets }) {
                   <input
                     type="text"
                     inputMode="numeric"
-                    placeholder="e.g. 25"
+                    placeholder={t('form:field.addons.carbsPlaceholder')}
                     value={customCarbs}
                     onChange={e => setCustomCarbs(e.target.value)}
                     className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
@@ -1657,7 +1656,7 @@ function StepFour({ form, setForm, previewTargets }) {
                   <input
                     type="text"
                     inputMode="numeric"
-                    placeholder="e.g. 0"
+                    placeholder={t('form:field.addons.sodiumPlaceholder')}
                     value={customSodium}
                     onChange={e => setCustomSodium(e.target.value)}
                     className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200
@@ -1669,7 +1668,7 @@ function StepFour({ form, setForm, previewTargets }) {
                   <input
                     type="text"
                     inputMode="numeric"
-                    placeholder="e.g. 0"
+                    placeholder={t('form:field.addons.caffeinePlaceholder')}
                     value={customCaffeine}
                     onChange={e => setCustomCaffeine(e.target.value)}
                     className="w-full border-2 rounded-lg px-3 py-2.5 text-sm border-gray-200

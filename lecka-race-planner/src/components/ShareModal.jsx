@@ -5,6 +5,7 @@ import SharePlanImage from './SharePlanImage'
 
 export default function ShareModal({ onClose, plan: planProp, planProps, planUrl: planUrlProp }) {
   const { t } = useTranslation('results')
+  const { t: tc } = useTranslation('common')
   // Support both old API (planProps + planUrl) and new API (plan)
   const plan = planProp ?? { ...planProps, planUrl: planUrlProp || planProps?.planUrl || 'https://plan.getlecka.com' }
 
@@ -54,7 +55,7 @@ export default function ShareModal({ onClose, plan: planProp, planProps, planUrl
 
   const planUrl = plan.planUrl || 'https://plan.getlecka.com'
   const fbUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(planUrl)}`
-  const mailUrl = `mailto:?subject=My Lecka race plan&body=Check out my race nutrition plan: ${planUrl}`
+  const mailUrl = `mailto:?subject=${encodeURIComponent(tc('share.emailSubject'))}&body=${encodeURIComponent(tc('share.emailBody'))}${planUrl}`
 
   return ReactDOM.createPortal(
     <div

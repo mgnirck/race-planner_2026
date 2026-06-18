@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 export function toKg(value, unit) {
   const n = parseFloat(value)
@@ -8,6 +9,7 @@ export function toKg(value, unit) {
 }
 
 export default function WeightInput({ value, unit, onChange }) {
+  const { t } = useTranslation('form')
   const weightOk      = toKg(value, unit) !== null
   const weightTouched = value !== ''
   const weightMin     = unit === 'kg' ? 40  : 88
@@ -34,7 +36,7 @@ export default function WeightInput({ value, unit, onChange }) {
           inputMode="decimal"
           pattern="[0-9]*\.?[0-9]*"
           maxLength={5}
-          placeholder="e.g. 70"
+          placeholder={t('field.weight.placeholder')}
           value={value}
           onChange={e => onChange(e.target.value, unit)}
           className={[
@@ -63,7 +65,7 @@ export default function WeightInput({ value, unit, onChange }) {
       </div>
       {weightTouched && !weightOk && (
         <p className="text-xs text-red-400 mt-1.5">
-          Enter a valid weight ({weightMin}–{weightMax} {unit})
+          {t('field.weight.errorRange', { min: weightMin, max: weightMax, unit })}
         </p>
       )}
     </div>

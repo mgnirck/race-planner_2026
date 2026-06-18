@@ -55,7 +55,7 @@ export default function Nav() {
           {userId ? (
             <a
               href="/dashboard"
-              aria-label="My plans"
+              aria-label={t('nav.myPlans')}
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white ml-1"
               style={{ background: TEAL }}
             >

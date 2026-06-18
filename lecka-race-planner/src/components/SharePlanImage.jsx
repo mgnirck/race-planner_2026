@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export default function SharePlanImage({ plan, format, onReady }) {
   const ref = useRef(null)
+  const { t } = useTranslation('common')
 
   const {
     raceName, duration, conditions, effort,
@@ -72,10 +74,10 @@ export default function SharePlanImage({ plan, format, onReady }) {
       <div style={{ textAlign: 'center', padding: `${pad}px ${pad}px 0` }}>
         <div style={{ fontSize: fs(72), fontWeight: 800, color: '#fff',
                       letterSpacing: '-1px', lineHeight: 1 }}>
-          lecka
+          {t('share.wordmark')}
         </div>
         <div style={{ fontSize: fs(20), color: 'rgba(255,255,255,0.65)', marginTop: 8 }}>
-          real food. real performance.
+          {t('share.tagline')}
         </div>
       </div>
 
@@ -85,7 +87,7 @@ export default function SharePlanImage({ plan, format, onReady }) {
           fontSize: fs(raceName && raceName.length > 28 ? 40 : 52),
           fontWeight: 800, color: '#fff', lineHeight: 1.15,
         }}>
-          {raceName || 'My Race Plan'}
+          {raceName || t('share.defaultRaceName')}
         </div>
       </div>
 
@@ -108,9 +110,9 @@ export default function SharePlanImage({ plan, format, onReady }) {
       {/* STATS */}
       <div style={{ display: 'flex', width: '100%', padding: `0 ${pad}px` }}>
         {[
-          { value: carbsPerHour, unit: 'g', label: 'CARBS / HOUR' },
-          { value: sodiumPerHour, unit: 'mg', label: 'SODIUM / HOUR' },
-          { value: fluidPerHour, unit: 'ml', label: 'FLUID / HOUR' },
+          { value: carbsPerHour, unit: 'g', label: t('share.carbsPerHour') },
+          { value: sodiumPerHour, unit: 'mg', label: t('share.sodiumPerHour') },
+          { value: fluidPerHour, unit: 'ml', label: t('share.fluidPerHour') },
         ].map((stat, i) => (
           <div key={stat.label} style={{
             flex: 1, textAlign: 'center',
@@ -145,7 +147,7 @@ export default function SharePlanImage({ plan, format, onReady }) {
           fontStyle: 'italic', textAlign: 'center',
           padding: `0 ${pad}px`,
         }}>
-          Use with any real food gel matching these targets
+          {t('share.useWithGels')}
         </div>
       ) : (
         <div style={{
@@ -167,7 +169,7 @@ export default function SharePlanImage({ plan, format, onReady }) {
               padding: `${fs(10)}px ${fs(24)}px`,
               fontSize: fs(18), color: '#fff',
             }}>
-              +{hiddenCount} more
+              {t('share.moreItems', { count: hiddenCount })}
             </div>
           )}
         </div>
@@ -179,10 +181,10 @@ export default function SharePlanImage({ plan, format, onReady }) {
         textAlign: 'center', padding: `${pad * 0.5}px ${pad}px`,
       }}>
         <div style={{ fontSize: fs(28), fontWeight: 800, color: '#fff' }}>
-          Build your free race plan
+          {t('share.buildPlan')}
         </div>
         <div style={{ fontSize: fs(22), color: 'rgba(255,255,255,0.75)', marginTop: 6 }}>
-          plan.getlecka.com
+          {t('share.websiteUrl')}
         </div>
       </div>
     </div>

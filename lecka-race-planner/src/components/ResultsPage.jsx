@@ -1064,7 +1064,7 @@ function ResearchModal({ onClose }) {
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full
                        bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors text-lg leading-none"
-            aria-label="Close"
+            aria-label={t('action.close')}
           >
             ×
           </button>
@@ -1115,6 +1115,7 @@ function setProCoachCache(key, data) {
 }
 
 function CoachNotes({ coachCopy, watchOut, loading, failed = false, onRetry, startExpanded = false }) {
+  const { t } = useTranslation('results')
   const [expanded, setExpanded] = useState(startExpanded)
 
   if (loading) {
@@ -1122,9 +1123,9 @@ function CoachNotes({ coachCopy, watchOut, loading, failed = false, onRetry, sta
       <section className="border-2 border-gray-100 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('section.coachNotes')}</p>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[10px] font-semibold text-violet-600">
-              AI · Lecka knowledge
+              {t('coachNotes.aiLabel')}
             </span>
           </div>
           <div className="w-4 h-4 bg-gray-100 rounded animate-pulse" />
@@ -1143,19 +1144,19 @@ function CoachNotes({ coachCopy, watchOut, loading, failed = false, onRetry, sta
     return (
       <section className="border-2 border-gray-100 rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('section.coachNotes')}</p>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[10px] font-semibold text-violet-600">
-            AI · Lecka knowledge
+            {t('coachNotes.aiLabel')}
           </span>
         </div>
-        <p className="text-sm text-gray-400 mb-3">Coach notes couldn&apos;t load this time.</p>
+        <p className="text-sm text-gray-400 mb-3">{t('coachNotes.loadFailed')}</p>
         {onRetry && (
           <button
             type="button"
             onClick={onRetry}
             className="text-xs font-semibold text-[#48C4B0] hover:underline"
           >
-            Retry →
+            {t('coachNotes.retry')}
           </button>
         )}
       </section>
@@ -1179,9 +1180,9 @@ function CoachNotes({ coachCopy, watchOut, loading, failed = false, onRetry, sta
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Coach notes</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">{t('section.coachNotes')}</p>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[10px] font-semibold text-violet-600">
-            AI · Lecka knowledge
+            {t('coachNotes.aiLabel')}
           </span>
         </div>
         <svg
@@ -1276,6 +1277,7 @@ const NUUN_SPORT   = COMPETITOR_PRODUCTS.products.find(p => p.id === 'nuun-sport
 const PH_1500      = COMPETITOR_PRODUCTS.products.find(p => p.id === 'precision-h1500')
 
 function SodiumGapCard({ targets, provided, resolvedAddonItems, addonOverrides, onAddonChange, dismissed, onDismiss }) {
+  const { t } = useTranslation('results')
   const sodiumPct = targets.sodium_per_hour > 0
     ? Math.round((provided.sodium_per_hour_provided / targets.sodium_per_hour) * 100)
     : 100
@@ -1310,7 +1312,7 @@ function SodiumGapCard({ targets, provided, resolvedAddonItems, addonOverrides, 
           type="button"
           onClick={onDismiss}
           className="text-amber-500 hover:text-amber-700 text-sm leading-none flex-shrink-0"
-          aria-label="Dismiss"
+          aria-label={t('action.dismiss')}
         >
           ✕
         </button>
@@ -1791,7 +1793,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
       {region == null ? (
         <div className="border-2 border-gray-100 rounded-2xl p-5 text-center text-sm text-gray-500">
-          <p className="font-semibold text-[#1B1B1B] mb-1">Select your region above</p>
+          <p className="font-semibold text-[#1B1B1B] mb-1">{t('region.selectHint')}</p>
           <p>to see local pricing and order.</p>
         </div>
       ) : regionType === 'international' ? (
@@ -2286,7 +2288,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               )}
               <details className="mt-4">
                 <summary className="text-xs font-semibold text-[#48C4B0] cursor-pointer list-none flex items-center gap-1">
-                  <span>Gut training protocol</span>
+                  <span>{t('section.gutProtocol')}</span>
                   <span className="text-gray-400">↓</span>
                 </summary>
                 <div className="mt-3">
@@ -2298,7 +2300,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           {mobileTab === 'order' && (
             <div className="space-y-6">
               <section>
-                <SectionLabel>Get your products</SectionLabel>
+                <SectionLabel>{t('section.getProducts')}</SectionLabel>
                 {orderSection}
               </section>
               <div ref={emailRef}>
@@ -2381,7 +2383,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
           {/* Order card */}
           <section>
-            <SectionLabel>Get your products</SectionLabel>
+            <SectionLabel>{t('section.getProducts')}</SectionLabel>
             {orderSection}
           </section>
 
@@ -2445,22 +2447,22 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           tabs={[
             {
               key: 'timeline',
-              label: 'Timeline',
+              label: t('tab.timeline'),
               content: timelineTabContent,
             },
             {
               key: 'coach',
-              label: 'Coach notes',
+              label: t('tab.coachNotes'),
               content: coachTabContent,
             },
             {
               key: 'prefuel',
-              label: 'Pre-fueling',
+              label: t('tab.preFueling'),
               content: prefuelTabContent,
             },
             {
               key: 'gut',
-              label: 'Gut training',
+              label: t('tab.gutTraining'),
               content: (
                 <GutTrainingTab
                   targets={targets}
@@ -2471,7 +2473,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             },
             {
               key: 'science',
-              label: 'Science',
+              label: t('tab.science'),
               content: scienceTabContent,
             },
           ]}

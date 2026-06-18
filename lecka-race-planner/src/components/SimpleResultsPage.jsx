@@ -174,6 +174,7 @@ function SectionLabel({ children }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SimpleResultsPage({ targets, selection, form, onBack }) {
+  const { t } = useTranslation('results')
   const [region,         setRegion]         = useState(getSavedRegion())
   const [emailInput,     setEmailInput]     = useState('')
   const [emailState,     setEmailState]     = useState('idle')
@@ -450,7 +451,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           type="button"
           onClick={() => emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
           style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid #e5e7eb', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          aria-label="Email plan"
+          aria-label={t('action.emailPlan')}
         >
           <svg width="16" height="16" fill="none" stroke="#6b7280" strokeWidth="1.8" viewBox="0 0 24 24">
             <rect x="2" y="4" width="20" height="16" rx="2"/>
@@ -461,7 +462,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           type="button"
           onClick={() => setShowShareModal(true)}
           style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid #e5e7eb', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          aria-label="Share plan"
+          aria-label={t('action.sharePlan')}
         >
           <svg width="16" height="16" fill="none" stroke="#6b7280" strokeWidth="1.8" viewBox="0 0 24 24">
             <circle cx="18" cy="5" r="3"/>
@@ -519,7 +520,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
 
         {/* ── Section 2: Race plan ─────────────────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <SectionLabel>Your race plan</SectionLabel>
+          <SectionLabel>{t('section.racePlan')}</SectionLabel>
 
           {/* 2a: Packing list */}
           <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, overflow: 'hidden', marginBottom: 24 }}>
@@ -638,7 +639,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
 
         {/* ── Section 3: Buy ──────────────────────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <SectionLabel>Get your products</SectionLabel>
+          <SectionLabel>{t('section.getProducts')}</SectionLabel>
 
           <select
             value={region ?? ''}
@@ -652,7 +653,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               paddingRight: 36, marginBottom: 16,
             }}
           >
-            <option value="" disabled>Select your region…</option>
+            <option value="" disabled>{t('region.selectPlaceholder')}</option>
             {Object.entries(regionsConfig).map(([key, cfg]) => (
               <option key={key} value={key}>{cfg.label}</option>
             ))}
@@ -660,7 +661,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
 
           {region == null ? (
             <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20, textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
-              <p style={{ fontWeight: 600, color: '#1B1B1B', marginBottom: 4, marginTop: 0 }}>Select your region above</p>
+              <p style={{ fontWeight: 600, color: '#1B1B1B', marginBottom: 4, marginTop: 0 }}>{t('region.selectHint')}</p>
               <p style={{ margin: 0 }}>to see local pricing and order.</p>
             </div>
           ) : regionType === 'international' ? (
@@ -772,7 +773,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
 
         {/* ── Section 5: Coach notes ──────────────────────────────────────── */}
         <div style={{ paddingTop: 24, paddingBottom: 24, borderBottom: '1px solid #f3f4f6' }}>
-          <SectionLabel>Coach notes</SectionLabel>
+          <SectionLabel>{t('section.coachNotes')}</SectionLabel>
           {coachLoading ? (
             <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
               <div className="animate-pulse bg-gray-100 rounded h-3 w-full mb-2" />
@@ -780,13 +781,13 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
             </div>
           ) : coachFailed || !coachCopy ? (
             <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 14, color: '#9ca3af', margin: '0 0 8px' }}>Coach notes couldn&apos;t load.</p>
+              <p style={{ fontSize: 14, color: '#9ca3af', margin: '0 0 8px' }}>{t('coachNotes.loadFailed')}</p>
               <button
                 type="button"
                 onClick={() => { setCoachFailed(false); setCoachLoading(true); setCoachCopy(null); setCoachRetryKey(k => k + 1) }}
                 style={{ fontSize: 12, fontWeight: 600, color: '#48C4B0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
               >
-                Retry →
+                {t('coachNotes.retry')}
               </button>
             </div>
           ) : (
@@ -849,7 +850,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
         </div>
 
         <div ref={emailRef} style={{ paddingTop: 24 }}>
-          <SectionLabel>Get your plan by email</SectionLabel>
+          <SectionLabel>{t('section.emailPlan')}</SectionLabel>
           {form.email && planSent ? (
             <div style={{ border: '2px solid rgba(72,196,176,0.4)', background: 'rgba(72,196,176,0.05)', borderRadius: 16, padding: 20 }}>
               <p style={{ fontSize: 14, fontWeight: 700, color: '#48C4B0', margin: 0 }}>✓ Your plan has been sent to {form.email}</p>
@@ -865,7 +866,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                   type="email"
                   value={emailInput}
                   onChange={e => setEmailInput(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('email.placeholder')}
                   disabled={emailState === 'sending'}
                   style={{
                     flex: 1, minWidth: 0, border: '2px solid #e5e7eb', borderRadius: 12,

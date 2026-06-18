@@ -1,14 +1,12 @@
 {
   "hero.plan": "Kế hoạch của bạn",
   "hero.caffeineTag": "Caffeine",
-
   "section.nutritionTargets": "Mục tiêu dinh dưỡng",
   "section.whatToTake": "Sản phẩm cần mang",
   "section.raceTimeline": "Lịch trình bổ sung năng lượng",
   "section.emailPlan": "Gửi kế hoạch qua email",
   "section.shippingTo": "Giao hàng đến",
   "section.notesAndTips": "Ghi chú & mẹo",
-
   "nutrition.carbsPerHour": "g carb\nmỗi giờ",
   "nutrition.sodiumPerHour": "mg natri\nmỗi giờ",
   "nutrition.fluidPerHour": "ml nước\nmỗi giờ",
@@ -31,14 +29,11 @@
   "nutrition.status.under": "dưới mục tiêu",
   "nutrition.status.slightlyOver": "hơi dư",
   "nutrition.status.over": "trên mục tiêu",
-
   "product.forRace": "{{count}} cho cuộc đua",
   "product.extraForTraining": "+{{count}} dư để luyện tập",
   "product.saves": "Tiết kiệm {{symbol}}{{amount}}",
   "product.single": "gói lẻ",
-
   "timing.finish": "Về đích",
-
   "timeline.start": "Xuất phát",
   "timeline.finish": "Về đích · {{duration}}",
   "timeline.raceStart": "Bắt đầu",
@@ -48,7 +43,6 @@
   "timeline.atTime": "lúc {{time}}",
   "timeline.every": "mỗi {{interval}} phút, từ {{start}}",
   "timeline.moreSlots": "+{{count}} lần nữa",
-
   "training.title": "Ngày thi đấu vs. những gì bạn mua",
   "training.gelOverage_one": "Cuộc đua cần <bold>{{race}} gel</bold>. Bán theo hộp, giỏ hàng của bạn gồm <bold>{{cart}} gel</bold> — <bold>{{extra}}</bold> gel thừa lý tưởng để luyện tập.",
   "training.gelOverage_other": "Cuộc đua cần <bold>{{race}} gel</bold>. Bán theo hộp, giỏ hàng của bạn gồm <bold>{{cart}} gel</bold> — <bold>{{extra}}</bold> gel thừa lý tưởng để luyện tập.",
@@ -61,7 +55,6 @@
   "training.tip2": "Tái hiện lịch bổ sung năng lượng ngày thi đấu khi luyện tập (cùng thời điểm, cùng sản phẩm)",
   "training.tip3": "Bắt đầu với 1 gel mỗi giờ, tăng dần đến tần suất mục tiêu",
   "training.tip4": "Không thử sản phẩm mới vào ngày thi đấu — luôn thử nghiệm trong luyện tập",
-
   "cta.buyPlan": "Mua theo kế hoạch – Giảm 10% →",
   "cta.discount": "Giảm 10% — mã NUTRIPLAN10 đã được áp dụng tự động",
   "cta.chat.zalo": "Đặt hàng qua Zalo",
@@ -79,7 +72,6 @@
   "cta.varietyPack.hint": "Lý tưởng để luyện tập — 5 hương vị trong một hộp · NUTRIPLAN10 đã áp dụng",
   "cta.adjustPlan": "Điều chỉnh kế hoạch",
   "cta.copyPlan": "Sao chép kế hoạch",
-
   "email.intro": "Nhận PDF kế hoạch với hướng dẫn thời điểm và danh sách sản phẩm — gửi thẳng vào hộp thư.",
   "email.placeholder": "email@cuaban.com",
   "email.send": "Gửi kế hoạch",
@@ -89,12 +81,10 @@
   "email.error": "Đã xảy ra lỗi — vui lòng thử lại hoặc email cho chúng tôi tại info@getlecka.com",
   "email.invalidEmail": "Vui lòng nhập địa chỉ email hợp lệ.",
   "email.consent": "Khi cung cấp email, bạn đồng ý nhận bản tin từ Lecka.",
-
   "research.science": "Khoa học",
   "research.title": "Cách tính toán các con số của bạn",
   "research.learnMore": "Tìm hiểu thêm cách các con số được tính",
   "research.backToPlan": "Quay lại kế hoạch",
-
   "adjust.title": "Điều chỉnh kế hoạch",
   "adjust.subtitle": "Thay đổi số lượng — giỏ hàng cập nhật ngay",
   "adjust.reset": "Đặt lại theo đề xuất",
@@ -165,10 +155,27 @@
   "gutTraining.weeks": "Tuần {{start}}–{{end}}",
   "gutTraining.day": "Ngày {{n}}",
   "gutTraining.days": "Ngày {{start}}–{{end}}",
-
   "claude.banner.eyebrow": "Được cung cấp bởi Lecka",
   "claude.banner.title": "Hỏi Claude về kế hoạch của bạn",
   "claude.banner.body": "Công cụ dinh dưỡng của Lecka có sẵn trong Claude. Đặt câu hỏi tiếp theo, điều chỉnh cho điều kiện của bạn, hoặc khám phá các tùy chọn sản phẩm — trong cuộc trò chuyện tự nhiên.",
   "claude.banner.cta": "Mở trong Claude →",
-  "claude.banner.whatIsThis": "Đây là gì?"
+  "claude.banner.whatIsThis": "Đây là gì?",
+  "section.racePlan": "Kế hoạch đua của bạn",
+  "section.getProducts": "Lấy sản phẩm của bạn",
+  "section.coachNotes": "Ghi chú huấn luyện viên",
+  "section.gutProtocol": "Giao thức luyện ruột",
+  "region.selectHint": "Chọn khu vực của bạn ở trên",
+  "coachNotes.aiLabel": "AI · Kiến thức Lecka",
+  "coachNotes.loadFailed": "Ghi chú huấn luyện viên không thể tải lần này.",
+  "coachNotes.retry": "Thử lại →",
+  "tab.timeline": "Lịch trình",
+  "tab.coachNotes": "Ghi chú huấn luyện viên",
+  "tab.preFueling": "Tiếp nhiên liệu trước",
+  "tab.gutTraining": "Luyện ruột",
+  "tab.science": "Khoa học",
+  "region.selectPlaceholder": "Chọn khu vực của bạn…",
+  "action.emailPlan": "Gửi kế hoạch qua email",
+  "action.sharePlan": "Chia sẻ kế hoạch",
+  "action.dismiss": "Bỏ qua",
+  "action.close": "Đóng"
 }
