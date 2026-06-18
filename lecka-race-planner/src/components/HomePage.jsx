@@ -236,7 +236,7 @@ export default function HomePage() {
                     type="number"
                     min="0"
                     max="200"
-                    placeholder="hh"
+                    placeholder={t('time.hPlaceholder')}
                     value={goalH}
                     onChange={e => {
                       setGoalH(e.target.value)
@@ -246,7 +246,7 @@ export default function HomePage() {
                                text-lg font-semibold focus:outline-none focus:border-[#48C4B0]
                                text-[#1B1B1B] bg-white"
                   />
-                  <p className="text-xs text-center text-gray-400 mt-1">hours</p>
+                  <p className="text-xs text-center text-gray-400 mt-1">{t('time.hours')}</p>
                 </div>
                 <span className="text-2xl font-bold text-gray-300 mb-4">:</span>
                 <div className="flex-1">
@@ -255,14 +255,14 @@ export default function HomePage() {
                     type="number"
                     min="0"
                     max="59"
-                    placeholder="mm"
+                    placeholder={t('time.mmPlaceholder')}
                     value={goalM}
                     onChange={e => setGoalM(e.target.value)}
                     className="w-full border-2 border-white rounded-xl px-4 py-3 text-center
                                text-lg font-semibold focus:outline-none focus:border-[#48C4B0]
                                text-[#1B1B1B] bg-white"
                   />
-                  <p className="text-xs text-center text-gray-400 mt-1">minutes</p>
+                  <p className="text-xs text-center text-gray-400 mt-1">{t('time.minutes')}</p>
                 </div>
               </div>
             </div>

@@ -79,7 +79,7 @@ export default function FeedbackWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Send feedback"
+        aria-label={t('feedback.sendFeedback')}
         className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg text-white text-sm font-semibold transition-transform hover:scale-105 active:scale-95"
         style={{ background: TEAL }}
       >
@@ -110,7 +110,7 @@ export default function FeedbackWidget() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                aria-label={t('feedback.close')}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 -mr-1"
               >
                 <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">

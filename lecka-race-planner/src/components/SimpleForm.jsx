@@ -338,13 +338,13 @@ export default function SimpleForm({ onComplete }) {
             <SectionLabel>{t('form:simple.raceName')}</SectionLabel>
             <input
               type="text"
-              placeholder="e.g. Cape Town Marathon 2026"
+              placeholder={t('form:field.raceName.placeholder')}
               value={form.race_name}
               onChange={e => setForm(f => ({ ...f, race_name: e.target.value }))}
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
                          focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
             />
-            <p className="text-xs text-gray-400 mt-1.5">Optional — shown on your plan</p>
+            <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceName.hint')}</p>
           </div>
 
           {/* 2. Race date */}
@@ -358,7 +358,7 @@ export default function SimpleForm({ onComplete }) {
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
                          focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
             />
-            <p className="text-xs text-gray-400 mt-1.5">Optional — helps track your countdown</p>
+            <p className="text-xs text-gray-400 mt-1.5">{t('form:field.raceDate.hint')}</p>
           </div>
 
           {/* 3. Race type */}
@@ -413,7 +413,7 @@ export default function SimpleForm({ onComplete }) {
                   type="number"
                   min="1"
                   max="500"
-                  placeholder="Distance"
+                  placeholder={t('form:field.distance.placeholder')}
                   value={form.custom_race_km}
                   onChange={e => setForm(f => ({ ...f, custom_race_km: e.target.value }))}
                   className="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-center
@@ -451,14 +451,14 @@ export default function SimpleForm({ onComplete }) {
                   type="number"
                   min="0"
                   max="200"
-                  placeholder="h"
+                  placeholder={t('form:field.goalTime.hPlaceholder')}
                   value={form.goal_time_h}
                   onChange={e => setForm(f => ({ ...f, goal_time_h: e.target.value }))}
                   className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-center
                              text-lg font-semibold focus:outline-none focus:border-[#48C4B0]
                              text-[#1B1B1B]"
                 />
-                <p className="text-xs text-center text-gray-400 mt-1">hours</p>
+                <p className="text-xs text-center text-gray-400 mt-1">{t('form:field.goalTime.hours')}</p>
               </div>
               <span className="text-2xl font-bold text-gray-300 mb-4">:</span>
               <div className="flex-1">
@@ -466,14 +466,14 @@ export default function SimpleForm({ onComplete }) {
                   type="number"
                   min="0"
                   max="59"
-                  placeholder="mm"
+                  placeholder={t('form:field.goalTime.mmPlaceholder')}
                   value={form.goal_time_m}
                   onChange={e => setForm(f => ({ ...f, goal_time_m: e.target.value }))}
                   className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-center
                              text-lg font-semibold focus:outline-none focus:border-[#48C4B0]
                              text-[#1B1B1B]"
                 />
-                <p className="text-xs text-center text-gray-400 mt-1">minutes</p>
+                <p className="text-xs text-center text-gray-400 mt-1">{t('form:field.goalTime.minutes')}</p>
               </div>
             </div>
             {goalValid && (
@@ -719,11 +719,11 @@ export default function SimpleForm({ onComplete }) {
               type="email"
               value={form.email}
               onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-              placeholder="you@example.com"
+              placeholder={t('form:field.email.placeholder')}
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm
                          focus:outline-none focus:border-[#48C4B0] text-[#1B1B1B]"
             />
-            <p className="text-xs text-gray-400 mt-1.5">Optional — plan generates either way.</p>
+            <p className="text-xs text-gray-400 mt-1.5">{t('form:field.email.hint')}</p>
           </div>
 
           {/* Submit */}

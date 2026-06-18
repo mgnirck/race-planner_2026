@@ -7,7 +7,7 @@ const LANGUAGES = [
 ]
 
 export default function LanguageSwitcher({ compact = false }) {
-  const { i18n } = useTranslation()
+  const { i18n, t } = useTranslation('common')
 
   function switchLang(lang) {
     i18n.changeLanguage(lang)
@@ -36,7 +36,7 @@ export default function LanguageSwitcher({ compact = false }) {
         className="border-2 border-gray-200 rounded-lg px-2 py-1.5 text-sm
                    bg-white text-[#1B1B1B] focus:outline-none
                    focus:border-[#48C4B0] cursor-pointer"
-        aria-label="Select language"
+        aria-label={t('lang.selectLanguage')}
       >
         {LANGUAGES.map(l => (
           <option key={l.code} value={l.code}>{l.label}</option>
@@ -47,7 +47,7 @@ export default function LanguageSwitcher({ compact = false }) {
 
   return (
     <div className="flex rounded-lg border-2 border-gray-200 overflow-hidden
-                    text-sm font-medium" role="group" aria-label="Language">
+                    text-sm font-medium" role="group" aria-label={t('lang.label')}>
       {LANGUAGES.map(l => (
         <button
           key={l.code}
