@@ -1662,7 +1662,6 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     }
   }
 
-  // VN region: open Zalo or Facebook chat and copy order summary to clipboard
   function copyToClipboard(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).catch(() => execCopy(text))
@@ -1822,19 +1821,6 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               {formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
             </span>
           </div>
-
-          {regionType === 'haravan' && (
-            <div className="flex flex-col gap-2">
-              <button onClick={() => handleChatClick(regionConfig.zalo_url)}
-                className="flex items-center justify-center w-full min-h-[48px] bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl text-sm font-bold transition-colors">
-                {t('results:cta.chat.zalo')}
-              </button>
-              <button onClick={() => handleChatClick(regionConfig.facebook_url)}
-                className="flex items-center justify-center w-full min-h-[48px] bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl text-sm font-bold transition-colors">
-                {t('results:cta.chat.facebook')}
-              </button>
-            </div>
-          )}
 
           {regionType === 'shopify' && (
             <>

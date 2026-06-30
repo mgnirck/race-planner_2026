@@ -33,9 +33,7 @@
     "currency_symbol": "₫",
     "label": "Vietnam",
     "decimals": 0,
-    "zalo_url": "https://zalo.me/0988440434",
-    "facebook_url": "https://m.me/lecka.eco",
-    "type": "haravan"
+    "type": "shopify"
   },
   "sg": {
     "store_url": "https://www.rdrc.sg/collections/lecka",

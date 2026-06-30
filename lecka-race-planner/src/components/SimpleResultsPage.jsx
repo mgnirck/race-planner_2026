@@ -711,29 +711,6 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                 </span>
               </div>
 
-              {regionType === 'haravan' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <button
-                    onClick={() => handleChatClick(regionConfig.zalo_url)}
-                    className="flex items-center justify-center w-full min-h-[48px] bg-[#0068FF] hover:bg-[#0057d9] text-white rounded-2xl text-sm font-bold transition-colors"
-                  >
-                    Order via Zalo
-                  </button>
-                  <button
-                    onClick={() => handleChatClick(regionConfig.facebook_url)}
-                    className="flex items-center justify-center w-full min-h-[48px] bg-[#1877F2] hover:bg-[#1060d0] text-white rounded-2xl text-sm font-bold transition-colors"
-                  >
-                    Order via Facebook
-                  </button>
-                  {chatSummary && (
-                    <div style={{ marginTop: 8, background: '#fff', borderRadius: 12, padding: 12, border: '1px solid #f3f4f6' }}>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', marginBottom: 6, marginTop: 0 }}>Copied to clipboard:</p>
-                      <pre style={{ fontSize: 12, color: '#374151', whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0, lineHeight: 1.6 }}>{chatSummary}</pre>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {regionType === 'shopify' && cartURL && (
                 <>
                   <a
