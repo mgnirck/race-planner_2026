@@ -955,12 +955,12 @@
   },
   {
     "id": "endurance-mix",
-    "name": "Endurance Mix (11 stk.)",
+    "name": "Endurance Mix (9 stk.)",
     "type": "endurance_mix",
-    "carbs_per_unit": 24,
-    "sodium_per_unit": 85,
+    "carbs_per_unit": 29,
+    "sodium_per_unit": 126,
     "price_usd": 0,
-    "units_per_box": 11,
+    "units_per_box": 9,
     "shopify_variant_id": "PLACEHOLDER_US",
     "caffeine": true,
     "caffeine_mg": 80,
@@ -979,9 +979,10 @@
         "gel-coffee-cacao": 1,
         "gel-kumquat-honey": 1,
         "gel-lime-ginger": 1,
-        "bar-mango-coconut": 2,
-        "bar-cacao-banana": 2,
-        "bar-pineapple-banana": 2
+        "ultra-gel-passion-fruit-mango": 1,
+        "bar-mango-coconut": 1,
+        "bar-cacao-banana": 1,
+        "bar-pineapple-banana": 1
       }
     },
     "regions": {
@@ -995,7 +996,7 @@
         "variants": [
           {
             "shopify_variant_id": "50971111981322",
-            "units_per_pack": 11,
+            "units_per_pack": 9,
             "price": 179.0
           }
         ]
