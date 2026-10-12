@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto'
 import { Resend } from 'resend'
-import { sql, ensureMigrated } from '../_lib/db.js'
+import { sql, ensureMigrated, allowEmailSend } from '../_lib/db.js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -17,7 +17,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Valid email is required' })
   }
 
-  const normalised = email.toLowerCase().trim()
+  const normalised = email.toLowerCase().trim().slice(0, 254)
+
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() ?? req.socket?.remoteAddress ?? 'unknown'
+  const allowed = await allowEmailSend('magic_link', normalised, ip, { perRecipientPerHour: 5, perIpPerHour: 20 })
+  if (!allowed) {
+    return res.status(429).json({ error: 'Too many login emails — please check your inbox or try again in an hour.' })
+  }
 
   try {
     await ensureMigrated()
