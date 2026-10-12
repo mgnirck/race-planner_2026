@@ -101,7 +101,7 @@ const DEFAULT_FORM = {
   custom_km:         '',
   custom_km_display: '',
   dist_unit:         'km',
-  surface_type:      '',
+  surface_type:      'road',
   race_type:         '',
   goal_time_h:       '',
   goal_time_m:       '',
