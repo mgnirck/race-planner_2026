@@ -63,7 +63,7 @@ async function getAllProducts() {
   }
 }
 import { getServerT } from './_lib/i18n-server.js'
-import { sql, ensureMigrated } from './_lib/db.js'
+import { sql, ensureMigrated, allowEmailSend } from './_lib/db.js'
 
 const _validateLocale = (() => {
   const t = getServerT('en')
@@ -143,6 +143,79 @@ function fmtMin(minutes, totalDuration, t) {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   return `${h}:${m.toString().padStart(2, '0')}`
+}
+
+// ── Request sanitising ────────────────────────────────────────────────────────
+// Everything in the POST body comes from the browser and can be forged by anyone.
+// It is cleaned once here, and every value placed in the email HTML is escaped,
+// so nobody can use this endpoint to send their own links or HTML from
+// info@getlecka.com.
+
+const ALLOWED_LANGS  = ['en', 'de', 'da', 'fr', 'vi']
+const REGIONS_CONFIG = _require('../src/config/regions.json')
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function cleanText(value, maxLength) {
+  if (typeof value !== 'string') return ''
+  return value.replace(/[\u0000-\u001F\u007F]/g, ' ').trim().slice(0, maxLength)
+}
+
+function cleanInt(value, min, max) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return undefined
+  return Math.round(Math.min(max, Math.max(min, n)))
+}
+
+function sanitizePlanRequest({ inputs, targets, selectedProducts, resolvedAddonItems, region, lang }, catalog) {
+  const productById = new Map((catalog ?? []).map(p => [p.id, p]))
+
+  return {
+    region: typeof region === 'string' && Object.hasOwn(REGIONS_CONFIG, region) ? region : 'us',
+    lang:   ALLOWED_LANGS.includes(lang) ? lang : 'en',
+    inputs: {
+      ...inputs,
+      race_name: cleanText(inputs.race_name, 80),
+      race_type: /^[a-z0-9_.-]{1,40}$/.test(inputs.race_type ?? '') ? inputs.race_type : 'race',
+      goal_time: /^\d{1,3}:\d{2}$/.test(inputs.goal_time ?? '') ? inputs.goal_time : '',
+      addon_carbs_per_hour:      cleanInt(inputs.addon_carbs_per_hour, 0, 300),
+      foundation_carbs_per_hour: cleanInt(inputs.foundation_carbs_per_hour, 0, 300),
+    },
+    targets: {
+      ...targets,
+      carb_per_hour:          cleanInt(targets.carb_per_hour, 0, 300) ?? 0,
+      sodium_per_hour:        cleanInt(targets.sodium_per_hour, 0, 5000) ?? 0,
+      fluid_ml_per_hour:      cleanInt(targets.fluid_ml_per_hour, 0, 5000) ?? 0,
+      total_duration_minutes: cleanInt(targets.total_duration_minutes, 1, 10000) ?? 1,
+    },
+    // Lecka products are swapped for the server's own catalog entry (trusted name,
+    // variants, nutrition). Items not in the catalog are dropped.
+    selectedProducts: (selectedProducts ?? [])
+      .filter(item => productById.has(item?.product?.id))
+      .slice(0, 50)
+      .map(item => ({
+        ...item,
+        product:  productById.get(item.product.id),
+        quantity: cleanInt(item.quantity, 1, 500) ?? 1,
+        note:     cleanText(item.note, 200),
+      })),
+    resolvedAddonItems: (Array.isArray(resolvedAddonItems) ? resolvedAddonItems : [])
+      .slice(0, 30)
+      .map(item => ({
+        ...item,
+        name:           cleanText(item?.name, 80),
+        display_name:   cleanText(item?.display_name ?? item?.name, 80),
+        quantity:       cleanInt(item?.quantity, 0, 500) ?? 0,
+        carbs_per_unit: cleanInt(item?.carbs_per_unit, 0, 300) ?? 0,
+      })),
+  }
 }
 
 /** Race label — prefer the athlete's own race name, fall back to translated key label */
@@ -675,11 +748,11 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
 
   const hasProducts     = selectedProducts.length > 0
   const productListHtml = selectedProducts
-    .map(item => `<li><strong>${item.product.name}</strong> &times;&nbsp;${item.quantity} &mdash; ${item.note ?? ''}</li>`)
+    .map(item => `<li><strong>${escapeHtml(item.product.name)}</strong> &times;&nbsp;${escapeHtml(item.quantity)} &mdash; ${escapeHtml(item.note)}</li>`)
     .join('\n')
 
   const html = /* html */`<!DOCTYPE html>
-<html lang="${lang}">
+<html lang="${escapeHtml(lang)}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -715,24 +788,24 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
     </div>
     <div class="body">
       <p>${t('email.hi')}</p>
-      <p>${t('email.intro', { label, goalTime: inputs.goal_time })}</p>
+      <p>${t('email.intro', { label: escapeHtml(label), goalTime: escapeHtml(inputs.goal_time) })}</p>
 
       <div class="targets">
         <div class="tbox">
-          <div class="val">${targets.carb_per_hour}<small style="font-size:14px">g</small></div>
+          <div class="val">${escapeHtml(targets.carb_per_hour)}<small style="font-size:14px">g</small></div>
           <div class="lbl">${t('email.carbsLabel')}</div>
           ${hasAddons && emailAddonCph > 0 ? `
           <div style="font-size:10px;color:#888;margin-top:4px;line-height:1.6;">
-            <div>&#127807; Lecka: ${emailFoundCph}g/hour</div>
-            <div>+ Add-ons: ${emailAddonCph}g/hour</div>
+            <div>&#127807; Lecka: ${escapeHtml(emailFoundCph)}g/hour</div>
+            <div>+ Add-ons: ${escapeHtml(emailAddonCph)}g/hour</div>
           </div>` : ''}
         </div>
         <div class="tbox">
-          <div class="val">${targets.sodium_per_hour}<small style="font-size:14px">mg</small></div>
+          <div class="val">${escapeHtml(targets.sodium_per_hour)}<small style="font-size:14px">mg</small></div>
           <div class="lbl">${t('email.sodiumLabel')}</div>
         </div>
         <div class="tbox">
-          <div class="val">${targets.fluid_ml_per_hour}<small style="font-size:14px">ml</small></div>
+          <div class="val">${escapeHtml(targets.fluid_ml_per_hour)}<small style="font-size:14px">ml</small></div>
           <div class="lbl">${t('email.fluidLabel')}</div>
         </div>
       </div>
@@ -751,7 +824,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
         <ul style="margin:0;padding-left:18px;font-size:13px;color:#6b7280;">
           ${resolvedAddonItems.map(item => {
             const carbs = (item.carbs_per_unit ?? 0) * (item.quantity ?? 0)
-            return `<li>${item.quantity}&times; ${item.display_name ?? item.name}${carbs > 0 ? ` &mdash; ${carbs}g carbs` : ''}</li>`
+            return `<li>${escapeHtml(item.quantity)}&times; ${escapeHtml(item.display_name ?? item.name)}${carbs > 0 ? ` &mdash; ${escapeHtml(carbs)}g carbs` : ''}</li>`
           }).join('\n          ')}
         </ul>
         <p style="margin:8px 0 0;font-size:11px;color:#9ca3af;font-style:italic;">
@@ -761,7 +834,7 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
 
       `) : ''}
 
-      ${hasProducts ? `<a href="${cartUrl}" class="cta">
+      ${hasProducts ? `<a href="${escapeHtml(cartUrl)}" class="cta">
         Buy your plan →
       </a>` : `<p style="font-size:13px;color:#6b7280;margin:20px 0 0;">
         Visit <a href="https://www.getlecka.com" style="color:#48C4B0;text-decoration:none;">getlecka.com</a> to shop.
@@ -1050,20 +1123,36 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── Sanitise everything that reaches the PDF, cart, email and Shopify ──────
+  const clean = sanitizePlanRequest(
+    { inputs, targets, selectedProducts, resolvedAddonItems, region, lang },
+    allProductsCatalog,
+  )
+  if (clean.selectedProducts.length === 0 && clean.resolvedAddonItems.length === 0) {
+    return res.status(400).json({ success: false, error: 'No products selected' })
+  }
+  const recipient = email.trim().toLowerCase().slice(0, 254)
+
+  // ── Durable per-recipient / per-IP limit (survives cold starts) ─────────────
+  const allowed = await allowEmailSend('plan', recipient, clientIP(req), { perRecipientPerHour: 5, perIpPerHour: 20 })
+  if (!allowed) {
+    return res.status(429).json({ success: false, error: 'Too many emails sent — please try again in an hour.' })
+  }
+
   // ── Generate PDF ───────────────────────────────────────────────────────────
   let pdfBuffer
   try {
-    pdfBuffer = generatePDF(inputs, targets, selectedProducts, resolvedAddonItems, region, lang)
+    pdfBuffer = generatePDF(clean.inputs, clean.targets, clean.selectedProducts, clean.resolvedAddonItems, clean.region, clean.lang)
   } catch (pdfErr) {
     console.error('[send-plan] PDF generation failed:', pdfErr)
     return res.status(500).json({ success: false, error: 'Failed to generate PDF.' })
   }
 
-  const cartUrl = buildCartURL(selectedProducts, region, allProductsCatalog)
+  const cartUrl = buildCartURL(clean.selectedProducts, clean.region, allProductsCatalog)
 
   // ── Send email (priority — failure aborts the request) ────────────────────
   try {
-    await sendPlanEmail(email, inputs, targets, selectedProducts, resolvedAddonItems, pdfBuffer, cartUrl, region, lang)
+    await sendPlanEmail(recipient, clean.inputs, clean.targets, clean.selectedProducts, clean.resolvedAddonItems, pdfBuffer, cartUrl, clean.region, clean.lang)
   } catch (emailErr) {
     console.error('[send-plan] Email send failed:', emailErr.message)
     console.error('[send-plan] RESEND_API_KEY set:', !!process.env.RESEND_API_KEY)
@@ -1072,7 +1161,7 @@ export default async function handler(req, res) {
 
   // ── Shopify upsert (non-fatal) ────────────────────────────────────────────
   try {
-    await upsertShopifyCustomer(email, inputs, region)
+    await upsertShopifyCustomer(recipient, clean.inputs, clean.region)
   } catch (shopifyErr) {
     // Log but do not fail — email was already sent successfully
     console.error('[send-plan] Shopify upsert failed (non-fatal):', shopifyErr.message)
