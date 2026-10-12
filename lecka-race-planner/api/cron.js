@@ -1,7 +1,11 @@
 import { sql, ensureMigrated } from './_lib/db.js'
 import { Resend } from 'resend'
+import { createRequire } from 'module'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
+
+const _require = createRequire(import.meta.url)
+const REGIONS  = _require('../src/config/regions.json')
 
 async function runWeatherUpdate() {
   const { rows: plans } = await sql`
@@ -152,22 +156,122 @@ async function runSendPostRaceLogReminders() {
   return { sent }
 }
 
+// ── Nightly cart-link check ────────────────────────────────────────────────────
+// Compares every variant the live planner can put in a cart (GET /api/products —
+// database + static fallback, exactly what customers get) against each Shopify
+// store's public /products.json. Emails ALERT_EMAIL when a cart link would fail
+// (DEAD), a variant is sold out, or a price differs. Sends an "all clear" on Mondays
+// so silence never means "the check stopped running".
+
+const ALERT_EMAIL  = process.env.ALERT_EMAIL || 'info@getlecka.com'
+const PLANNER_HOST = process.env.VERCEL_PROJECT_PRODUCTION_URL || 'plan.getlecka.com'
+
+async function fetchStoreVariants(storeUrl) {
+  const variants = new Map()
+  for (let page = 1; page <= 4; page++) {
+    const res = await fetch(`${storeUrl}/products.json?limit=250&page=${page}`, {
+      headers: { 'User-Agent': 'LeckaVariantCheck/1.0 (info@getlecka.com)' },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const { products } = await res.json()
+    if (!products?.length) break
+    for (const p of products) for (const v of p.variants) {
+      variants.set(String(v.id), { title: `${p.title} / ${v.title}`, price: Number(v.price), available: v.available })
+    }
+  }
+  return variants
+}
+
+export async function runVariantCheck({ send = true, catalog = null, now = new Date() } = {}) {
+  if (!catalog) {
+    const res = await fetch(`https://${PLANNER_HOST}/api/products`, { cache: 'no-store' })
+    if (!res.ok) throw new Error(`planner /api/products HTTP ${res.status}`)
+    catalog = await res.json()
+  }
+
+  const dead = [], soldOut = [], price = [], skipped = [], checked = []
+
+  for (const [region, cfg] of Object.entries(REGIONS)) {
+    if (cfg.type !== 'shopify') continue
+    let live
+    try {
+      live = await fetchStoreVariants(cfg.store_url)
+    } catch (err) {
+      skipped.push(`${region.toUpperCase()} (${err.message})`)
+      continue
+    }
+    checked.push(region.toUpperCase())
+
+    for (const p of catalog) {
+      for (const v of p.regions?.[region]?.variants ?? []) {
+        const vid = String(v.shopify_variant_id ?? '')
+        if (!/^\d+$/.test(vid)) continue // placeholders are never added to carts
+        const label = `${region.toUpperCase()} · ${p.name ?? p.id} · ${v.units_per_pack}-pack`
+        const hit = live.get(vid)
+        if (!hit) { dead.push(`${label} · variant ${vid}`); continue }
+        if (!hit.available) soldOut.push(`${label} (${hit.title})`)
+        if (Math.abs(hit.price - Number(v.price)) > 0.01) {
+          price.push(`${label} · planner ${v.price} / store ${hit.price}`)
+        }
+      }
+    }
+  }
+
+  const issues   = dead.length + soldOut.length + price.length
+  const isMonday = now.getUTCDay() === 1
+  const summary  = { dead: dead.length, soldOut: soldOut.length, price: price.length, checked, skipped, emailed: false }
+
+  if (!send || (issues === 0 && !isMonday)) return { ...summary, details: { dead, soldOut, price } }
+
+  const subject = dead.length
+    ? `⚠️ Planner: ${dead.length} broken cart link${dead.length === 1 ? '' : 's'}`
+    : issues
+      ? `Planner: ${issues} product issue${issues === 1 ? '' : 's'} (no broken carts)`
+      : '✓ Planner: all cart links OK'
+
+  const section = (title, items, color) => items.length ? `
+    <h3 style="font-size:15px;color:${color};margin:24px 0 8px">${title} (${items.length})</h3>
+    <ul style="font-size:13px;color:#333;padding-left:18px;margin:0">${items.map(i => `<li style="margin-bottom:4px">${i}</li>`).join('')}</ul>` : ''
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
+      <p style="font-size:15px;color:#111;margin:0 0 4px"><strong>Nightly cart-link check</strong></p>
+      <p style="font-size:13px;color:#666;margin:0">Stores checked: ${checked.join(', ') || 'none'}${skipped.length ? ` · Skipped: ${skipped.join(', ')}` : ''}</p>
+      ${issues === 0 ? '<p style="font-size:14px;color:#1D9E75;margin-top:20px">Every variant the planner can add to a cart exists on its store, is in stock, and matches the store price.</p>' : ''}
+      ${section('Broken cart links — customers in these regions cannot check out', dead, '#B42318')}
+      ${section('Sold out on the store', soldOut, '#B54708')}
+      ${section('Price differs from the store', price, '#B54708')}
+      ${issues ? `<p style="font-size:13px;color:#666;margin-top:24px;line-height:1.5">How to fix: ask Claude Code to correct <code>src/config/products.json</code> and run <code>node scripts/check-variants.mjs</code>, push to main, then Admin → Products → <strong>Sync from products.json</strong>. Small price fixes can also be made directly in Admin → Products.</p>` : ''}
+    </div>`
+
+  await resend.emails.send({ from: 'Lecka Planner <info@getlecka.com>', to: [ALERT_EMAIL], subject, html })
+  return { ...summary, emailed: true }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method !== 'POST' && req.method !== 'GET') return res.status(405).end()
 
+  // Vercel Cron sends "Authorization: Bearer <CRON_SECRET>" when CRON_SECRET is set.
+  // Without the secret, anyone could trigger the cron (and the alert email) repeatedly.
+  if (process.env.CRON_SECRET && req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
   try {
     await ensureMigrated()
-    const [weather, reminders, postRaceLog] = await Promise.allSettled([
+    const [weather, reminders, postRaceLog, cartCheck] = await Promise.allSettled([
       runWeatherUpdate(),
       runSendReminders(),
       runSendPostRaceLogReminders(),
+      runVariantCheck(),
     ])
     return res.status(200).json({
       ok: true,
       weather:     weather.status     === 'fulfilled' ? weather.value     : { error: weather.reason?.message },
       reminders:   reminders.status   === 'fulfilled' ? reminders.value   : { error: reminders.reason?.message },
       postRaceLog: postRaceLog.status === 'fulfilled' ? postRaceLog.value : { error: postRaceLog.reason?.message },
+      cartCheck:   cartCheck.status   === 'fulfilled' ? cartCheck.value   : { error: cartCheck.reason?.message },
     })
   } catch (err) {
     console.error('[cron] error:', err)
