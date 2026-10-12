@@ -429,7 +429,10 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
   const formattedSubtotal = formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)
 
   function getTimeLabel(event) {
-    if (event.time < 0) return `${Math.abs(event.time)} min before start`
+    if (event.time < 0) return t('timeline.minBeforeStart', { min: Math.abs(event.time) })
+    if (event.time > targets.total_duration_minutes) {
+      return t('timeline.minAfterFinish', { min: event.time - targets.total_duration_minutes })
+    }
     if (timeUnit === 'km' && totalKm !== null) {
       const km = minutesToKm(event.time, targets.total_duration_minutes, totalKm)
       return km !== null ? `km ${km}` : formatTimeLabel(event.time)
@@ -590,19 +593,26 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
 
           <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {timelineEvents.map((event, i) => {
+              const raceMinutes  = targets.total_duration_minutes
               const isPreRace    = event.time < 0
+              const isPostRace   = event.time > raceMinutes
               const showSeparator = i > 0 && timelineEvents[i - 1].time < 0 && event.time >= 0
+              const showFinish    = isPostRace && (i === 0 || timelineEvents[i - 1].time <= raceMinutes)
+              const separatorText = { textAlign: 'center', fontSize: 10, color: '#9ca3af',
+                                      textTransform: 'uppercase', letterSpacing: '0.1em', margin: '6px 0 0' }
               return (
                 <React.Fragment key={i}>
                   {showSeparator && (
                     <li style={{ padding: '10px 0' }}>
                       <div style={{ borderTop: '1px solid #f3f4f6' }} />
-                      <p style={{
-                        textAlign: 'center', fontSize: 10, color: '#9ca3af',
-                        textTransform: 'uppercase', letterSpacing: '0.1em',
-                        margin: '6px 0 0',
-                      }}>
-                        Race start ↓
+                      <p style={separatorText}>{t('timeline.raceStart')} ↓</p>
+                    </li>
+                  )}
+                  {showFinish && (
+                    <li style={{ padding: '10px 0' }}>
+                      <div style={{ borderTop: '1px solid #f3f4f6' }} />
+                      <p style={separatorText}>
+                        {t('timeline.finishLine', { duration: formatTimeLabel(raceMinutes) })} · {t('timeline.recovery')} ↓
                       </p>
                     </li>
                   )}
@@ -611,7 +621,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                     borderBottom: i < timelineEvents.length - 1 ? '1px solid #f9fafb' : 'none',
                   }}>
                     <span style={{
-                      color: isPreRace ? '#d1d5db' : '#48C4B0',
+                      color: (isPreRace || isPostRace) ? '#d1d5db' : '#48C4B0',
                       fontSize: 8, marginTop: 6, flexShrink: 0,
                     }}>●</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af', flexShrink: 0, minWidth: 72 }}>
