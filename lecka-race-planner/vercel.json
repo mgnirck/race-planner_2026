@@ -8,6 +8,9 @@
     },
     "api/coach-copy.js": {
       "maxDuration": 25
+    },
+    "api/admin/products.js": {
+      "maxDuration": 60
     }
   },
   "headers": [
