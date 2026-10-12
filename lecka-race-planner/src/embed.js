@@ -135,8 +135,26 @@ export function embedCartURL(url) {
 // ── Region persistence ────────────────────────────────────────────────────────
 
 /**
+ * Explicit region from the URL, e.g. the Shopify embed on getlecka.de loads
+ * plan.getlecka.com/?region=de. Only a region key that exists in regions.json
+ * is accepted. This is a deliberate choice by the page that links to the
+ * planner (store embed, QR code) — the referrer is still never sniffed.
+ * Saved once at load, so it pre-selects the region; the athlete can still
+ * change it in the region picker.
+ */
+const urlRegion = (() => {
+  try {
+    const r = new URLSearchParams(window.location.search).get('region')?.toLowerCase()
+    return r && regionsConfig[r] ? r : null
+  } catch {
+    return null
+  }
+})()
+if (urlRegion) saveRegion(urlRegion)
+
+/**
  * Returns the user's saved region preference from localStorage,
- * or null if none has been chosen yet. Never sniffs referrer or URL params.
+ * or null if none has been chosen yet. Never sniffs the referrer.
  */
 export function getSavedRegion() {
   try {
