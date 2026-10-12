@@ -1,4 +1,5 @@
 import { sql } from '@vercel/postgres'
+import { createHash } from 'crypto'
 
 export { sql }
 
@@ -144,5 +145,62 @@ export async function ensureMigrated() {
   await sql`ALTER TABLE plans ADD COLUMN IF NOT EXISTS post_race_log_sent BOOLEAN DEFAULT FALSE`
   await sql`ALTER TABLE feedback ADD COLUMN IF NOT EXISTS product_log JSONB`
 
+  // Email send log for abuse limits — stores a SHA-256 hash, never the address itself
+  await sql`
+    CREATE TABLE IF NOT EXISTS email_sends (
+      id BIGSERIAL PRIMARY KEY,
+      kind TEXT NOT NULL,
+      recipient_hash TEXT NOT NULL,
+      ip TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `
+  await sql`CREATE INDEX IF NOT EXISTS email_sends_recipient_idx ON email_sends (recipient_hash, created_at)`
+  await sql`CREATE INDEX IF NOT EXISTS email_sends_ip_idx ON email_sends (ip, created_at)`
+
   migrated = true
+}
+
+/**
+ * Durable abuse limit for outgoing emails (plan emails, login links).
+ * Returns true and logs the send if the recipient and IP are under their hourly
+ * limits; returns false if either limit is reached. In-memory limits reset on
+ * every cold start, so this one is stored in Postgres.
+ *
+ * Fails open: if the database is unavailable, the email is allowed (a real
+ * athlete should never be blocked by an outage).
+ *
+ * @param {'plan'|'magic_link'} kind
+ * @param {string} recipient  lower-cased email address
+ * @param {string} ip
+ * @param {{ perRecipientPerHour: number, perIpPerHour: number }} limits
+ */
+export async function allowEmailSend(kind, recipient, ip, { perRecipientPerHour, perIpPerHour }) {
+  try {
+    await ensureMigrated()
+    const recipientHash = createHash('sha256').update(recipient).digest('hex')
+
+    const { rows } = await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE recipient_hash = ${recipientHash}) AS by_recipient,
+        COUNT(*) FILTER (WHERE ip = ${ip})                        AS by_ip
+      FROM email_sends
+      WHERE kind = ${kind}
+        AND created_at > NOW() - INTERVAL '1 hour'
+        AND (recipient_hash = ${recipientHash} OR ip = ${ip})
+    `
+    if (Number(rows[0].by_recipient) >= perRecipientPerHour) return false
+    if (Number(rows[0].by_ip)        >= perIpPerHour)        return false
+
+    await sql`INSERT INTO email_sends (kind, recipient_hash, ip) VALUES (${kind}, ${recipientHash}, ${ip})`
+
+    // Housekeeping: occasionally drop rows older than 2 days
+    if (Math.random() < 0.02) {
+      await sql`DELETE FROM email_sends WHERE created_at < NOW() - INTERVAL '2 days'`
+    }
+    return true
+  } catch (err) {
+    console.error('[allowEmailSend] failed open:', err.message)
+    return true
+  }
 }
