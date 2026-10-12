@@ -16,7 +16,7 @@ import { sql, ensureMigrated } from './_lib/db.js'
 // ── Rich analytics (admin-only) ───────────────────────────────────────────────
 
 async function handleAnalytics(req, res) {
-  const adminPassword = process.env.VITE_ADMIN_PASSWORD
+  const adminPassword = process.env.ADMIN_PASSWORD
   const provided = req.headers['x-admin-password'] ?? ''
   if (!adminPassword || provided !== adminPassword) {
     return res.status(401).json({ error: 'Unauthorized' })
@@ -349,7 +349,7 @@ export default async function handler(req, res) {
 
     // MCP usage proxy — triggered by ?action=mcp-usage + password header
     if (req.query?.action === 'mcp-usage') {
-      const adminPassword = process.env.VITE_ADMIN_PASSWORD ?? ''
+      const adminPassword = process.env.ADMIN_PASSWORD ?? ''
       const provided = req.headers['x-admin-password'] ?? ''
       if (!adminPassword || provided !== adminPassword) {
         return res.status(401).json({ error: 'Unauthorized' })

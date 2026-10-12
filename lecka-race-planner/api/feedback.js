@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
   // ── GET — admin list ────────────────────────────────────────────────────────
   if (req.method === 'GET') {
-    const adminPassword = process.env.VITE_ADMIN_PASSWORD
+    const adminPassword = process.env.ADMIN_PASSWORD
     const provided = req.headers['x-admin-password'] ?? ''
     if (!adminPassword || provided !== adminPassword) {
       return res.status(401).json({ error: 'Unauthorized' })

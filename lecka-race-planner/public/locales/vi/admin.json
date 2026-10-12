@@ -4,7 +4,8 @@
   "passwordPlaceholder": "Mật khẩu",
   "unlock": "Mở khoá",
   "incorrectPassword": "Mật khẩu không đúng.",
-  "noPasswordSet": "VITE_ADMIN_PASSWORD chưa được thiết lập. Truy cập bị chặn trên môi trường production.",
+  "verifyFailed": "Không thể kiểm tra mật khẩu — vui lòng thử lại.",
+  "verifying": "Đang kiểm tra…",
 
   "header.label": "Lecka",
   "header.title": "Quản trị Planner",

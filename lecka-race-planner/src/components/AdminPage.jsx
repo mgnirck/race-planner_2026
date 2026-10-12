@@ -15,7 +15,6 @@ import regionsConfig from '../config/regions.json'
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = 'lecka_plans_v1'
-const CONFIGURED_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? ''
 const IS_DEV = import.meta.env.MODE === 'development'
 
 const RACE_TYPE_LABELS = {
@@ -137,26 +136,43 @@ function dateToKey(d) {
 // ── Password gate hook ────────────────────────────────────────────────────────
 
 function usePasswordGate(t) {
-  const [entered, setEntered] = useState('')
-  const [unlocked, setUnlocked] = useState(IS_DEV && !CONFIGURED_PASSWORD)
-  const [error, setError] = useState(false)
+  const [entered, setEntered]     = useState('')
+  const [unlocked, setUnlocked]   = useState(false)
+  const [error, setError]         = useState(null)   // null | 'incorrect' | 'failed'
+  const [verifying, setVerifying] = useState(false)
 
-  function attempt() {
-    if (!CONFIGURED_PASSWORD) {
-      if (IS_DEV) { setUnlocked(true); return }
-      setError(true)
-      return
-    }
-    if (entered === CONFIGURED_PASSWORD) {
-      setUnlocked(true)
-      setError(false)
-    } else {
-      setError(true)
-      setEntered('')
+  // The password is checked by the server only — it is never shipped to the browser.
+  async function attempt() {
+    if (verifying || !entered) return
+    setVerifying(true)
+    setError(null)
+    try {
+      const res  = await fetch('/api/admin/products?op=verify', {
+        cache:   'no-store',
+        headers: { 'X-Admin-Password': entered },
+      })
+      const data = res.ok ? await res.json().catch(() => null) : null
+      if (data?.ok === true) {
+        setUnlocked(true)
+      } else if (res.status === 401) {
+        setError('incorrect')
+        setEntered('')
+      } else if (IS_DEV) {
+        // Plain `npm run dev` (Vite) has no /api routes — allow local UI testing.
+        // Data calls still need the real password, so nothing is exposed.
+        setUnlocked(true)
+      } else {
+        setError('failed')
+      }
+    } catch {
+      if (IS_DEV) setUnlocked(true)
+      else setError('failed')
+    } finally {
+      setVerifying(false)
     }
   }
 
-  return { unlocked, entered, setEntered, attempt, error }
+  return { unlocked, entered, setEntered, attempt, error, verifying }
 }
 
 // ── Shared UI components ──────────────────────────────────────────────────────
@@ -1585,10 +1601,6 @@ export default function AdminPage() {
           </p>
           <h1 className="text-xl font-bold text-[#1B1B1B] mb-6">{t('enterPassword')}</h1>
 
-          {!CONFIGURED_PASSWORD && !IS_DEV && (
-            <p className="text-sm text-red-500 mb-4">{t('noPasswordSet')}</p>
-          )}
-
           <input
             type="password"
             value={gate.entered}
@@ -1603,15 +1615,19 @@ export default function AdminPage() {
             autoFocus
           />
           {gate.error && (
-            <p className="text-xs text-red-500 mt-2">{t('incorrectPassword')}</p>
+            <p className="text-xs text-red-500 mt-2">
+              {gate.error === 'incorrect' ? t('incorrectPassword') : t('verifyFailed')}
+            </p>
           )}
           <button
             type="button"
             onClick={gate.attempt}
+            disabled={gate.verifying}
             className="mt-3 w-full min-h-[44px] bg-[#2D6A4F] text-white rounded-xl
-                       text-sm font-semibold hover:bg-[#235a3e] transition-colors"
+                       text-sm font-semibold hover:bg-[#235a3e] transition-colors
+                       disabled:opacity-60 disabled:cursor-wait"
           >
-            {t('unlock')}
+            {gate.verifying ? t('verifying') : t('unlock')}
           </button>
         </div>
       </div>

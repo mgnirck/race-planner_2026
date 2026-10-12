@@ -21,7 +21,7 @@ Set these environment variables in the Vercel dashboard before deploying:
 | `RESEND_API_KEY` | Your Resend API key |
 | `SHOPIFY_ACCESS_TOKEN` | Shopify Admin API token |
 | `SHOPIFY_STORE_URL` | `getlecka.myshopify.com` |
-| `VITE_ADMIN_PASSWORD` | Password for /admin stats page |
+| `ADMIN_PASSWORD` | Password for /admin (server-side only — never use a `VITE_` prefix) |
 
 ---
 
@@ -98,7 +98,7 @@ For Vietnamese storefronts using Haravan, listen for the cart event to add produ
 
 ## Step 5 — Check admin stats
 
-Visit `https://YOUR_VERCEL_URL/admin` and enter your `VITE_ADMIN_PASSWORD` to see:
+Visit `https://YOUR_VERCEL_URL/admin` and enter your `ADMIN_PASSWORD` to see:
 - Total plans generated this month
 - Most popular race type
 

@@ -22,7 +22,7 @@ const REGIONS_JSON  = _require('../../src/config/regions.json')
 const PRODUCT_REGIONS = ['us', 'de', 'dk', 'ch', 'vn', 'sg', 'hk', 'au', 'fr']
 
 function checkAuth(req) {
-  const adminPassword = process.env.VITE_ADMIN_PASSWORD
+  const adminPassword = process.env.ADMIN_PASSWORD
   const provided = req.headers['x-admin-password'] ?? ''
   return !!(adminPassword && provided === adminPassword)
 }
@@ -34,6 +34,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (!checkAuth(req)) return res.status(401).json({ error: 'Unauthorized' })
+
+  // Password check for the /admin lock screen — no DB work needed
+  if (req.method === 'GET' && req.query?.op === 'verify') return res.status(200).json({ ok: true })
 
   try { await ensureMigrated() } catch (e) { console.error('[admin/products] migrate:', e) }
 
