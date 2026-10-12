@@ -34,6 +34,8 @@
   "nav.myPlans": "My Plans",
   "nav.quickPlan": "Quick plan",
   "nav.proPlan": "Pro plan",
+  "nav.quickPlanShort": "Quick",
+  "nav.proPlanShort": "Pro",
   "nav.logIn": "Log in",
   "login.title": "Sign in to Lecka",
   "login.subtitle": "We'll send a one-click login link to your inbox.",

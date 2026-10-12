@@ -15,19 +15,19 @@ export default function Nav() {
 
   return (
     <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
-      <div className="max-w-4xl mx-auto flex items-center gap-4 px-5 py-3">
+      <div className="max-w-4xl mx-auto flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3">
 
         {/* Left — logo */}
         <a href="/" className="flex items-center flex-shrink-0">
           <img
             src="/Lecka-Logo-New%20Green%20Font.png"
             alt="Lecka"
-            className="h-7"
+            className="h-5 sm:h-7"
           />
         </a>
 
         {/* Centre — navigation links */}
-        <div className="flex-1 flex items-center justify-center gap-6">
+        <div className="flex-1 hidden sm:flex items-center justify-center gap-6">
           <a
             href="/dashboard"
             className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors whitespace-nowrap"
@@ -37,19 +37,21 @@ export default function Nav() {
         </div>
 
         {/* Right — plan CTAs + avatar */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <a
             href="/planner"
-            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-gray-400 transition-colors whitespace-nowrap"
+            className="text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-gray-400 transition-colors whitespace-nowrap"
           >
-            {t('nav.quickPlan')}
+            <span className="sm:hidden">{t('nav.quickPlanShort')}</span>
+            <span className="hidden sm:inline">{t('nav.quickPlan')}</span>
           </a>
           <a
             href="/planner/pro"
-            className="text-xs font-semibold px-3 py-1.5 rounded-full text-white whitespace-nowrap"
+            className="text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full text-white whitespace-nowrap"
             style={{ background: TEAL }}
           >
-            {t('nav.proPlan')}
+            <span className="sm:hidden">{t('nav.proPlanShort')}</span>
+            <span className="hidden sm:inline">{t('nav.proPlan')}</span>
           </a>
           <LanguageSwitcher compact />
           {userId ? (
