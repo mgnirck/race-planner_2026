@@ -225,6 +225,16 @@ function raceLabel(inputs, t) {
   return RACE_LABELS[inputs.race_type] ?? inputs.race_type
 }
 
+/**
+ * Subject-line label — never the athlete's free-text race name. Email subjects
+ * can't be escaped, so only trusted, translated race-type labels go there.
+ */
+function subjectLabel(inputs, t) {
+  return Object.hasOwn(RACE_LABELS, inputs.race_type)
+    ? t(`racetype.${inputs.race_type}`)
+    : t('pdf.summary.race')
+}
+
 /** Check y position and add a new page if less than `need` mm remain */
 function ensureSpace(doc, y, need = 40) {
   if (y + need > 280) { doc.addPage(); return 20 }
@@ -743,8 +753,8 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
     ?? (targets.carb_per_hour - emailAddonCph)
 
   const subject = hasAddons
-    ? `Your ${label} plan — Lecka foundation + add-ons`
-    : t('email.subject', { label })
+    ? `Your ${subjectLabel(inputs, t)} plan — Lecka foundation + add-ons`
+    : t('email.subject', { label: subjectLabel(inputs, t) })
 
   const hasProducts     = selectedProducts.length > 0
   const productListHtml = selectedProducts
