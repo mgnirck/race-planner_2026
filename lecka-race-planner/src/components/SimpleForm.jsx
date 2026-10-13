@@ -130,6 +130,7 @@ export default function SimpleForm({ onComplete }) {
   const { t } = useTranslation(['form', 'common'])
   const [form,       setForm]       = useState(DEFAULT_FORM)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(false)
   const [region,     setRegion]     = useState(() => getSavedRegion() ?? null)
 
   function handleRegionSelect(key) {
@@ -224,6 +225,7 @@ export default function SimpleForm({ onComplete }) {
     e.preventDefault()
     if (!canSubmit) return
     setSubmitting(true)
+    setSubmitError(false)
 
     const h = Math.floor(goalMinutes / 60)
     const m = goalMinutes % 60
@@ -255,13 +257,23 @@ export default function SimpleForm({ onComplete }) {
       age_bracket:      form.age_bracket ?? null,
     }
 
-    const targets   = calculateTargets(engineInputs)
-    const selection = selectProducts(targets, catalog, {
-      fuelling_style:        'gels_only',
-      preferred_product_ids,
-      want_addons:           false,
-      addon_items:           [],
-    })
+    // If the engine rejects the inputs, show a message instead of leaving the
+    // button stuck on "Building your plan…"
+    let targets, selection
+    try {
+      targets   = calculateTargets(engineInputs)
+      selection = selectProducts(targets, catalog, {
+        fuelling_style:        'gels_only',
+        preferred_product_ids,
+        want_addons:           false,
+        addon_items:           [],
+      })
+    } catch (err) {
+      console.error('[SimpleForm] could not build plan:', err)
+      setSubmitting(false)
+      setSubmitError(true)
+      return
+    }
 
     const outForm = {
       race_name:              form.race_name.trim(),
@@ -736,6 +748,9 @@ export default function SimpleForm({ onComplete }) {
           >
             {submitting ? t('form:simple.buildingPlan') : t('form:simple.buildPlan')}
           </button>
+          {submitError && (
+            <p className="text-sm text-red-500 mt-3 text-center">{t('form:simple.buildError')}</p>
+          )}
 
         </form>
       </div>

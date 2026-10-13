@@ -84,6 +84,7 @@
   "simple.pickFavourites.desc": "Chọn hương vị bạn muốn trong kế hoạch.",
   "simple.buildPlan": "Tạo kế hoạch của tôi →",
   "simple.buildingPlan": "Đang tạo kế hoạch…",
+  "simple.buildError": "Đã xảy ra lỗi khi tạo kế hoạch. Vui lòng kiểm tra thông tin cuộc đua và thử lại.",
   "field.fuelStyle.title": "Chiến lược tiếp năng lượng",
   "field.fuelStyle.gels_only.label": "Chỉ dùng gel",
   "field.fuelStyle.gels_only.desc": "Đơn giản và nhanh — gel là nguồn năng lượng chính của bạn trong suốt cuộc đua",

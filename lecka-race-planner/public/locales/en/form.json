@@ -84,6 +84,7 @@
   "simple.pickFavourites.desc": "Choose the flavours you want in your plan.",
   "simple.buildPlan": "Build my plan →",
   "simple.buildingPlan": "Building your plan…",
+  "simple.buildError": "Something went wrong building your plan. Please check your race details and try again.",
   "field.fuelStyle.title": "Fuelling style",
   "field.fuelStyle.gels_only.label": "Gels only",
   "field.fuelStyle.gels_only.desc": "Simple and fast — gels are your primary fuel source throughout",
