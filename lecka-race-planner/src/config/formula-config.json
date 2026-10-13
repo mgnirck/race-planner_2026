@@ -9,6 +9,7 @@
     "marathon":    { "easy": 50, "race_pace": 60, "hard": 75 },
     "ultra_50k":   { "easy": 60, "race_pace": 70, "hard": 90 },
     "ultra_100k":  { "easy": 60, "race_pace": 75, "hard": 90 },
+    "cycling":     { "easy": 50, "race_pace": 70, "hard": 90 },
     "triathlon_sprint": { "easy": 30, "race_pace": 45, "hard": 60 },
     "triathlon_olympic":{ "easy": 40, "race_pace": 60, "hard": 75 },
     "triathlon_70_3":   { "easy": 50, "race_pace": 70, "hard": 90 },
