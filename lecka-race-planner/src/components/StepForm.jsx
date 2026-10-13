@@ -297,7 +297,7 @@ function StepOne({ form, setForm }) {
         ...f,
         custom_km_display: rawValue,
         custom_km:     kmVal !== null ? String(Math.round(kmVal * 10) / 10) : '',
-        race_type:     kmVal ? distanceToRaceType(kmVal) : '',
+        race_type:     f.sport === 'cycling' ? 'cycling' : (kmVal ? distanceToRaceType(kmVal) : ''),
         dist_warning:  overMax,
       }
     })
@@ -362,7 +362,7 @@ function StepOne({ form, setForm }) {
             elevation_gain_m:  parsed.elevation_gain_m,
             elev_display:      displayElev,
             gpx_parsed:        true,
-            race_type:         distanceToRaceType(parsed.distance_km),
+            race_type:         f.sport === 'cycling' ? 'cycling' : distanceToRaceType(parsed.distance_km),
             ...(parsed.avg_grade_pct > 2 ? { surface_type: 'trail' } : {}),
           }
         })
@@ -455,6 +455,17 @@ function StepOne({ form, setForm }) {
             }))}
           />
           <Pill
+            label={t('form:field.sport.cycling')}
+            selected={form.sport === 'cycling'}
+            onClick={() => setForm(f => ({
+              ...f,
+              sport:          'cycling',
+              triathlon_type: '',
+              race_type:      'cycling',
+              surface_type:   'road',
+            }))}
+          />
+          <Pill
             label={t('form:field.sport.triathlon')}
             selected={form.sport === 'triathlon'}
             onClick={() => setForm(f => ({
@@ -468,8 +479,8 @@ function StepOne({ form, setForm }) {
         </div>
       </div>
 
-      {/* Running-specific: GPX upload, distance, elevation, surface */}
-      {form.sport === 'running' && (
+      {/* Running and cycling: GPX upload, distance, elevation, surface */}
+      {form.sport !== 'triathlon' && (
         <>
           {/* GPX upload */}
           <div>

@@ -69,7 +69,7 @@ export default function HomePage() {
     const isTriathlon = raceType === 'triathlon'
     const km = isTriathlon ? (TRIATHLON_KM[triathlonType] ?? null) : (RACE_KM[raceType] ?? null)
     const prefill = {
-      sport:          isTriathlon ? 'triathlon' : 'running',
+      sport:          isTriathlon ? 'triathlon' : raceType === 'cycling' ? 'cycling' : 'running',
       race_type:      isTriathlon ? triathlonType : raceType,
       triathlon_type: isTriathlon ? triathlonType : '',
       goal_time_h:    goalH,

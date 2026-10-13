@@ -9,6 +9,7 @@
   "field.raceDate.hint": "Optional — helps us track your countdown",
   "field.sport": "Sport",
   "field.sport.running": "Running",
+  "field.sport.cycling": "Cycling",
   "field.sport.triathlon": "Triathlon",
   "field.triathlonType": "Triathlon discipline",
   "field.gpx": "Upload GPX file (optional)",

@@ -9,6 +9,7 @@
   "field.raceDate.hint": "Tuỳ chọn — giúp chúng tôi theo dõi đếm ngược của bạn",
   "field.sport": "Môn thể thao",
   "field.sport.running": "Chạy bộ",
+  "field.sport.cycling": "Đạp xe",
   "field.sport.triathlon": "Triathlon",
   "field.triathlonType": "Cự ly Triathlon",
   "field.gpx": "Tải file GPX (tuỳ chọn)",
