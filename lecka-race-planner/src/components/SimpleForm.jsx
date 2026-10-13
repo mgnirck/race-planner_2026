@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Nav from './Nav.jsx'
 import { calculateTargets } from '../engine/nutrition-engine'
 import { selectProducts }   from '../engine/product-selector'
-import { goalMinutesFromFields } from '../utils/form-helpers.js'
+import { goalMinutesFromFields, distanceToRaceType } from '../utils/form-helpers.js'
 import WeightInput, { toKg } from './shared/WeightInput.jsx'
 import ProductPreferencePicker from './shared/ProductPreferencePicker.jsx'
 import FALLBACK_PRODUCTS from '../config/products.json'
@@ -57,15 +57,6 @@ function deriveConditions(temperature, humidity) {
   if (temperature === 'warm') return humidity === 'humid' ? 'humid' : 'warm'
   // hot
   return 'hot'
-}
-
-function mapCustomDistToRaceType(km) {
-  if (km < 7.5)  return '5k'
-  if (km < 12.5) return '10k'
-  if (km < 22.5) return 'half_marathon'
-  if (km < 40)   return 'marathon'
-  if (km < 75)   return 'ultra_50k'
-  return 'ultra_100k'
 }
 
 const SIMPLE_DEFAULTS = {
@@ -204,7 +195,7 @@ export default function SimpleForm({ onComplete }) {
     : null
   const resolvedRaceType =
     form.race_type === 'custom'
-      ? (customKm > 0 ? mapCustomDistToRaceType(customKm) : '')
+      ? (customKm > 0 ? distanceToRaceType(customKm) : '')
       : form.race_type === 'triathlon'
         ? (form.triathlon_type || '')
         : form.race_type

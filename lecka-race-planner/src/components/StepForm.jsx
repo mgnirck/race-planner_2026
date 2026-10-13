@@ -21,6 +21,7 @@ import FALLBACK_PRODUCTS    from '../config/products.json'
 import competitorProductsData from '../config/competitor-products.json'
 import { useProducts }      from '../hooks/useProducts.js'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
+import { distanceToRaceType } from '../utils/form-helpers.js'
 import { getSavedRegion, saveRegion } from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
 import WeightInput, { toKg } from './shared/WeightInput.jsx'
@@ -64,15 +65,6 @@ const TRIATHLON_SPLIT_BOUNDS = {
   triathlon_olympic: { swim: [15, 70],  bike: [45,  200], run: [25,  150] },
   triathlon_70_3:    { swim: [25, 90],  bike: [120, 420], run: [60,  300] },
   triathlon_140_6:   { swim: [45, 160], bike: [240, 900], run: [120, 600] },
-}
-
-function distanceToRaceType(km) {
-  if (km <  10) return '5k'
-  if (km <  20) return '10k'
-  if (km <  31) return 'half_marathon'
-  if (km <  51) return 'marathon'
-  if (km <  81) return 'ultra_50k'
-  return 'ultra_100k'
 }
 
 const TRIATHLON_OPTIONS = [
