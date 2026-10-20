@@ -1,14 +1,18 @@
 name: Sync engine to lecka-mcp
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
-      - 'src/engine/nutrition-engine.js'
-      - 'src/strategies/carb-strategies.js'
-      - 'src/config/formula-config.json'
-      - 'src/config/regions.json'
+      # The app lives in lecka-race-planner/ inside this repo
+      - 'lecka-race-planner/src/engine/nutrition-engine.js'
+      - 'lecka-race-planner/src/engine/kit-calculator.js'
+      - 'lecka-race-planner/src/strategies/carb-strategies.js'
+      - 'lecka-race-planner/src/config/formula-config.json'
+      - 'lecka-race-planner/src/config/regions.json'
+      - '.github/workflows/sync-engine-to-mcp.yml'
 
 jobs:
   sync:
@@ -29,16 +33,43 @@ jobs:
 
       - name: Copy updated engine files
         run: |
-          cp planner/src/engine/nutrition-engine.js   mcp/engine/nutrition-engine.js
-          cp planner/src/strategies/carb-strategies.js mcp/engine/carb-strategies.js
-          cp planner/src/config/formula-config.json    mcp/config/formula-config.json
-          cp planner/src/config/regions.json           mcp/config/regions.json
+          SRC=planner/lecka-race-planner/src
+          cp $SRC/engine/nutrition-engine.js   mcp/engine/nutrition-engine.js
+          cp $SRC/engine/kit-calculator.js     mcp/engine/kit-calculator.js
+          cp $SRC/strategies/carb-strategies.js mcp/engine/carb-strategies.js
+          cp $SRC/config/formula-config.json    mcp/config/formula-config.json
+          cp $SRC/config/regions.json           mcp/config/regions.json
+
+      # lecka-mcp keeps carb-strategies.js next to the engine and loads JSON via
+      # createRequire, so rewrite those two imports after copying.
+      - name: Adapt engine imports for lecka-mcp layout
+        run: |
+          F=mcp/engine/nutrition-engine.js
+          sed -i "s#^import formulaConfig from '../config/formula-config.json' with { type: 'json' }#import { createRequire } from 'module'\nconst require = createRequire(import.meta.url)\nconst formulaConfig = require('../config/formula-config.json')#" $F
+          sed -i "s#'../strategies/carb-strategies.js'#'./carb-strategies.js'#" $F
+          if grep -q "with { type: 'json' }\|../strategies/" $F; then
+            echo "Import rewrite failed — engine imports changed upstream"; exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Smoke-test engine in lecka-mcp layout
+        working-directory: mcp
+        run: |
+          node --input-type=module -e "
+            import { calculateTargets } from './engine/nutrition-engine.js'
+            const t = calculateTargets({ race_type: 'marathon', goal_minutes: 240, weight_kg: 70, gender: 'male', conditions: 'hot', athlete_profile: 'intermediate' })
+            console.log(t.carb_per_hour, t.sodium_per_hour, t.fluid_ml_per_hour)
+            if (!(t.sodium_per_hour > 0 && t.fluid_ml_per_hour > 0)) process.exit(1)
+          "
 
       - name: Check for changes
         id: diff
         run: |
           cd mcp
-          git diff --quiet && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+          if [ -z "$(git status --porcelain)" ]; then echo "changed=false" >> $GITHUB_OUTPUT; else echo "changed=true" >> $GITHUB_OUTPUT; fi
 
       - name: Create pull request in lecka-mcp
         if: steps.diff.outputs.changed == 'true'
@@ -52,7 +83,8 @@ jobs:
             Automated sync from lecka-race-planner main branch.
 
             Files updated:
-            - `engine/nutrition-engine.js`
+            - `engine/nutrition-engine.js` (imports adapted to this repo's layout)
+            - `engine/kit-calculator.js`
             - `engine/carb-strategies.js`
             - `config/formula-config.json`
             - `config/regions.json`
