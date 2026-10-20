@@ -10,6 +10,9 @@ export const ADDON_CATALOG = [
   { id: 'huma-gel',        display_name: 'Huma Gel',        brand: 'Huma',    type: 'gel',       carbs_per_unit: 23, note: 'real fruit gel' },
   { id: 'nuun-sport',      display_name: 'Nuun Sport Tab',  brand: 'Nuun',    type: 'tab',       category: 'electrolyte', carbs_per_unit: 1,  sodium_per_unit: 300,  note: 'electrolyte tab' },
   { id: 'precision-h1500', display_name: 'Precision Hydration PH 1500', brand: 'Precision Hydration', type: 'tab', category: 'electrolyte', carbs_per_unit: 0, sodium_per_unit: 1500, note: 'high-sodium electrolyte tab' },
+  { id: 'saltstick-caps',              display_name: 'SaltStick Electrolyte Caps',      brand: 'SaltStick', type: 'capsule', category: 'electrolyte', carbs_per_unit: 0, sodium_per_unit: 215, caffeine_mg: 0, note: 'electrolyte capsule' },
+  { id: 'gu-roctane-electrolyte-caps', display_name: 'GU Roctane Electrolyte Capsules', brand: 'GU',        type: 'capsule', category: 'electrolyte', carbs_per_unit: 0, sodium_per_unit: 140, caffeine_mg: 0, note: 'electrolyte capsule' },
+  { id: 'hammer-endurolytes-extreme',  display_name: 'Hammer Endurolytes Extreme',      brand: 'Hammer',    type: 'capsule', category: 'electrolyte', carbs_per_unit: 0, sodium_per_unit: 110, caffeine_mg: 0, note: 'electrolyte capsule' },
 ]
 
 function formatTimingLabel(minutes) {

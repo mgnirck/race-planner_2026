@@ -6,7 +6,9 @@
     "precision": "precisionfuelandhydration.com",
     "gu": "guenergy.com",
     "huma": "humagelrun.com",
-    "nuun": "nuunlife.com"
+    "nuun": "nuunlife.com",
+    "saltstick": "saltstick.com",
+    "hammer": "hammernutrition.com"
   },
   "products": [
     {
@@ -188,6 +190,54 @@
       "fructose_ratio": 0,
       "dual_transporter": false,
       "notes": "Plain sodium chloride capsule, used by ultra runners in heat"
+    },
+    {
+      "id": "saltstick-caps",
+      "brand": "SaltStick",
+      "name": "Electrolyte Caps",
+      "display_name": "SaltStick Electrolyte Caps",
+      "category": "electrolyte",
+      "type": "capsule",
+      "carbs_per_unit": 0,
+      "sodium_per_unit": 215,
+      "potassium_per_unit": 63,
+      "caffeine": false,
+      "caffeine_mg": 0,
+      "fructose_ratio": 0,
+      "dual_transporter": false,
+      "notes": "Swallow with water. Label: 1 per 30–60 min, usually max 10 per day"
+    },
+    {
+      "id": "gu-roctane-electrolyte-caps",
+      "brand": "GU",
+      "name": "Roctane Electrolyte Capsules",
+      "display_name": "GU Roctane Electrolyte Capsules",
+      "category": "electrolyte",
+      "type": "capsule",
+      "carbs_per_unit": 0,
+      "sodium_per_unit": 140,
+      "potassium_per_unit": 0,
+      "caffeine": false,
+      "caffeine_mg": 0,
+      "fructose_ratio": 0,
+      "dual_transporter": false,
+      "notes": "Swallow with water. Label: 1 per hour typical, max 2 per hour"
+    },
+    {
+      "id": "hammer-endurolytes-extreme",
+      "brand": "Hammer",
+      "name": "Endurolytes Extreme",
+      "display_name": "Hammer Endurolytes Extreme",
+      "category": "electrolyte",
+      "type": "capsule",
+      "carbs_per_unit": 0,
+      "sodium_per_unit": 110,
+      "potassium_per_unit": 75,
+      "caffeine": false,
+      "caffeine_mg": 0,
+      "fructose_ratio": 0,
+      "dual_transporter": false,
+      "notes": "Swallow with water. US label 110 mg sodium; some markets list 120 mg"
     },
     {
       "id": "banana",

@@ -1290,7 +1290,7 @@ function SodiumGapCard({ targets, provided, resolvedAddonItems, addonOverrides, 
         return p ? { product: p } : null
       })
       .filter(Boolean),
-  ].some(item => item.product.type === 'tab' || item.product.category === 'electrolyte')
+  ].some(item => item.product.type === 'tab' || item.product.type === 'capsule' || item.product.category === 'electrolyte')
 
   if (sodiumPct >= 70 || dismissed || hasElectrolyte) return null
 
