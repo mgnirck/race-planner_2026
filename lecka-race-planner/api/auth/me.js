@@ -1,5 +1,5 @@
 import { sql, ensureMigrated, getUserFromRequest, revokeSession } from '../_lib/db.js'
-import regionsConfig from '../../src/config/regions.json' assert { type: 'json' }
+import regionsConfig from '../../src/config/regions.json' with { type: 'json' }
 
 const SUPPORTED_LANGS = ['en', 'de', 'da', 'fr', 'vi']
 const VALID_REGIONS = Object.keys(regionsConfig)
