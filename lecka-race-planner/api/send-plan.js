@@ -38,6 +38,7 @@ import { randomBytes } from 'crypto'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
 const _require = createRequire(import.meta.url)
+const SODIUM_LOADING_RULES = _require('../src/config/formula-config.json').validation_rules.sodium
 
 // Load the white Lecka logo PNG at startup for embedding in PDF headers
 const __filename = fileURLToPath(import.meta.url)
@@ -689,17 +690,28 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
   y = doc.lastAutoTable.finalY + 10
 
   // ── Section 4: Pre-race sodium loading (if applicable) ────────────────────
-  const isHotCondition = ['hot', 'humid'].includes(inputs.conditions)
-  const isLongRace = targets.total_duration_minutes >= 240
+  // Same trigger and dose as the engine's sodium_loading_recommendation
+  // (formula-config validation_rules.sodium, studied 10 ml/kg protocol).
+  const rules = SODIUM_LOADING_RULES
+  const isHotCondition = rules.loading_conditions.includes(inputs.conditions)
+  const isLongRace = targets.total_duration_minutes >= rules.loading_min_duration_min
   if (isHotCondition && isLongRace) {
     y = ensureSpace(doc, y, 50)
     y = sectionHeading(doc, t('pdf.section.sodiumLoading'), y, ML, CW)
+
+    const weightRaw = parseFloat(inputs.weight_value)
+    const weightKg  = inputs.weight_unit === 'lb' ? weightRaw / 2.20462 : weightRaw
+    const hasWeight = isFinite(weightKg) && weightKg >= 30 && weightKg <= 200
+    const ml = hasWeight ? Math.round((weightKg * rules.loading_ml_per_kg) / 50) * 50 : null
+    const mg = hasWeight ? Math.round(((ml / 1000) * rules.loading_sodium_mg_per_litre) / 100) * 100 : null
 
     const lines = [
       t('pdf.sodium.line1'),
       t('pdf.sodium.line2'),
       '',
-      t('pdf.sodium.line3'),
+      hasWeight
+        ? t('pdf.sodium.line3', { ml, mg })
+        : t('pdf.sodium.line3_perKg', { mlPerKg: rules.loading_ml_per_kg, mgPerL: rules.loading_sodium_mg_per_litre }),
       t('pdf.sodium.line4'),
       t('pdf.sodium.line5'),
       t('pdf.sodium.line6'),
@@ -711,8 +723,11 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
     doc.setFontSize(9)
     doc.setTextColor(C.gray)
     for (const line of lines) {
-      doc.text(line === '' ? '' : line, ML, y)
-      y += line === '' ? 3 : 5.5
+      if (line === '') { y += 3; continue }
+      for (const part of doc.splitTextToSize(line, CW)) {
+        doc.text(part, ML, y)
+        y += 5.5
+      }
     }
   }
 

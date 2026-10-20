@@ -74,13 +74,14 @@
   "pdf.time.before": "{{n}}min avant",
   "pdf.time.after": "+{{n}}min après",
 
-  "pdf.sodium.line1": "Pour les épreuves d'endurance de plus de 4 heures par temps chaud ou humide, la charge",
-  "pdf.sodium.line2": "sodique avant la course améliore les performances et réduit les risques de crampes.",
-  "pdf.sodium.line3": "Protocole : 2–4 heures avant le départ",
-  "pdf.sodium.line4": "  •  Dissoudre 20,5 g de sel (environ 2 cuillères à café) dans 2,5 L d'eau ou de boisson électrolytique",
-  "pdf.sodium.line5": "  •  Boire progressivement sur 2–4 heures ; ne pas avaler d'un coup (confort gastrique)",
-  "pdf.sodium.line6": "  •  Associer avec votre repas d'avant-course pour un meilleur effet",
-  "pdf.sodium.line7": "Cela augmente le sodium plasmatique et le volume sanguin, prolongeant votre capacité aérobie.",
+  "pdf.sodium.line1": "Course chaude ou humide de 4 heures ou plus : vous pouvez faire une charge sodique avant le départ.",
+  "pdf.sodium.line2": "Voici le protocole utilisé dans les études en laboratoire à la chaleur, adapté à votre poids :",
+  "pdf.sodium.line3": "  •  Environ {{ml}} ml de boisson contenant environ {{mg}} mg de sodium",
+  "pdf.sodium.line3_perKg": "  •  Environ {{mlPerKg}} ml par kg de poids corporel d'une boisson à environ {{mgPerL}} mg de sodium par litre",
+  "pdf.sodium.line4": "  •  Boire sur environ une heure et terminer 30–45 min avant le départ",
+  "pdf.sodium.line5": "  •  Testez-le d'abord à l'entraînement",
+  "pdf.sodium.line6": "  •  À éviter en cas d'hypertension ou de problèmes rénaux",
+  "pdf.sodium.line7": "Pendant la course, buvez selon la soif. Le sel en plus ne protège pas d'un excès de boisson.",
 
   "pdf.footer": "Créé avec Lecka — vraie alimentation, vraie performance — getlecka.com",
 

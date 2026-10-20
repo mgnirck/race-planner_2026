@@ -74,13 +74,14 @@
   "pdf.time.before": "{{n}} phút trước",
   "pdf.time.after": "+{{n}} phút sau",
 
-  "pdf.sodium.line1": "Đối với các cuộc đua sức bền >4 giờ trong điều kiện nóng hoặc ẩm, nạp natri",
-  "pdf.sodium.line2": "trước cuộc đua giúp cải thiện hiệu suất và giảm nguy cơ chuột rút.",
-  "pdf.sodium.line3": "Quy trình: 2–4 giờ trước khi xuất phát",
-  "pdf.sodium.line4": "  •  Pha 20,5g muối (khoảng 2 thìa cà phê) vào 2,5L nước hoặc đồ uống điện giải",
-  "pdf.sodium.line5": "  •  Uống đều trong 2–4 giờ; không uống một lúc (tránh khó chịu dạ dày)",
-  "pdf.sodium.line6": "  •  Kết hợp với bữa ăn trước đua để đạt hiệu quả tốt nhất",
-  "pdf.sodium.line7": "Điều này tăng natri huyết tương và thể tích máu, kéo dài khả năng hiếu khí.",
+  "pdf.sodium.line1": "Cuộc đua nóng hoặc ẩm từ 4 giờ trở lên: bạn có thể nạp natri trước khi xuất phát.",
+  "pdf.sodium.line2": "Đây là quy trình dùng trong các nghiên cứu phòng thí nghiệm ở nhiệt độ cao, theo cân nặng của bạn:",
+  "pdf.sodium.line3": "  •  Khoảng {{ml}} ml đồ uống chứa khoảng {{mg}} mg natri",
+  "pdf.sodium.line3_perKg": "  •  Khoảng {{mlPerKg}} ml mỗi kg cân nặng, đồ uống chứa khoảng {{mgPerL}} mg natri mỗi lít",
+  "pdf.sodium.line4": "  •  Uống từ từ trong khoảng một giờ, xong trước giờ xuất phát 30–45 phút",
+  "pdf.sodium.line5": "  •  Hãy thử trong buổi tập trước",
+  "pdf.sodium.line6": "  •  Không dùng nếu bạn bị huyết áp cao hoặc có vấn đề về thận",
+  "pdf.sodium.line7": "Trong cuộc đua, hãy uống theo cảm giác khát. Thêm muối không bảo vệ bạn khỏi việc uống quá nhiều.",
 
   "pdf.footer": "Được tạo bởi Lecka — thực phẩm thật, hiệu suất thật — getlecka.vn",
 
