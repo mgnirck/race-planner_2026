@@ -1,12 +1,4 @@
-import { sql, ensureMigrated, insertPlan } from './_lib/db.js'
-
-async function getUser(req) {
-  const auth = req.headers.authorization ?? ''
-  const userId = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null
-  if (!userId) return null
-  const { rows } = await sql`SELECT id FROM users WHERE id = ${userId} LIMIT 1`
-  return rows[0] ?? null
-}
+import { sql, ensureMigrated, insertPlan, getUserFromRequest as getUser } from './_lib/db.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')

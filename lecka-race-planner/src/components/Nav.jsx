@@ -1,9 +1,61 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isEmbedded } from '../embed.js'
 import LanguageSwitcher from './LanguageSwitcher.jsx'
+import { logout } from '../auth.js'
 
 const TEAL = '#1D9E75'
+
+function AccountMenu({ email, initial }) {
+  const { t } = useTranslation('common')
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="relative ml-1">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-label={t('nav.myPlans')}
+        aria-expanded={open}
+        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white"
+        style={{ background: TEAL }}
+      >
+        {initial}
+      </button>
+
+      {open && (
+        <>
+          {/* Click-away layer */}
+          <button
+            type="button"
+            aria-hidden="true"
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-10 cursor-default"
+          />
+          <div className="absolute right-0 mt-2 w-56 z-20 bg-white border border-gray-100 rounded-xl shadow-lg py-1">
+            {email && (
+              <p className="px-4 py-2 text-xs text-gray-400 truncate border-b border-gray-100">{email}</p>
+            )}
+            <a
+              href="/dashboard"
+              className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              {t('nav.myPlans')}
+            </a>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); logout() }}
+              className="block w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              {t('nav.logOut')}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 export default function Nav() {
   const { t } = useTranslation('common')
@@ -47,14 +99,7 @@ export default function Nav() {
           </a>
           <LanguageSwitcher compact />
           {userId ? (
-            <a
-              href="/dashboard"
-              aria-label={t('nav.myPlans')}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 text-white ml-1"
-              style={{ background: TEAL }}
-            >
-              {initial}
-            </a>
+            <AccountMenu email={email} initial={initial} />
           ) : (
             <a
               href="/auth/login"

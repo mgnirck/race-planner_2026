@@ -41,7 +41,8 @@ export default function VerifyPage() {
           return
         }
 
-        const { userId, email } = await verifyRes.json()
+        // Server returns a session token; stored under 'lecka_user_id' (see src/auth.js)
+        const { sessionToken: userId, email } = await verifyRes.json()
 
         localStorage.setItem('lecka_user_id',    userId)
         localStorage.setItem('lecka_user_email', email)

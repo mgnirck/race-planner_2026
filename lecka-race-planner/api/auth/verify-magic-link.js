@@ -1,4 +1,4 @@
-import { sql, ensureMigrated } from '../_lib/db.js'
+import { sql, ensureMigrated, createSession } from '../_lib/db.js'
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -49,8 +49,9 @@ export default async function handler(req, res) {
     `
 
     const user = userRows[0]
+    const sessionToken = await createSession(user.id)
 
-    return res.status(200).json({ success: true, userId: user.id, email: user.email })
+    return res.status(200).json({ success: true, sessionToken, email: user.email })
   } catch (err) {
     console.error('[verify-magic-link] error:', err)
     return res.status(500).json({ error: 'Verification failed' })

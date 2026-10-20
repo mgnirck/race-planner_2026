@@ -15,6 +15,7 @@ import FeedbackWidget   from './components/FeedbackWidget'
 import ClaudePage       from './components/ClaudePage'
 import NutritionResearchPage from './components/NutritionResearchPage'
 import { isEmbedded, getSavedRegion } from './embed.js'
+import { validateSession } from './auth.js'
 
 // ── Plan recording — server + localStorage ────────────────────────────────────
 
@@ -65,6 +66,9 @@ export default function App() {
   const [plan,           setPlan]           = useState(null)
   const [offlineBanner,  setOfflineBanner]  = useState(false)
   const [savedPlan,      setSavedPlan]      = useState(null)
+
+  // Clear a dead session (expired / revoked / pre-sessions UUID) once per load
+  useEffect(() => { validateSession() }, [])
 
   useEffect(() => {
     if (!navigator.onLine) {

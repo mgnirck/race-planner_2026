@@ -33,6 +33,7 @@
   "gender.male": "Male",
   "nav.myPlans": "My Plans",
   "nav.buildPlan": "Build a plan",
+  "nav.logOut": "Log out",
   "nav.logIn": "Log in",
   "login.title": "Sign in to Lecka",
   "login.subtitle": "We'll send a one-click login link to your inbox.",

@@ -1,4 +1,4 @@
-import { sql, ensureMigrated } from '../_lib/db.js'
+import { sql, ensureMigrated, getUserFromRequest, revokeSession } from '../_lib/db.js'
 import regionsConfig from '../../src/config/regions.json' assert { type: 'json' }
 
 const SUPPORTED_LANGS = ['en', 'de', 'da', 'fr', 'vi']
@@ -6,17 +6,22 @@ const VALID_REGIONS = Object.keys(regionsConfig)
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
   if (req.method === 'OPTIONS') return res.status(204).end()
 
-  const authHeader = req.headers.authorization ?? ''
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null
-  if (!token) return res.status(401).json({ error: 'Authorization header required' })
-
   try {
     await ensureMigrated()
+
+    // ── DELETE — log out (revoke this session). Always 200: logging out twice is fine.
+    if (req.method === 'DELETE') {
+      await revokeSession(req)
+      return res.status(200).json({ ok: true })
+    }
+
+    const user = await getUserFromRequest(req)
+    if (!user) return res.status(401).json({ error: 'Unauthorized' })
 
     if (req.method === 'GET') {
       const { rows } = await sql`
@@ -24,7 +29,7 @@ export default async function handler(req, res) {
                athlete_profile, caffeine_ok, dist_unit,
                preferred_region, preferred_lang
         FROM users
-        WHERE id = ${token}
+        WHERE id = ${user.id}
         LIMIT 1
       `
       if (rows.length === 0) return res.status(401).json({ error: 'User not found' })
@@ -46,7 +51,7 @@ export default async function handler(req, res) {
         SET
           preferred_region = COALESCE(${preferred_region ?? null}, preferred_region),
           preferred_lang   = COALESCE(${preferred_lang ?? null},   preferred_lang)
-        WHERE id = ${token}
+        WHERE id = ${user.id}
       `
       return res.status(200).json({ ok: true })
     }

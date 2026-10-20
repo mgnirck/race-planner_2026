@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { sql, ensureMigrated } from './_lib/db.js'
+import { sql, ensureMigrated, getUserFromRequest as getUser } from './_lib/db.js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -15,14 +15,6 @@ function isRateLimited(ip) {
   entry.count++
   rateMap.set(ip, entry)
   return false
-}
-
-async function getUser(req) {
-  const auth = req.headers.authorization ?? ''
-  const userId = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null
-  if (!userId) return null
-  const { rows } = await sql`SELECT id FROM users WHERE id = ${userId} LIMIT 1`
-  return rows[0] ?? null
 }
 
 export default async function handler(req, res) {

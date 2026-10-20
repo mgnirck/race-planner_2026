@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
 import Nav from './Nav.jsx'
+import { clearLocalAuth } from '../auth.js'
 import { calculateTargets } from '../engine/nutrition-engine'
 
 // ── Colour constants ──────────────────────────────────────────────────────────
@@ -1068,7 +1069,14 @@ export default function DashboardPage() {
       return
     }
     fetch('/api/plans', { headers: { 'Authorization': `Bearer ${userId}` } })
-      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(r => {
+        if (r.status === 401) {
+          clearLocalAuth()
+          window.location.replace('/auth/login?next=%2Fdashboard')
+          return new Promise(() => {}) // stop the chain; page is navigating away
+        }
+        return r.ok ? r.json() : Promise.reject()
+      })
       .then(data => {
         setPlans(data)
         setLoading(false)

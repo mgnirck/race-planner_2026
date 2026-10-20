@@ -66,7 +66,7 @@ async function getAllProducts() {
   }
 }
 import { getServerT } from './_lib/i18n-server.js'
-import { sql, ensureMigrated, allowEmailSend, insertPlan } from './_lib/db.js'
+import { sql, ensureMigrated, allowEmailSend, insertPlan, getUserFromRequest } from './_lib/db.js'
 
 const APP_URL = process.env.APP_URL || 'https://plan.getlecka.com'
 const PLAN_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days — athletes open the plan email the night before the race
@@ -1103,16 +1103,15 @@ export default async function handler(req, res) {
     const { planId } = req.query ?? {}
     if (!planId) return res.status(400).json({ error: 'planId required' })
 
-    const auth   = req.headers.authorization ?? ''
-    const userId = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' })
-
     try {
       await ensureMigrated()
+      const user = await getUserFromRequest(req)
+      if (!user) return res.status(401).json({ error: 'Unauthorized' })
+
       const { rows } = await sql`
         SELECT p.inputs, p.targets, p.selection, p.region, p.lang
         FROM plans p
-        WHERE p.id = ${planId} AND p.user_id = ${userId}
+        WHERE p.id = ${planId} AND p.user_id = ${user.id}
         LIMIT 1
       `
       if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
@@ -1224,15 +1223,10 @@ export default async function handler(req, res) {
 
       // 1. Owner: logged-in user (Bearer) wins; otherwise the user owning this email.
       let ownerId = null
-      const auth   = req.headers.authorization ?? ''
-      const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null
-      if (bearer) {
-        try {
-          const { rows } = await sql`SELECT id FROM users WHERE id = ${bearer} LIMIT 1`
-          ownerId = rows[0]?.id ?? null
-        } catch {
-          ownerId = null // malformed bearer → treat as logged out
-        }
+      try {
+        ownerId = (await getUserFromRequest(req))?.id ?? null
+      } catch {
+        ownerId = null // session lookup failed → treat as logged out (email still ships)
       }
       const isLoggedIn = Boolean(ownerId)
 

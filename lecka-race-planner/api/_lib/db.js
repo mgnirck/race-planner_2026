@@ -1,5 +1,5 @@
 import { sql } from '@vercel/postgres'
-import { createHash } from 'crypto'
+import { createHash, randomBytes } from 'crypto'
 
 export { sql }
 
@@ -158,6 +158,19 @@ export async function ensureMigrated() {
   await sql`CREATE INDEX IF NOT EXISTS email_sends_recipient_idx ON email_sends (recipient_hash, created_at)`
   await sql`CREATE INDEX IF NOT EXISTS email_sends_ip_idx ON email_sends (ip, created_at)`
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash   TEXT UNIQUE NOT NULL,
+      created_at   TIMESTAMPTZ DEFAULT NOW(),
+      last_used_at TIMESTAMPTZ DEFAULT NOW(),
+      expires_at   TIMESTAMPTZ NOT NULL,
+      revoked_at   TIMESTAMPTZ
+    )
+  `
+  await sql`CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions (user_id)`
+
   migrated = true
 }
 
@@ -260,4 +273,92 @@ export async function insertPlan({ userId, inputs = {}, targets = {}, selection 
   }
 
   return planId
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+//
+// The browser holds a random 64-hex-char token; the DB stores only its SHA-256.
+// Sessions last 90 days and slide forward (at most one UPDATE per day) while used.
+// Raw user UUIDs are NOT accepted as bearer tokens.
+
+const SESSION_TOKEN_RE = /^[a-f0-9]{64}$/
+
+function hashSessionToken(token) {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+function readBearer(req) {
+  const auth  = req.headers?.authorization ?? ''
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+  return SESSION_TOKEN_RE.test(token) ? token : null
+}
+
+/** Create a session for userId. Returns the raw token (only time it exists in plain form). */
+export async function createSession(userId) {
+  await ensureMigrated()
+  const token = randomBytes(32).toString('hex')
+  await sql`
+    INSERT INTO sessions (user_id, token_hash, expires_at)
+    VALUES (${userId}, ${hashSessionToken(token)}, NOW() + INTERVAL '90 days')
+  `
+  // Housekeeping: occasionally drop sessions dead for 30+ days
+  if (Math.random() < 0.02) {
+    try {
+      await sql`
+        DELETE FROM sessions
+        WHERE expires_at < NOW() - INTERVAL '30 days'
+           OR revoked_at < NOW() - INTERVAL '30 days'
+      `
+    } catch {}
+  }
+  return token
+}
+
+/**
+ * Resolve the request's bearer session token to { id, email }, or null if
+ * missing / malformed / expired / revoked. DB errors are THROWN (caller returns
+ * 500) — never turned into null, so an outage doesn't look like a logout.
+ */
+export async function getUserFromRequest(req) {
+  const token = readBearer(req)
+  if (!token) return null
+  await ensureMigrated()
+  const { rows } = await sql`
+    SELECT s.id AS session_id, s.last_used_at, u.id, u.email
+    FROM sessions s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.token_hash = ${hashSessionToken(token)}
+      AND s.revoked_at IS NULL
+      AND s.expires_at > NOW()
+    LIMIT 1
+  `
+  const row = rows[0]
+  if (!row) return null
+
+  // Sliding expiry — at most once per day per session
+  if (Date.now() - new Date(row.last_used_at).getTime() > 24 * 60 * 60 * 1000) {
+    try {
+      await sql`
+        UPDATE sessions
+        SET last_used_at = NOW(), expires_at = NOW() + INTERVAL '90 days'
+        WHERE id = ${row.session_id}
+      `
+    } catch (err) {
+      console.error('[getUserFromRequest] slide failed (non-fatal):', err.message)
+    }
+  }
+  return { id: row.id, email: row.email }
+}
+
+/** Revoke the request's session. Idempotent; returns true if a live session was revoked. */
+export async function revokeSession(req) {
+  const token = readBearer(req)
+  if (!token) return false
+  await ensureMigrated()
+  const { rows } = await sql`
+    UPDATE sessions SET revoked_at = NOW()
+    WHERE token_hash = ${hashSessionToken(token)} AND revoked_at IS NULL
+    RETURNING id
+  `
+  return rows.length > 0
 }
