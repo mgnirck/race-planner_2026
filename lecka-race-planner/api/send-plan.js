@@ -341,7 +341,10 @@ function computeTrainingInfo(selectedProducts, region) {
 
 function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [], region = 'us', lang = 'en') {
   const t  = getServerT(lang)
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  // compress: true + 'FAST' image compression keep the PDF small (~70 KB).
+  // Without them jsPDF embeds the 2543×641 logo as raw RGBA (~6.5 MB), which
+  // exceeds Vercel's 4.5 MB response limit and breaks the dashboard download.
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true })
   const W  = 210   // page width (A4)
   const ML = 20    // left margin
   const MR = 20    // right margin
@@ -353,7 +356,7 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
 
   // Wordmark — real Lecka white PNG logo; falls back to text if image unavailable
   if (LECKA_LOGO_WHITE_B64) {
-    doc.addImage(LECKA_LOGO_WHITE_B64, 'PNG', ML, 7, 56, 17)
+    doc.addImage(LECKA_LOGO_WHITE_B64, 'PNG', ML, 7, 56, 17, undefined, 'FAST')
   } else {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(30)
