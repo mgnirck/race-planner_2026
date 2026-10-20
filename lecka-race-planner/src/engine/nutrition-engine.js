@@ -15,6 +15,7 @@
  * caffeine_ok      : boolean — athlete consents to caffeine products
  * elevation_gain_m : number  — total positive ascent in metres (default 0)
  * distance_km      : number  — course distance in km (default 0 = skip elevation modifier)
+ * sweat_profile    : string  — 'light' | 'average' | 'salty' (default 'average'; no UI yet)
  *
  * Returns
  * -------
@@ -22,6 +23,8 @@
  *   carb_per_hour         : number   g/h
  *   sodium_per_hour       : number   mg/h
  *   fluid_ml_per_hour     : number   ml/h
+ *   sodium_mg_per_litre   : number   mg/L sodium concentration used for sodium_per_hour
+ *   sweat_profile         : string   'light'|'average'|'salty' (resolved profile)
  *   total_duration_minutes: number
  *   total_carbs           : number   g  (whole race)
  *   total_sodium          : number   mg (whole race)
@@ -51,6 +54,7 @@ export function calculateTargets(inputs) {
     athlete_profile = 'intermediate',
     elevation_gain_m = 0,
     distance_km = 0,
+    sweat_profile = 'average',
     age_bracket = null,
   } = inputs
 
@@ -116,52 +120,11 @@ export function calculateTargets(inputs) {
     }
   }
 
-  // ── 3. Sodium rate ────────────────────────────────────────────────────────
-  const sodiumConfig = formulaConfig.sodium_targets_mg_per_hour
+  // ── 3. Shared modifiers (gender, conditions) ─────────────────────────────
   const genderMod = formulaConfig.gender_modifiers[gender] ?? 1.0
   const condMod = formulaConfig.condition_modifiers[conditions]
   if (!condMod) {
     throw new Error(`Unknown conditions "${conditions}". Valid options: cool, mild, warm, hot, humid`)
-  }
-
-  let sodium_per_hour = weight_kg * sodiumConfig.base_per_kg * genderMod * condMod.sodium_multiplier
-
-  // Apply athlete profile modifier for sodium
-  if (profileMods) {
-    sodium_per_hour *= profileMods.sodium_modifier
-  }
-
-  // Apply elevation sodium modifier
-  if (elevation_gain_m > 0 && distance_km > 0) {
-    const elevTierCfg = formulaConfig.elevation_modifiers[elevation_tier]
-    if (elevTierCfg) {
-      sodium_per_hour *= elevTierCfg.sodium_modifier
-    }
-  }
-
-  sodium_per_hour = Math.round(
-    Math.min(Math.max(sodium_per_hour, sodiumConfig.minimum), sodiumConfig.maximum)
-  )
-
-  // ── 3b. Sodium duration scaling ───────────────────────────────────────────────
-  // Short events don't require meaningful sodium replacement.
-  // Scale the target down for events under 90 minutes.
-  const sodiumDurationAnchors = formulaConfig.sodium_duration_scale?.anchors
-  if (sodiumDurationAnchors && sodiumDurationAnchors.length > 0) {
-    const lastAnchor = sodiumDurationAnchors[sodiumDurationAnchors.length - 1]
-    if (goal_minutes < lastAnchor.minutes) {
-      let sodiumScale = 1.0
-      for (let i = 1; i < sodiumDurationAnchors.length; i++) {
-        const prev = sodiumDurationAnchors[i - 1]
-        const curr = sodiumDurationAnchors[i]
-        if (goal_minutes >= prev.minutes && goal_minutes <= curr.minutes) {
-          const ratio = (goal_minutes - prev.minutes) / (curr.minutes - prev.minutes)
-          sodiumScale = prev.multiplier + ratio * (curr.multiplier - prev.multiplier)
-          break
-        }
-      }
-      sodium_per_hour = Math.round(sodium_per_hour * sodiumScale)
-    }
   }
 
   // ── 4. Fluid rate ─────────────────────────────────────────────────────────
@@ -183,6 +146,44 @@ export function calculateTargets(inputs) {
   fluid_ml_per_hour = Math.round(
     Math.min(Math.max(fluid_ml_per_hour, fluidConfig.minimum), fluidMax)
   )
+
+  // ── 4b. Sodium rate (v2 — fluid × concentration) ──────────────────────────
+  // Guidelines set sodium as mg per litre of fluid (ACSM 2007, DGE 2020).
+  // Gender, conditions and profile reach sodium only via fluid. No elevation effect.
+  // See NUTRITION_RESEARCH_ANALYSIS.md §2.
+  const sodiumConfig = formulaConfig.sodium_targets_mg_per_hour
+  const sweatProfileKey =
+    sodiumConfig.concentration_mg_per_litre[sweat_profile] != null
+      ? sweat_profile
+      : sodiumConfig.default_sweat_profile
+  const sodium_mg_per_litre = sodiumConfig.concentration_mg_per_litre[sweatProfileKey]
+
+  let sodium_per_hour = (fluid_ml_per_hour / 1000) * sodium_mg_per_litre
+
+  sodium_per_hour = Math.round(
+    Math.min(Math.max(sodium_per_hour, sodiumConfig.minimum), sodiumConfig.maximum)
+  )
+
+  // Sodium duration scaling
+  // Short events don't require meaningful sodium replacement.
+  // Scale the target down for events under 90 minutes.
+  const sodiumDurationAnchors = formulaConfig.sodium_duration_scale?.anchors
+  if (sodiumDurationAnchors && sodiumDurationAnchors.length > 0) {
+    const lastAnchor = sodiumDurationAnchors[sodiumDurationAnchors.length - 1]
+    if (goal_minutes < lastAnchor.minutes) {
+      let sodiumScale = 1.0
+      for (let i = 1; i < sodiumDurationAnchors.length; i++) {
+        const prev = sodiumDurationAnchors[i - 1]
+        const curr = sodiumDurationAnchors[i]
+        if (goal_minutes >= prev.minutes && goal_minutes <= curr.minutes) {
+          const ratio = (goal_minutes - prev.minutes) / (curr.minutes - prev.minutes)
+          sodiumScale = prev.multiplier + ratio * (curr.multiplier - prev.multiplier)
+          break
+        }
+      }
+      sodium_per_hour = Math.round(sodium_per_hour * sodiumScale)
+    }
+  }
 
   // ── 5. Race totals ────────────────────────────────────────────────────────
   const duration_hours = goal_minutes / 60
@@ -211,26 +212,32 @@ export function calculateTargets(inputs) {
     }
   }
 
-  // Sodium warnings
-  if (validationRules.sodium) {
-    if (goal_minutes >= validationRules.sodium.warning_duration_min && ['hot', 'humid'].includes(conditions)) {
-      warnings.push({
-        type: 'sodium_loading_recommendation',
-        message: validationRules.sodium.warning_hot_humidity,
-        severity: 'info',
-      })
-    }
+  // Sodium pre-load suggestion (hot/humid, long events) — studied protocol
+  const sodiumRules = validationRules.sodium
+  if (
+    sodiumRules &&
+    goal_minutes >= sodiumRules.loading_min_duration_min &&
+    sodiumRules.loading_conditions.includes(conditions)
+  ) {
+    const ml = Math.round((weight_kg * sodiumRules.loading_ml_per_kg) / 50) * 50
+    const mg = Math.round(((ml / 1000) * sodiumRules.loading_sodium_mg_per_litre) / 100) * 100
+    warnings.push({
+      type: 'sodium_loading_recommendation',
+      message: sodiumRules.warning_preload_template
+        .replace('{ml}', String(ml))
+        .replace('{mg}', String(mg)),
+      severity: 'info',
+    })
   }
 
-  // Fluid warnings
-  if (validationRules.fluid && fluid_ml_per_hour > validationRules.fluid.max_safe_ml_per_hour) {
-    if (goal_minutes < 120) {
-      warnings.push({
-        type: 'fluid_overhydration_risk',
-        message: validationRules.fluid.warning_overhydration,
-        severity: 'warning',
-      })
-    }
+  // Overdrinking / hyponatremia (long events)
+  const fluidRules = validationRules.fluid
+  if (fluidRules && goal_minutes >= fluidRules.hyponatremia_min_duration_min) {
+    warnings.push({
+      type: 'fluid_overhydration_risk',
+      message: fluidRules.warning_overhydration,
+      severity: 'warning',
+    })
   }
 
   // Training mode long race warning
@@ -246,6 +253,8 @@ export function calculateTargets(inputs) {
     carb_per_hour,
     sodium_per_hour,
     fluid_ml_per_hour,
+    sodium_mg_per_litre,
+    sweat_profile: sweatProfileKey,
     total_duration_minutes: goal_minutes,
     total_carbs,
     total_sodium,
