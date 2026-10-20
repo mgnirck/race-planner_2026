@@ -106,5 +106,8 @@
   "email.discountTitle": "10% discount included:",
   "email.discountBody": "Code <code style=\"background:#e0f7f2;padding:2px 6px;border-radius:4px;font-family:monospace;\">NUTRIPLAN10</code> is already applied to your cart link above.",
   "email.note": "Open the attached PDF for your full race timeline, training notes, and timing guide.",
+  "email.planOnlineTitle": "Your plan is saved",
+  "email.planOnlineBody": "Open it on your phone on race morning. Full timeline and checkpoints, on any device.",
+  "email.planOnlineCta": "Open my plan →",
   "email.footer": "Built with Lecka &mdash; real food, real performance &mdash;"
 }

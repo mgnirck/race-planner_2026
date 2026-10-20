@@ -748,16 +748,19 @@ function RaceTimelineV2({ events, totalDuration, totalKm }) {
 
 // ── PlanDeliveryCard ──────────────────────────────────────────────────────────
 
-function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false, resolvedAddonItems = [], planId: savedPlanId = null }) {
+function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false, resolvedAddonItems = [], planId = null }) {
   const { t } = useTranslation('results')
   const [email,      setEmail]      = useState(() => localStorage.getItem('lecka_user_email') ?? '')
   const [emailState, setEmailState] = useState('idle') // idle | sending | success | error
   const [saveState,  setSaveState]  = useState('idle') // idle | saving | saved | error
   const [touched,    setTouched]    = useState(false)
+  const [savedPlanId, setSavedPlanId] = useState(planId ?? null)
 
   const userId     = localStorage.getItem('lecka_user_id')
   const isLoggedIn = Boolean(userId)
-  const alreadySaved = Boolean(savedPlanId)
+  const alreadySaved = Boolean(planId)
+  // planId arrives after mount (silent save in ResultsPage), so fall back to the prop
+  const currentPlanId = savedPlanId ?? planId
 
   const isValid   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   const showError = touched && email !== '' && !isValid
@@ -768,36 +771,30 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
     if (!isValid) return
     setEmailState('sending')
     try {
-      const fetches = [
-        fetch('/api/send-plan', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language,
-            addon_items_summary: formatAddonSummary(resolvedAddonItems),
-          }),
+      const headers = { 'Content-Type': 'application/json' }
+      if (isLoggedIn && userId) headers['Authorization'] = `Bearer ${userId}`
+
+      const planRes = await fetch('/api/send-plan', {
+        method:  'POST',
+        headers,
+        body:    JSON.stringify({
+          email, targets, inputs: form, selectedProducts: selection, region, lang: i18n.language,
+          addon_items_summary: formatAddonSummary(resolvedAddonItems),
+          saveToAccount: !hideSave,
+          planId:        currentPlanId,
         }),
-      ]
-      if (!isLoggedIn && !hideSave) {
-        try {
-          localStorage.setItem('lecka_pending_plan', JSON.stringify({
-            inputs: form, targets, selection, region, lang: i18n.language,
-          }))
-        } catch {}
-        fetches.push(
-          fetch('/api/auth/send-magic-link', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ email }),
-          })
-        )
-      }
-      const [planRes] = await Promise.all(fetches)
+      })
       if (!planRes.ok) {
         let apiMsg = ''
         try { apiMsg = (await planRes.json()).error ?? '' } catch {}
         console.error('[send-plan] failed', planRes.status, apiMsg)
         throw new Error(`HTTP ${planRes.status}: ${apiMsg}`)
+      }
+      let data = {}
+      try { data = await planRes.json() } catch {}
+      if (data.planId) {
+        setSavedPlanId(data.planId)
+        if (isLoggedIn) setSaveState('saved')
       }
       setEmailState('success')
       notifyEmailCapture(email, targets.race_type)
@@ -808,6 +805,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
   }
 
   async function handleSave() {
+    if (savedPlanId) { setSaveState('saved'); return }
     setSaveState('saving')
     try {
       const res = await fetch('/api/plans', {
@@ -819,21 +817,22 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
         }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      let data = {}
+      try { data = await res.json() } catch {}
+      if (data.planId) setSavedPlanId(data.planId)
       setSaveState('saved')
     } catch {
       setSaveState('error')
     }
   }
 
-  // Logged-out success: single unified message (includes magic-link hint when save is allowed)
+  // Logged-out success: single unified message (the plan email carries the "Open my plan" link)
   if (!isLoggedIn && emailState === 'success') {
     return (
       <section className="border-2 border-[#48C4B0]/40 bg-[#48C4B0]/5 rounded-2xl p-5">
-        <p className="text-sm font-bold text-[#48C4B0]">✓ Plan sent to {email}</p>
+        <p className="text-sm font-bold text-[#48C4B0]">{t('sendPlan.sentTitle', { email })}</p>
         <p className="text-xs text-gray-500 mt-1">
-          {hideSave
-            ? 'Check your inbox for your PDF.'
-            : 'Check your inbox for your PDF and a login link to save your plan for later.'}
+          {hideSave ? t('sendPlan.sentBodyPdf') : t('sendPlan.sentBodySaved')}
         </p>
       </section>
     )

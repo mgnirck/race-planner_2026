@@ -106,5 +106,8 @@
   "email.discountTitle": "10% rabat inkluderet:",
   "email.discountBody": "Koden <code style=\"background:#e0f7f2;padding:2px 6px;border-radius:4px;font-family:monospace;\">NUTRIPLAN10</code> er allerede anvendt på dit kurv-link ovenfor.",
   "email.note": "Åbn den vedhæftede PDF for din fulde løbstidslinje, træningsnoter og timingguidance.",
+  "email.planOnlineTitle": "Your plan is saved",
+  "email.planOnlineBody": "Open it on your phone on race morning. Full timeline and checkpoints, on any device.",
+  "email.planOnlineCta": "Open my plan →",
   "email.footer": "Bygget med Lecka &mdash; rigtig mad, rigtig præstation &mdash;"
 }

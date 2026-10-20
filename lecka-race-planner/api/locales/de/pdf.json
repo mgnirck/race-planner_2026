@@ -106,5 +106,8 @@
   "email.discountTitle": "10% Rabatt inklusive:",
   "email.discountBody": "Code <code style=\"background:#e0f7f2;padding:2px 6px;border-radius:4px;font-family:monospace;\">NUTRIPLAN10</code> ist bereits auf deinen Warenkorb-Link angewendet.",
   "email.note": "Öffne das beigefügte PDF für deinen vollständigen Renntagszeitplan, Trainingshinweise und Timing-Leitfaden.",
+  "email.planOnlineTitle": "Your plan is saved",
+  "email.planOnlineBody": "Open it on your phone on race morning. Full timeline and checkpoints, on any device.",
+  "email.planOnlineCta": "Open my plan →",
   "email.footer": "Erstellt mit Lecka &mdash; echtes Essen, echte Leistung &mdash;"
 }

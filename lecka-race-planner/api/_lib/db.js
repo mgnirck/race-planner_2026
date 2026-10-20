@@ -204,3 +204,60 @@ export async function allowEmailSend(kind, recipient, ip, { perRecipientPerHour,
     return true
   }
 }
+
+// ── Shared: insert a plan row (used by api/plans.js POST and api/send-plan.js) ──
+export async function insertPlan({ userId, inputs = {}, targets = {}, selection = [], region = 'us', lang = 'en' }) {
+  const { rows } = await sql`
+    INSERT INTO plans (
+      user_id, race_name, race_date, race_type,
+      goal_minutes, conditions, effort,
+      inputs, targets, selection, region, lang
+    ) VALUES (
+      ${userId},
+      ${inputs.race_name || null},
+      ${inputs.race_date || null},
+      ${targets.race_type ?? inputs.race_type ?? null},
+      ${targets.total_duration_minutes ?? null},
+      ${inputs.conditions ?? targets.conditions ?? null},
+      ${inputs.effort ?? targets.effort ?? null},
+      ${JSON.stringify(inputs)}::jsonb,
+      ${JSON.stringify(targets)}::jsonb,
+      ${JSON.stringify(selection ?? [])}::jsonb,
+      ${region},
+      ${lang}
+    )
+    RETURNING id
+  `
+  const planId = rows[0].id
+
+  // Populate weather_estimated_temp from conditions choice (non-fatal)
+  const condToTempC   = { cool: '8', mild: '15', warm: '22', hot: '30' }
+  const estimatedTemp = condToTempC[inputs.conditions ?? inputs.temperature] ?? null
+
+  if (inputs.race_city?.trim() || estimatedTemp) {
+    try {
+      let lat = null, lon = null
+      if (inputs.race_city?.trim()) {
+        const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(inputs.race_city)}&format=json&limit=1`
+        const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'LeckaRacePlanner/1.0 (info@getlecka.com)' } })
+        if (geoRes.ok) {
+          const geoData = await geoRes.json()
+          if (geoData.length > 0) { lat = parseFloat(geoData[0].lat); lon = parseFloat(geoData[0].lon) }
+        }
+      }
+      await sql`
+        UPDATE plans SET
+          race_city              = ${inputs.race_city?.trim() || null},
+          race_lat               = ${lat},
+          race_lng               = ${lon},
+          race_start_time        = ${inputs.race_start_time ?? null},
+          weather_estimated_temp = ${estimatedTemp}
+        WHERE id = ${planId}
+      `
+    } catch (geoErr) {
+      console.error('[insertPlan] geocoding failed (non-fatal):', geoErr.message)
+    }
+  }
+
+  return planId
+}

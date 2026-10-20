@@ -34,6 +34,7 @@ import { Resend }  from 'resend'
 import { computeCartItems, computeLinePrice, computeOptimalGelCart } from '../src/engine/region-utils.js'
 import { createRequire } from 'module'
 import { readFileSync } from 'fs'
+import { randomBytes } from 'crypto'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
 const _require = createRequire(import.meta.url)
@@ -64,7 +65,10 @@ async function getAllProducts() {
   }
 }
 import { getServerT } from './_lib/i18n-server.js'
-import { sql, ensureMigrated, allowEmailSend } from './_lib/db.js'
+import { sql, ensureMigrated, allowEmailSend, insertPlan } from './_lib/db.js'
+
+const APP_URL = process.env.APP_URL || 'https://plan.getlecka.com'
+const PLAN_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days — athletes open the plan email the night before the race
 
 const _validateLocale = (() => {
   const t = getServerT('en')
@@ -737,7 +741,7 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
 
 // ── Email ─────────────────────────────────────────────────────────────────────
 
-async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedAddonItems = [], pdfBuffer, cartUrl, region = 'us', lang = 'en') {
+async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedAddonItems = [], pdfBuffer, cartUrl, region = 'us', lang = 'en', planUrl = null) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY environment variable is not set')
   }
@@ -853,6 +857,15 @@ async function sendPlanEmail(email, inputs, targets, selectedProducts, resolvedA
       </a>` : `<p style="font-size:13px;color:#6b7280;margin:20px 0 0;">
         Visit <a href="https://www.getlecka.com" style="color:#48C4B0;text-decoration:none;">getlecka.com</a> to shop.
       </p>`}
+
+      ${planUrl ? `<div style="margin:8px 0 24px;padding:16px;border:2px solid #e8e8e8;border-radius:10px;">
+        <p style="margin:0 0 4px;font-size:14px;font-weight:700;color:#1B1B1B;">${t('email.planOnlineTitle')}</p>
+        <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">${t('email.planOnlineBody')}</p>
+        <a href="${escapeHtml(planUrl)}"
+           style="display:inline-block;padding:10px 18px;border:2px solid #48C4B0;color:#48C4B0;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px;">
+          ${t('email.planOnlineCta')}
+        </a>
+      </div>` : ''}
 
       <p class="note">
         ${t('email.note')}
@@ -1178,6 +1191,85 @@ export default async function handler(req, res) {
     return res.status(429).json({ success: false, error: 'Too many emails sent — please try again in an hour.' })
   }
 
+  // ── Save plan to account (non-fatal — email always ships) ─────────────────
+  // saveToAccount must be explicitly true. Callers that don't send it
+  // (e.g. SimpleResultsPage) keep their old behaviour: no save, no link.
+  const saveToAccount = req.body?.saveToAccount === true
+  let savedPlanId     = typeof req.body?.planId === 'string' && req.body.planId ? req.body.planId : null
+  let planUrl         = null
+
+  if (saveToAccount) {
+    try {
+      await ensureMigrated()
+
+      // 1. Owner: logged-in user (Bearer) wins; otherwise the user owning this email.
+      let ownerId = null
+      const auth   = req.headers.authorization ?? ''
+      const bearer = auth.startsWith('Bearer ') ? auth.slice(7).trim() : null
+      if (bearer) {
+        try {
+          const { rows } = await sql`SELECT id FROM users WHERE id = ${bearer} LIMIT 1`
+          ownerId = rows[0]?.id ?? null
+        } catch {
+          ownerId = null // malformed bearer → treat as logged out
+        }
+      }
+      const isLoggedIn = Boolean(ownerId)
+
+      if (!ownerId) {
+        const { rows } = await sql`
+          INSERT INTO users (email) VALUES (${recipient})
+          ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+          RETURNING id
+        `
+        ownerId = rows[0].id
+      }
+
+      // 2. Re-send of an already-saved plan → reuse it (no duplicate row).
+      //    Only if the plan belongs to this owner; otherwise save a new copy.
+      if (savedPlanId) {
+        try {
+          const { rows } = await sql`
+            SELECT id FROM plans WHERE id = ${savedPlanId} AND user_id = ${ownerId} LIMIT 1
+          `
+          if (rows.length === 0) savedPlanId = null
+        } catch {
+          savedPlanId = null
+        }
+      }
+
+      if (!savedPlanId) {
+        savedPlanId = await insertPlan({
+          userId:    ownerId,
+          inputs:    { ...inputs, addon_items: inputs.addon_items ?? [] },
+          targets,
+          selection: selectedProducts,
+          region:    clean.region,
+          lang:      clean.lang,
+        })
+      }
+
+      // 3. Link for the email
+      const planPath = `/plan/${savedPlanId}`
+      if (isLoggedIn) {
+        planUrl = `${APP_URL}${planPath}`
+      } else {
+        const token     = randomBytes(32).toString('hex')
+        const expiresAt = new Date(Date.now() + PLAN_LINK_TTL_MS)
+        await sql`
+          INSERT INTO magic_links (email, token, expires_at)
+          VALUES (${recipient}, ${token}, ${expiresAt.toISOString()})
+        `
+        planUrl = `${APP_URL}/auth/verify?token=${token}&next=${encodeURIComponent(planPath)}`
+      }
+    } catch (saveErr) {
+      console.error('[send-plan] plan save failed (non-fatal):', saveErr.message)
+      planUrl = null // email still goes out, just without the "Open my plan" block
+    }
+  } else {
+    savedPlanId = null
+  }
+
   // ── Generate PDF ───────────────────────────────────────────────────────────
   let pdfBuffer
   try {
@@ -1191,7 +1283,7 @@ export default async function handler(req, res) {
 
   // ── Send email (priority — failure aborts the request) ────────────────────
   try {
-    await sendPlanEmail(recipient, clean.inputs, clean.targets, clean.selectedProducts, clean.resolvedAddonItems, pdfBuffer, cartUrl, clean.region, clean.lang)
+    await sendPlanEmail(recipient, clean.inputs, clean.targets, clean.selectedProducts, clean.resolvedAddonItems, pdfBuffer, cartUrl, clean.region, clean.lang, planUrl)
   } catch (emailErr) {
     console.error('[send-plan] Email send failed:', emailErr.message)
     console.error('[send-plan] RESEND_API_KEY set:', !!process.env.RESEND_API_KEY)
@@ -1206,5 +1298,5 @@ export default async function handler(req, res) {
     console.error('[send-plan] Shopify upsert failed (non-fatal):', shopifyErr.message)
   }
 
-  return res.status(200).json({ success: true, message: 'Plan sent!' })
+  return res.status(200).json({ success: true, message: 'Plan sent!', planId: savedPlanId })
 }

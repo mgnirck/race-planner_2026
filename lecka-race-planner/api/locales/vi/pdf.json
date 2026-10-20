@@ -106,5 +106,8 @@
   "email.discountTitle": "Giảm 10% đã bao gồm:",
   "email.discountBody": "Mã <code style=\"background:#e0f7f2;padding:2px 6px;border-radius:4px;font-family:monospace;\">NUTRIPLAN10</code> đã được áp dụng vào đường dẫn giỏ hàng ở trên.",
   "email.note": "Mở PDF đính kèm để xem đầy đủ lịch trình ngày đua, ghi chú luyện tập và hướng dẫn thời điểm bổ sung.",
+  "email.planOnlineTitle": "Kế hoạch của bạn đã được lưu",
+  "email.planOnlineBody": "Mở trên điện thoại vào sáng ngày đua. Đầy đủ lịch trình và các điểm tiếp tế, trên mọi thiết bị.",
+  "email.planOnlineCta": "Mở kế hoạch →",
   "email.footer": "Được tạo bởi Lecka &mdash; thực phẩm thật, hiệu suất thật &mdash;"
 }

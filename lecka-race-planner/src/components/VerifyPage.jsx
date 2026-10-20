@@ -1,13 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+// Only allow same-site relative paths, e.g. "/plan/abc". Blocks "//evil.com", backslash tricks
+// and control characters (browsers strip tabs/newlines, so "/\t/evil.com" would become "//evil.com").
+function safeNext(raw) {
+  if (!raw || typeof raw !== 'string') return null
+  if (/[\x00-\x1f\x7f]/.test(raw)) return null
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\')) return null
+  return raw
+}
+
 export default function VerifyPage() {
   const { t } = useTranslation('common')
   const [status, setStatus] = useState('verifying') // verifying | saving | error
 
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get('token')
+    const params  = new URLSearchParams(window.location.search)
+    const token   = params.get('token')
+    const urlNext = safeNext(params.get('next'))
+
     if (!token) {
+      if (urlNext) { window.location.replace(urlNext); return }
       setStatus('error')
       return
     }
@@ -22,6 +35,8 @@ export default function VerifyPage() {
         })
 
         if (!verifyRes.ok) {
+          // Expired / already used: still open the plan (public view) instead of dead-ending
+          if (urlNext) { window.location.replace(urlNext); return }
           setStatus('error')
           return
         }
@@ -31,7 +46,15 @@ export default function VerifyPage() {
         localStorage.setItem('lecka_user_id',    userId)
         localStorage.setItem('lecka_user_email', email)
 
-        // 2. Save pending plan if one was stored
+        // 2a. New flow: plan already saved server-side → go straight to it
+        if (urlNext) {
+          localStorage.removeItem('lecka_pending_plan')
+          localStorage.removeItem('lecka_auth_next')
+          window.location.replace(urlNext)
+          return
+        }
+
+        // 2b. Legacy flow (unchanged): save pending plan if one was stored
         const pending = localStorage.getItem('lecka_pending_plan')
         const next    = localStorage.getItem('lecka_auth_next')
 
@@ -63,6 +86,7 @@ export default function VerifyPage() {
           window.location.replace('/dashboard')
         }
       } catch {
+        if (urlNext) { window.location.replace(urlNext); return }
         setStatus('error')
       }
     }
