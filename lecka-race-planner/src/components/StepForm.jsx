@@ -1794,14 +1794,18 @@ export default function StepForm({ onComplete }) {
   const [region, setRegion] = useState(() => getSavedRegion() ?? null)
   const [form, setForm] = useState(() => {
     try {
+      // Read only — StrictMode calls initializers twice in dev, so the key is
+      // removed in the effect below rather than here.
       const raw = sessionStorage.getItem('lecka_pro_prefill')
-      if (raw) {
-        sessionStorage.removeItem('lecka_pro_prefill')
-        return { ...DEFAULT_FORM, ...JSON.parse(raw) }
-      }
+      if (raw) return { ...DEFAULT_FORM, ...JSON.parse(raw) }
     } catch {}
     return loadDraft() ?? DEFAULT_FORM
   })
+
+  // Consume the homepage prefill once it has been applied to the form
+  useEffect(() => {
+    try { sessionStorage.removeItem('lecka_pro_prefill') } catch {}
+  }, [])
   const [fromSimple, setFromSimple] = useState(() => loadDraft()?._from_simple === true)
   const [fromSimpleDismissed, setFromSimpleDismissed] = useState(false)
   const [profilePrefilled, setProfilePrefilled] = useState(false)
