@@ -1,6 +1,6 @@
 # Nutrition Plan Logic — Research & Methodology
 
-**Date:** April 2026 (updated June 2026)
+**Date:** April 2026 (updated October 2026)
 **Purpose:** Transparent documentation of how Lecka calculates carbohydrate, sodium, and fluid targets — cross-referenced against current sports science research. Every number on your plan comes from here.
 
 ---
@@ -11,9 +11,9 @@ Lecka's nutrition plan is built on **ISSN 2018, Burke et al. (IOC 2019), and ACS
 
 **What the plan does:**
 - Carb targets scale continuously with race duration — a 70 km race gives a meaningfully different rate from a 50 km race
-- Sodium and fluid targets scale with body weight, conditions, and fitness level
+- Fluid targets scale with body weight, conditions, and fitness level. Sodium is set as a concentration in that fluid (mg per litre), as ACSM and DGE guidance recommends
 - Athlete profile (untrained → elite) adjusts all three targets by up to ±15%
-- Hilly and mountain courses increase carb and sodium targets (climbing burns more glycogen and raises core temperature)
+- Hilly and mountain courses increase carb targets (climbing burns more glycogen)
 - Product quantities are calibrated to actually deliver your carb target — not based on a fixed cadence
 - Your plan page shows a live "Provided vs. Target" breakdown so you can see exactly how well your selected products match your needs
 - Age bracket (optional): masters athletes 40+ receive adjusted carb targets reflecting lower max CHO oxidation rates — a 3–12% reduction depending on age group
@@ -25,7 +25,7 @@ Lecka's nutrition plan is built on **ISSN 2018, Burke et al. (IOC 2019), and ACS
 - No individual sweat-rate measurement — field-tested sweat rate would be the single biggest accuracy improvement
 - No formula versioning — plans generated at different times may differ slightly if research anchors are updated
 - Age modifier is bracket-based (under 40 / 40–49 / 50–59 / 60+), not continuous — a continuous VO2max-decline curve would be more precise
-- Salty sweater self-report has not yet been implemented — individual sweat sodium concentration remains the largest unmodelled variable
+- Sweat saltiness is not asked yet — every plan uses the "average" sodium concentration (700 mg/L). Individual sweat sodium varies roughly 230–2,070 mg/L and remains the largest unmodelled variable
 
 ---
 
@@ -142,67 +142,46 @@ An optional age bracket input applies a downward modifier to carb_per_hour only:
 ### How it's calculated
 
 ```
-sodium_per_hour =
-  weight_kg
-  × 8 mg/kg               (base rate — ISSN midpoint of 4–10 mg/kg/h range)
-  × gender_modifier
-  × condition_modifier
-  × athlete_profile_modifier
-  × elevation_modifier
+sodium_per_hour = fluid_ml_per_hour ÷ 1000 × sodium concentration (mg per litre)
 
-  Clamped to 300–1500 mg/h
+Sodium concentration by sweat profile:
+  light:     500 mg/L
+  average:   700 mg/L   (default — used for every plan today)
+  salty:    1000 mg/L
 
-Gender modifiers:
-  male:   × 1.00
-  female: × 0.90
-  other:  × 0.95
+Then duration scaling for events under 90 min (below).
+Clamped to 200–1000 mg/h. The upper value is a product cap, not a safety limit.
 
-Condition modifiers (sweat sodium loss scales with sweat rate):
-  cool:   × 0.85
-  mild:   × 1.00
-  warm:   × 1.25
-  hot:    × 1.50
-  humid:  × 1.40
-
-Athlete profile modifiers (trained athletes produce more sweat):
-  untrained:    × 0.85
-  intermediate: × 1.00
-  trained:      × 1.10
-  elite:        × 1.15
-
-Elevation modifiers (climbing raises core temperature and sweat rate):
-  flat:       × 1.00
-  rolling:    × 1.05
-  hilly:      × 1.08
-  very hilly: × 1.12
-  mountain:   × 1.18
-
-Worked example — 70 kg male, hot, trained, flat:
-  = 70 × 8 × 1.0 × 1.5 × 1.10 × 1.0 = 924 mg/h
-
-Worked example — 70 kg male, hot, intermediate, flat:
-  = 70 × 8 × 1.0 × 1.5 × 1.00 × 1.0 = 840 mg/h
+Worked example — 70 kg male, hot, intermediate, marathon:
+  fluid  = 70 × 8 × 1.0 × 1.4 × 1.0 = 784 ml/h
+  sodium = 784 ÷ 1000 × 700         = 549 mg/h
 ```
+
+**Why sodium follows fluid.** Sports guidelines set sodium as a concentration in what you drink, not as a rate per kilogram of body weight. Tying sodium to fluid keeps the two in proportion: when heat, body size or fitness raise your sweat rate, both rise together. Gender, conditions and athlete profile therefore affect sodium only through the fluid target. Elevation does not change sodium.
 
 ### Research basis
 
-**ISSN 2015 — Sodium, Fluid & Exercise:**
-- Typical range: 4–10 mg/kg/h; most athletes at 6–8 mg/kg/h baseline
-- Lecka uses 8 mg/kg, at the upper-moderate end — appropriate for active endurance athletes
+**ACSM 2007 (Sawka et al.)** — Sweat rates and sweat electrolytes vary so much between people that fluid and electrolyte plans should be individualised. Recommended drink composition: 20–30 mmol/L sodium (460–690 mg/L) and 2–5 mmol/L potassium.
 
-**Sawka et al. (ACSM 2007):**
-- Sodium aids fluid retention, osmolarity balance, and palatability
-- Fluid-only intake > 1000 ml/h risks hyponatremia in events > 2 h
+**German Nutrition Society (DGE) 2020** — For activity over 90 minutes, drinks should carry 400–1,100 mg/L sodium.
+
+**Why 700 mg/L as the default** — It sits at the top of the ACSM range and in the middle of the DGE range. "Salty" (1,000 mg/L) stays inside the DGE range.
+
+**How much sodium athletes actually lose** — Across 1,303 tested athletes, endurance athletes sweated 1.28 ± 0.57 L/h and lost about 1,190 ± 640 mg sodium per hour (Barnes et al. 2019). Sweat sodium ranges from about 230 to 2,070 mg/L between individuals. A typical plan replaces roughly 40–60% of average losses; full replacement is not the goal.
+
+**Heat adaptation** — After a summer of heat exposure, sweat volume rises but sweat sodium concentration falls 22–59% (Brown et al. 2022). This is why heat raises fluid, and therefore sodium, without an extra sodium multiplier.
+
+**Performance and cramps** — One randomised trial found salt capsules (about 2.6 g sodium in total) shortened half-Ironman finish times (Del Coso et al. 2016). A systematic review found minimal evidence overall that sodium during exercise improves endurance performance. Cramps are not reliably linked to sodium or hydration (Schwellnus 2009; Schwellnus et al. 2011), so the plan does not promise cramp prevention.
 
 ### Sample outputs
 
-| Scenario | Calculated | ISSN range | Assessment |
-|----------|------------|------------|------------|
-| 70 kg male, mild, intermediate | 560 mg/h | 280–560 | ✓ |
-| 70 kg male, hot, intermediate | 840 mg/h | 420–700+ | ⚠️ Upper end — appropriate in sustained heat |
-| 70 kg male, hot, trained | 924 mg/h | 500–900+ | ✓ |
-| 60 kg female, cool, intermediate | 367 mg/h | 240–480 | ✓ |
-| 70 kg male, mountain, intermediate | 840 × 1.18 = 991 mg/h | 500–1200 | ✓ |
+| Scenario | Fluid | Sodium | Previous model |
+|----------|-------|--------|----------------|
+| 70 kg male, mild, intermediate, marathon | 560 ml/h | 392 mg/h | 560 mg/h |
+| 70 kg male, hot, intermediate, marathon | 784 ml/h | 549 mg/h | 840 mg/h |
+| 70 kg male, hot, trained, marathon | 800 ml/h (running cap) | 560 mg/h | 924 mg/h |
+| 60 kg female, cool, intermediate, marathon | 400 ml/h | 280 mg/h | 367 mg/h |
+| 90 kg male, humid, trained, Ironman | 1000 ml/h | 700 mg/h | 1109 mg/h |
 
 ### Sodium duration scaling (new — June 2026)
 
@@ -217,12 +196,27 @@ For events under 90 minutes, the sodium target is scaled down to reflect actual 
 
 Between anchors, linear interpolation is used. For all events 90 minutes and above, the model is unchanged.
 
-**Rationale:** Sweat sodium losses at sub-45-minute efforts are negligible — total race sweat volume is too low for sodium depletion to be a meaningful concern. Surfacing a 500+ mg/h target for a 22-minute 5K is both misleading and not clinically supported. The 90-minute threshold aligns with the ISSN 2015 guideline that electrolyte replacement becomes meaningful for events exceeding 1 hour in moderate conditions.
+**Rationale:** Sweat sodium losses at sub-45-minute efforts are negligible — total race sweat volume is too low for sodium depletion to be a meaningful concern. Surfacing a 500+ mg/h target for a 22-minute 5K is both misleading and not clinically supported. The 90-minute threshold matches the DGE 2020 guidance, which sets sodium recommendations for activity lasting more than 90 minutes.
+
+### Hyponatremia — why the plan says "drink to thirst"
+
+Low blood sodium during or after exercise (hyponatremia) is caused mainly by drinking more than you sweat, not by too little salt. This is the conclusion of the 2015 international consensus statement (Hew-Butler et al.). Sports drinks are far less salty than blood, so drinking too much of them still dilutes blood sodium. At the 161 km Western States race, 6.6% of finishers were hyponatremic even though 94% used sodium supplements; overhydration was the defining feature (Hoffman & Stuempfle 2015).
+
+For races of 4 hours or more, your plan shows a reminder: drink to thirst, and if you are gaining weight during the race, drink less.
+
+### Pre-race sodium loading
+
+For hot or humid races of 4 hours or more, your plan shows the studied pre-load protocol: 10 ml per kg body weight of a drink containing about 3,770 mg sodium per litre (164 mmol/L), sipped over about an hour and finished 30–45 minutes before the start. For a 70 kg athlete this is about 700 ml containing about 2,600 mg sodium. In small lab studies in the heat this raised plasma volume and reduced heat strain (Sims et al. 2007; Hamouti et al. 2014). Try it in training first, and skip it if you have high blood pressure or kidney problems.
 
 ### Known limitations
-1. **Gender modifier is a simplified proxy** — fitness level and VO2max predict sweat rate more accurately than gender alone; a trained female often sweats more than an untrained male
-2. **Heat acclimatisation not captured** — acclimatised athletes have higher pre-race sweat rates even before conditions shift
-3. **No individual sweat-rate input** — the most impactful single improvement available
+1. **Sweat saltiness is not asked yet** — the engine supports light / average / salty, but every plan currently uses "average"
+2. **Fluid modifiers are proxies** — gender and athlete profile approximate sweat rate; a weigh-before-and-after sweat test is more accurate
+3. **Conditions are categorical** — continuous temperature would model sweat rate more precisely
+4. **No individual sweat-rate input** — still the single biggest accuracy improvement available
+
+### Correction note (October 2026)
+
+Earlier versions of this page based the sodium target on 8 mg per kg body weight, citing an "ISSN 2015 Position Stand on Sodium and Fluid in Exercise" and a 4–10 mg/kg/h range. We could not verify either source, so both have been removed. Earlier versions also suggested a pre-race loading dose of 20.5 g in 2.5 L, which was well above the studied protocol; it has been replaced.
 
 ---
 
@@ -247,7 +241,11 @@ fluid_ml_per_hour =
   multiplier — athletes on mountain courses should treat the fluid target
   as a minimum and monitor thirst and urine colour.
 
-Same gender, condition, and profile modifiers as sodium.
+Gender modifiers:      male × 1.00 · female × 0.90 · other × 0.95
+Condition modifiers:   cool × 0.90 · mild × 1.00 · warm × 1.20 · hot × 1.40 · humid × 1.35
+Profile modifiers:     untrained × 0.85 · intermediate × 1.00 · trained × 1.10 · elite × 1.15
+
+The sodium target (section 2) is derived from this fluid value.
 
 Worked example — 70 kg male, warm, trained:
   = 70 × 8 × 1.0 × 1.2 × 1.10 = 739 ml/h
@@ -286,20 +284,20 @@ The previous universal cap of 1000 ml/h has been replaced with this sport-aware 
 
 ## 4. ELEVATION MODIFIER
 
-Climbing increases glycogen demand (muscles work against gravity at higher metabolic cost) and raises core temperature (lower speeds reduce convective cooling). Both carbs and sodium targets are uplifted on hilly courses.
+Climbing increases glycogen demand (muscles work against gravity at higher metabolic cost) and raises core temperature (lower speeds reduce convective cooling). Carb targets are uplifted on hilly courses. Sodium is not adjusted for elevation: no source supports a fixed multiplier, and sodium follows fluid, which is also not adjusted.
 
 ```
 Average course grade is calculated from inputs:
   avg_grade_pct = elevation_gain_m / (distance_km × 1000) × 100
 
 Tier thresholds and modifiers:
-  Tier        | Avg grade  | Carb modifier | Sodium modifier
-  ───────────────────────────────────────────────────────────
-  flat        | < 1%       | × 1.00        | × 1.00
-  rolling     | 1–3%       | × 1.05        | × 1.05
-  hilly       | 3–6%       | × 1.10        | × 1.08
-  very hilly  | 6–10%      | × 1.15        | × 1.12
-  mountain    | > 10%      | × 1.22        | × 1.18
+  Tier        | Avg grade  | Carb modifier
+  ─────────────────────────────────────────
+  flat        | < 1%       | × 1.00
+  rolling     | 1–3%       | × 1.05
+  hilly       | 3–6%       | × 1.10
+  very hilly  | 6–10%      | × 1.15
+  mountain    | > 10%      | × 1.22
 ```
 
 The elevation tier is shown in the plan header so you can verify how your course was classified. If no elevation data is provided, the plan defaults to flat.
@@ -415,8 +413,8 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 ### What's in place
 ✓ Distance-adaptive carb curve — continuous interpolation, no fixed buckets
 ✓ Pluggable strategy system — five carb algorithms available (distance_adaptive is default)
-✓ Athlete profile system — 4 levels (untrained / intermediate / trained / elite) applied to carbs, sodium, and fluid
-✓ Elevation modifier — applied to carbs and sodium based on avg course grade
+✓ Athlete profile system — 4 levels (untrained / intermediate / trained / elite) applied to carbs and fluid (sodium follows fluid)
+✓ Elevation modifier — applied to carbs based on avg course grade
 ✓ Product quantities driven by carb target — not fixed cadence
 ✓ "Provided vs. Target" display — live feedback on every plan page
 ✓ Formulas externalised to config — rates and modifiers are separate from calculation logic
@@ -434,24 +432,26 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 ### Implemented ✅
 - [x] Distance-adaptive carb algorithm (continuous, interpolated from duration)
 - [x] Pluggable carb strategy system (effort_based, duration_based, hybrid, distance_adaptive, vo2max_adjusted)
-- [x] Athlete profile system (untrained → elite) applied to carbs, sodium, and fluid
-- [x] Elevation modifier (carbs and sodium)
+- [x] Athlete profile system (untrained → elite) applied to carbs and fluid
+- [x] Elevation modifier (carbs)
 - [x] Product quantities calibrated to carb target (target-driven, not fixed cadence)
 - [x] "Provided vs. target" display on plan page
 - [x] Carb rate validation and warnings for events < 45 min
-- [x] Pre-race sodium loading guidance for hot/humid ultras > 4 hours
+- [x] Pre-race sodium loading guidance for hot/humid races ≥ 4 hours, using the studied 10 ml/kg protocol (Oct 2026)
 - [x] Effort modifier tapering for ultra-duration events (> 240 min)
 - [x] Masters athlete age bracket modifier (carbs only, optional input)
 - [x] Sodium duration scaling (events < 90 min receive proportionally reduced target)
 - [x] Sport-aware fluid ceiling (800 ml/h running, 1000 ml/h cycling/triathlon bike)
 - [x] Gut training mode safety cap for events > 180 min (minimum 85% of normal target)
 - [x] 60-minute carb anchor corrected from 35 g/h to 42 g/h
+- [x] Sodium model v2: sodium = fluid × concentration (mg/L), sweat-profile ready (Oct 2026)
+- [x] Overdrinking / hyponatremia reminder for races ≥ 4 hours (Oct 2026)
 
 ### Pending
 - [ ] Continuous temperature input (replaces categorical conditions)
 - [ ] Individual sweat-rate estimator tool (weigh before/after field test → feeds sodium/fluid targets)
 - [ ] Formula versioning (reproducible plans even after research updates)
-- [ ] Salty sweater self-report input (binary flag → sodium ×1.3 multiplier) — highest-priority accuracy improvement for sodium model
+- [ ] Sweat profile question in the form (light / average / salty) — engine already supports it; waiting for athlete signal
 
 ---
 
@@ -460,11 +460,19 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 1. **ISSN 2018** — International Society of Sports Nutrition Consensus Statement on Carbohydrate Intake in Sport
 2. **Burke et al. (IOC 2019)** — International Olympic Committee Consensus Statement on Nutrition for Sport — duration-dependent carbohydrate framework
 3. **Sawka et al. (ACSM 2007)** — Position Stand on Fluid Replacement During Exercise — sweat rate variability and hyponatremia risk
-4. **ISSN 2015** — Position Stand on Sodium and Fluid in Exercise
-5. **Marino et al. (2021)** — Sodium and Hydration in Endurance Sports — pre-race loading protocols and heat acclimatisation effects
+4. **Hew-Butler et al. (2015)** — Statement of the 3rd International Exercise-Associated Hyponatremia Consensus Development Conference, Br J Sports Med 49:1432–1446
+5. **Barnes et al. (2019)** — Normative data for sweating rate, sweat sodium concentration and sweat sodium loss in athletes, J Sports Sci
 6. **Jeukendrup & Chambers (2004)** — Oral carbohydrate sensing and exercise performance — basis for 45–60 min mouth-rinsing benefit
 7. **Rollo & Williams (2011)** — Influence of mouth-rinsing a carbohydrate solution on 1 h running performance — CNS activation at sub-1-hour durations
 8. **Coyle et al. / Masters Athletes Review (2020)** — Carbohydrate oxidation rates in masters endurance athletes — age-based CHO modifier rationale
+9. **DGE Working Group Sports Nutrition (2020)** — Fluid Replacement in Sports, Dtsch Z Sportmed
+10. **Baker (2017)** — Sweating rate and sweat sodium concentration in athletes: methodology and variability, Sports Med 47(Suppl 1):111–128
+11. **Brown et al. (2022)** — Seasonal heat acclimatisation in healthy adults: a systematic review, Sports Med
+12. **Hoffman & Stuempfle (2015)** — Sodium supplementation and exercise-associated hyponatremia during prolonged exercise, Med Sci Sports Exerc 47:1781–1787
+13. **Del Coso et al. (2016)** — Effects of oral salt supplementation on physical performance during a half-ironman: a randomized controlled trial, Scand J Med Sci Sports 26:156
+14. **Schwellnus (2009)** — Cause of exercise-associated muscle cramps, Br J Sports Med 43:401; **Schwellnus et al. (2011)** — Cramping in 210 Ironman triathletes, Br J Sports Med 45:650
+15. **Sims et al. (2007)** — Sodium loading aids fluid balance and reduces physiological strain in the heat, Med Sci Sports Exerc 39:123–130
+16. **Hamouti et al. (2014)** — Ingestion of sodium plus water improves cardiovascular function and performance during dehydrating cycling in the heat, Scand J Med Sci Sports
 
 ---
 
