@@ -275,7 +275,7 @@ function PlanPill({ mode }) {
       className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full flex-shrink-0"
       style={{ background: isPro ? TEAL_LIGHT : GREY_LIGHT, color: isPro ? TEAL_MID : GREY_MID }}
     >
-      {isPro ? 'Pro' : 'Quick'}
+      {isPro ? 'Pro' : 'Basic'}
     </span>
   )
 }

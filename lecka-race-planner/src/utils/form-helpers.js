@@ -10,7 +10,7 @@ export function goalMinutesFromFields(h, m) {
 
 /**
  * Maps a race distance in km to the closest standard race type.
- * Shared by the Quick and Pro planners so both classify a distance the same way.
+ * Used by the planner so every distance is classified the same way.
  * Boundaries sit roughly midway between standard distances; anything clearly
  * longer than a marathon (> 45 km, allowing for GPS overshoot) is an ultra.
  * Note: carb targets come from goal duration, not race type — race type only
