@@ -176,5 +176,13 @@
   "action.emailPlan": "Gửi kế hoạch qua email",
   "action.sharePlan": "Chia sẻ kế hoạch",
   "action.dismiss": "Bỏ qua",
-  "action.close": "Đóng"
+  "action.close": "Đóng",
+  "sodiumGap.title": "Lượng natri của bạn mới đáp ứng {{pct}}%",
+  "sodiumGap.body": "Chỉ dùng gel hiếm khi đủ natri cho các cuộc đua dài hoặc trời nóng. Uống viên điện giải cùng nước, và vẫn uống theo cảm giác khát.",
+  "sodiumGap.unit": "{{mg}} mg natri mỗi viên",
+  "sodiumGap.dose": "≈ {{perHour}} mỗi giờ · {{total}} cho cả cuộc đua",
+  "sodiumGap.add": "Thêm vào kế hoạch →",
+  "sodiumGap.or": "— hoặc —",
+  "sodiumGap.dismiss": "✕ Tôi sẽ tự lo phần này",
+  "sodiumGap.dismissAria": "Đóng"
 }

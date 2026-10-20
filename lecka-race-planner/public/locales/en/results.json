@@ -176,5 +176,13 @@
   "action.emailPlan": "Email plan",
   "action.sharePlan": "Share plan",
   "action.dismiss": "Dismiss",
-  "action.close": "Close"
+  "action.close": "Close",
+  "sodiumGap.title": "Your sodium is {{pct}}% covered",
+  "sodiumGap.body": "Gels alone rarely cover sodium in long or hot races. Take capsules with water, and keep drinking to thirst.",
+  "sodiumGap.unit": "{{mg}} mg sodium each",
+  "sodiumGap.dose": "≈ {{perHour}} per hour · {{total}} for the race",
+  "sodiumGap.add": "Add to plan →",
+  "sodiumGap.or": "— or —",
+  "sodiumGap.dismiss": "✕ I'll sort this myself",
+  "sodiumGap.dismissAria": "Dismiss"
 }

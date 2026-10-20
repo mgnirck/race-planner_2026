@@ -1272,11 +1272,14 @@ function TrainingAccordion({ trainingInfo, t }) {
 
 // ── SodiumGapCard ─────────────────────────────────────────────────────────────
 
-const NUUN_SPORT   = COMPETITOR_PRODUCTS.products.find(p => p.id === 'nuun-sport')
-const PH_1500      = COMPETITOR_PRODUCTS.products.find(p => p.id === 'precision-h1500')
+const SODIUM_GAP_CAPSULES = ['saltstick-caps', 'gu-roctane-electrolyte-caps']
+  .map(id => COMPETITOR_PRODUCTS.products.find(p => p.id === id))
+  .filter(Boolean)
+const PH_1500 = COMPETITOR_PRODUCTS.products.find(p => p.id === 'precision-h1500')
 
 function SodiumGapCard({ targets, provided, resolvedAddonItems, addonOverrides, onAddonChange, dismissed, onDismiss }) {
   const { t } = useTranslation('results')
+
   const sodiumPct = targets.sodium_per_hour > 0
     ? Math.round((provided.sodium_per_hour_provided / targets.sodium_per_hour) * 100)
     : 100
@@ -1285,19 +1288,38 @@ function SodiumGapCard({ targets, provided, resolvedAddonItems, addonOverrides, 
     ...resolvedAddonItems,
     ...Object.entries(addonOverrides)
       .filter(([id, qty]) => qty > 0 && !resolvedAddonItems.find(i => i.product.id === id))
-      .map(([id, qty]) => {
+      .map(([id]) => {
         const p = COMPETITOR_PRODUCTS.products.find(p => p.id === id)
         return p ? { product: p } : null
       })
       .filter(Boolean),
-  ].some(item => item.product.type === 'tab' || item.product.type === 'capsule' || item.product.category === 'electrolyte')
+  ].some(item =>
+    item.product.type === 'tab' ||
+    item.product.type === 'capsule' ||
+    item.product.category === 'electrolyte'
+  )
 
   if (sodiumPct >= 70 || dismissed || hasElectrolyte) return null
 
-  const showHighSodium = targets.sodium_per_hour > 800
+  const hours = (targets.total_duration_minutes ?? 0) / 60
+  const gapPerHour = Math.max(targets.sodium_per_hour - provided.sodium_per_hour_provided, 0)
+  const gapTotal = gapPerHour * hours
+  if (hours <= 0 || gapTotal <= 0) return null
+
+  const options = [...SODIUM_GAP_CAPSULES]
+  if (PH_1500 && gapTotal >= PH_1500.sodium_per_unit) options.push(PH_1500)
+
+  function qtyFor(product) {
+    return Math.max(1, Math.ceil(gapTotal / product.sodium_per_unit))
+  }
+
+  function perHourLabel(qty) {
+    const v = qty / hours
+    return v >= 10 ? String(Math.round(v)) : String(Math.round(v * 2) / 2)
+  }
 
   function addProduct(product) {
-    onAddonChange(product.id, 1)
+    onAddonChange(product.id, qtyFor(product))
     onDismiss()
   }
 
@@ -1305,59 +1327,53 @@ function SodiumGapCard({ targets, provided, resolvedAddonItems, addonOverrides, 
     <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-xl p-4">
       <div className="flex items-start justify-between gap-2 mb-2">
         <p className="text-xs font-semibold text-amber-800">
-          Your sodium is {sodiumPct}% covered
+          {t('sodiumGap.title', { pct: sodiumPct })}
         </p>
         <button
           type="button"
           onClick={onDismiss}
           className="text-amber-500 hover:text-amber-700 text-sm leading-none flex-shrink-0"
-          aria-label={t('action.dismiss')}
+          aria-label={t('sodiumGap.dismissAria')}
         >
           ✕
         </button>
       </div>
       <p className="text-xs text-amber-900 mb-3 leading-relaxed">
-        Gels alone rarely cover sodium fully. Adding an electrolyte product will prevent cramping and fluid retention issues late in the race.
+        {t('sodiumGap.body')}
       </p>
       <div className="space-y-2">
-        {NUUN_SPORT && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-amber-900">
-              <span className="font-medium">Nuun Sport Tab</span> · 300mg sodium per tab
-            </span>
-            <button
-              type="button"
-              onClick={() => addProduct(NUUN_SPORT)}
-              className="text-xs font-semibold text-[#48C4B0] hover:underline whitespace-nowrap flex-shrink-0"
-            >
-              Add to plan →
-            </button>
-          </div>
-        )}
-        {showHighSodium && PH_1500 && (
-          <>
-            <p className="text-xs text-amber-600">— or —</p>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-amber-900">
-                <span className="font-medium">Precision Hydration PH 1500</span> · 1500mg sodium per tab
-              </span>
-              <button
-                type="button"
-                onClick={() => addProduct(PH_1500)}
-                className="text-xs font-semibold text-[#48C4B0] hover:underline whitespace-nowrap flex-shrink-0"
-              >
-                Add to plan →
-              </button>
-            </div>
-          </>
-        )}
+        {options.map((p, i) => {
+          const qty = qtyFor(p)
+          return (
+            <React.Fragment key={p.id}>
+              {i > 0 && <p className="text-xs text-amber-600">{t('sodiumGap.or')}</p>}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-amber-900">
+                  <span className="font-medium">{p.display_name}</span>
+                  {' · '}{t('sodiumGap.unit', { mg: p.sodium_per_unit })}
+                  <br />
+                  <span className="text-amber-700">
+                    {t('sodiumGap.dose', { perHour: perHourLabel(qty), total: qty })}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => addProduct(p)}
+                  className="text-xs font-semibold text-[#48C4B0] hover:underline whitespace-nowrap flex-shrink-0"
+                >
+                  {t('sodiumGap.add')}
+                </button>
+              </div>
+            </React.Fragment>
+          )
+        })}
       </div>
       <button
         type="button"
         onClick={onDismiss}
         className="text-xs text-amber-600 hover:text-amber-800 mt-3"
       >
-        ✕ I&apos;ll sort this myself
+        {t('sodiumGap.dismiss')}
       </button>
     </div>
   )
@@ -1895,15 +1911,6 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const timelineTabContent = (
     <div className="space-y-6">
       <WarningBox warnings={targets.warnings} />
-      {['hot', 'humid'].includes(targets.conditions) && targets.total_duration_minutes >= 240 && (
-        <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
-          <p className="font-semibold text-amber-800 mb-1">Pre-race sodium loading recommended</p>
-          <p className="text-amber-900">
-            2–4 hours before your start, mix ~2 teaspoons of salt (~10g) into 1L of water or electrolyte drink.
-            Sip steadily — don&apos;t chug. This boosts blood sodium and plasma volume, helping you perform in the heat.
-          </p>
-        </div>
-      )}
       <section>
         <SectionLabel>{t('section.raceTimeline')}</SectionLabel>
         <RaceTimelineV2 events={timeline} totalDuration={targets.total_duration_minutes} totalKm={totalKm} />
