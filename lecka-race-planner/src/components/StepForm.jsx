@@ -1846,7 +1846,7 @@ export default function StepForm({ onComplete }) {
           if (profile.gender         != null && f.gender          === DEFAULT_FORM.gender)          patch.gender          = profile.gender
           if (profile.athlete_profile != null && f.athlete_profile === DEFAULT_FORM.athlete_profile) patch.athlete_profile = profile.athlete_profile
           if (profile.caffeine_ok    != null && f.caffeine_ok     === DEFAULT_FORM.caffeine_ok)     patch.caffeine_ok     = profile.caffeine_ok
-          if (profile.dist_unit      != null && f.dist_unit       === DEFAULT_FORM.dist_unit)       patch.dist_unit       = profile.dist_unit
+          if (profile.dist_unit      != null && f.dist_unit       === DEFAULT_FORM.dist_unit && f.custom_km_display === '') patch.dist_unit = profile.dist_unit
           if (Object.keys(patch).length === 0) return f
           setProfilePrefilled(true)
           return { ...f, ...patch }

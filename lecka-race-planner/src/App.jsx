@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import StepForm         from './components/StepForm'
 import ResultsPage      from './components/ResultsPage'
-import SimpleForm       from './components/SimpleForm'
 import SimpleResultsPage from './components/SimpleResultsPage'
 import AdminPage        from './components/AdminPage'
 import VerifyPage       from './components/VerifyPage'
@@ -97,52 +96,27 @@ export default function App() {
   // Standalone homepage — only when not in Shopify embed
   if (PATH === '/' && !isEmbedded) return <><HomePage /><FeedbackWidget /></>
 
-  // ── Pro planner — existing full form ─────────────────────────────────────
-  if (PATH === '/planner/pro') {
-    function handleComplete(result) {
-      recordPlan(
-        result.targets?.race_type ?? result.form?.race_type ?? 'unknown',
-        getSavedRegion(),
-        'pro',
-      )
-      saveCurrentPlan(result)
-      setPlan(result)
-    }
-
-    if (plan) {
-      return (
-        <>
-          <ResultsPage
-            targets={plan.targets}
-            foundationTargets={plan.foundationTargets ?? plan.targets}
-            selection={plan.selection}
-            addonCoverage={plan.addonCoverage ?? null}
-            resolvedAddonItems={plan.resolvedAddonItems ?? []}
-            form={plan.form}
-            onBack={() => {
-              try { sessionStorage.removeItem('lecka_form_draft') } catch {}
-              window.location.replace('/planner/pro')
-            }}
-          />
-          <FeedbackWidget />
-        </>
-      )
-    }
-
-    return <><StepForm onComplete={handleComplete} /><FeedbackWidget /></>
+  // ── Single planner ────────────────────────────────────────────────────────
+  // /planner/pro is the one canonical planner URL.
+  // Every other unmatched path redirects to /planner/pro, keeping the query
+  // string and hash. This includes the legacy /planner URL printed on QR
+  // postcards, so UTM and lang params survive.
+  if (PATH !== '/planner/pro') {
+    window.location.replace('/planner/pro' + window.location.search + window.location.hash)
+    return null
   }
 
-  // ── Simple planner — lightweight form at /planner and embedded / ──────────
-  function handleSimpleComplete(result) {
+  function handleComplete(result) {
     recordPlan(
       result.targets?.race_type ?? result.form?.race_type ?? 'unknown',
       getSavedRegion(),
-      'simple',
+      'pro',
     )
     saveCurrentPlan(result)
     setPlan(result)
   }
 
+  // Legacy: a Quick plan restored from offline storage still renders read-only
   if (plan && plan.mode === 'simple') {
     return (
       <>
@@ -153,6 +127,26 @@ export default function App() {
           onBack={() => {
             try { sessionStorage.removeItem('lecka_form_draft') } catch {}
             setPlan(null)
+          }}
+        />
+        <FeedbackWidget />
+      </>
+    )
+  }
+
+  if (plan) {
+    return (
+      <>
+        <ResultsPage
+          targets={plan.targets}
+          foundationTargets={plan.foundationTargets ?? plan.targets}
+          selection={plan.selection}
+          addonCoverage={plan.addonCoverage ?? null}
+          resolvedAddonItems={plan.resolvedAddonItems ?? []}
+          form={plan.form}
+          onBack={() => {
+            try { sessionStorage.removeItem('lecka_form_draft') } catch {}
+            window.location.replace('/planner/pro')
           }}
         />
         <FeedbackWidget />
@@ -184,7 +178,7 @@ export default function App() {
           </div>
         </div>
       )}
-      <SimpleForm onComplete={handleSimpleComplete} />
+      <StepForm onComplete={handleComplete} />
       <FeedbackWidget />
     </>
   )

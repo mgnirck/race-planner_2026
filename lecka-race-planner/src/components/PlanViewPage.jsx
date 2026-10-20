@@ -33,7 +33,7 @@ export default function PlanViewPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 mb-4">{error}</p>
-          <a href="/planner" className="text-[#48C4B0] font-semibold hover:underline">Build your own plan →</a>
+          <a href="/planner/pro" className="text-[#48C4B0] font-semibold hover:underline">Build your own plan →</a>
         </div>
       </div>
     )

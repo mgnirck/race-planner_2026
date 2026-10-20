@@ -39,19 +39,11 @@ export default function Nav() {
         {/* Right — plan CTAs + avatar */}
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           <a
-            href="/planner"
-            className="text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:border-gray-400 transition-colors whitespace-nowrap"
-          >
-            <span className="sm:hidden">{t('nav.quickPlanShort')}</span>
-            <span className="hidden sm:inline">{t('nav.quickPlan')}</span>
-          </a>
-          <a
             href="/planner/pro"
             className="text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-full text-white whitespace-nowrap"
             style={{ background: TEAL }}
           >
-            <span className="sm:hidden">{t('nav.proPlanShort')}</span>
-            <span className="hidden sm:inline">{t('nav.proPlan')}</span>
+            {t('nav.buildPlan')}
           </a>
           <LanguageSwitcher compact />
           {userId ? (
