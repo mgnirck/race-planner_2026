@@ -1114,6 +1114,31 @@ export default async function handler(req, res) {
     return res.status(429).json({ success: false, error: 'Too many requests — please wait a minute and try again.' })
   }
 
+  // ── POST ?action=download — return the plan PDF directly (no email, no Shopify) ──
+  if (req.query?.action === 'download') {
+    const { inputs, targets, selectedProducts, resolvedAddonItems = [], region = 'us', lang = 'en' } = req.body ?? {}
+    if (!inputs || typeof inputs !== 'object' || !targets || typeof targets !== 'object' || !Array.isArray(selectedProducts)) {
+      return res.status(400).json({ success: false, error: 'Missing plan data.' })
+    }
+    try {
+      // Same sanitising as the email path, so the download matches the emailed PDF
+      const clean = sanitizePlanRequest(
+        { inputs, targets, selectedProducts, resolvedAddonItems, region, lang },
+        await getAllProducts(),
+      )
+      const pdfBuffer = generatePDF(clean.inputs, clean.targets, clean.selectedProducts, clean.resolvedAddonItems, clean.region, clean.lang)
+      const slug = (clean.inputs.race_name || clean.targets.race_type || 'plan')
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'plan'
+      res.setHeader('Content-Type', 'application/pdf')
+      res.setHeader('Content-Disposition', `attachment; filename="lecka-${slug}.pdf"`)
+      res.setHeader('Content-Length', pdfBuffer.length)
+      return res.status(200).send(pdfBuffer)
+    } catch (err) {
+      console.error('[send-plan/download] PDF generation failed:', err)
+      return res.status(500).json({ success: false, error: 'Failed to generate PDF.' })
+    }
+  }
+
   const { email, inputs, targets, selectedProducts, resolvedAddonItems = [], region = 'us', lang = 'en' } = req.body ?? {}
 
   const allProductsCatalog = await getAllProducts()

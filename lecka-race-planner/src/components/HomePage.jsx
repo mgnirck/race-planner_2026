@@ -92,7 +92,7 @@ export default function HomePage() {
       }
     }
 
-    try { sessionStorage.setItem('lecka_pro_prefill', JSON.stringify(prefill)) } catch {}
+    try { sessionStorage.setItem('lecka_pro_prefill', JSON.stringify({ ...prefill, _from_home: true })) } catch {}
     window.location.href = '/planner/pro'
   }
 

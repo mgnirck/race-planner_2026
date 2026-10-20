@@ -750,7 +750,7 @@ function RaceTimelineV2({ events, totalDuration, totalKm }) {
 
 function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = false, resolvedAddonItems = [], planId: savedPlanId = null }) {
   const { t } = useTranslation('results')
-  const [email,      setEmail]      = useState('')
+  const [email,      setEmail]      = useState(() => localStorage.getItem('lecka_user_email') ?? '')
   const [emailState, setEmailState] = useState('idle') // idle | sending | success | error
   const [saveState,  setSaveState]  = useState('idle') // idle | saving | saved | error
   const [touched,    setTouched]    = useState(false)
@@ -897,7 +897,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
               <>
                 <p className="text-sm font-semibold text-[#48C4B0]">✓ Plan saved to your account</p>
                 <a
-                  href={savedPlanId ? `/plan/${savedPlanId}` : '/dashboard'}
+                  href="/dashboard"
                   className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap"
                 >
                   View in My Plans →
@@ -1384,6 +1384,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   const [manualQty,      setManualQty]      = useState(null) // null = auto; obj = overrides
   const [chatSummary,    setChatSummary]    = useState(null)
   const [copyPlanState,  setCopyPlanState]  = useState('idle') // idle | copied
+  const [pdfState,       setPdfState]       = useState('idle') // idle | generating | error
   const [proCoachCopy,    setProCoachCopy]    = useState(null)
   const [proWatchOut,     setProWatchOut]     = useState(null)
   const [proCoachLoading, setProCoachLoading] = useState(!isPublicView)
@@ -1696,6 +1697,40 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     window.open(chatUrl, '_blank', 'noopener,noreferrer')
   }
 
+  async function handleDownloadPdf() {
+    setPdfState('generating')
+    try {
+      const res = await fetch('/api/send-plan?action=download', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          inputs:           form,
+          targets,
+          selectedProducts: effectiveSelection,
+          region,
+          lang:             i18n.language,
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const slug = (form.race_name || targets.race_type || 'plan')
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'plan'
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `lecka-${slug}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      setPdfState('idle')
+    } catch (err) {
+      console.error('[ResultsPage] PDF download failed:', err)
+      setPdfState('error')
+      setTimeout(() => setPdfState('idle'), 3000)
+    }
+  }
+
   function handleCopyPlan() {
     const raceName = form.race_name || heroTitle
     const fmtMin = m => { const h = Math.floor(m / 60); const mn = m % 60; return h > 0 ? `${h}h${mn > 0 ? String(mn).padStart(2, '0') : ''}` : `${mn}min` }
@@ -1959,6 +1994,12 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     <PreFuelSection targets={targets} form={form} />
   )
 
+  const targetTiles = [
+    { value: targets.carb_per_hour,     unit: 'g',  label: 'carbs / hour',  sub: `${targets.total_carbs}g total`,  modelValue: formModelTargets?.carb_per_hour },
+    { value: targets.sodium_per_hour,   unit: 'mg', label: 'sodium / hour', sub: `${targets.total_sodium}mg total`, modelValue: formModelTargets?.sodium_per_hour },
+    { value: targets.fluid_ml_per_hour, unit: 'ml', label: 'fluid / hour',  sub: null,                              modelValue: formModelTargets?.fluid_ml_per_hour },
+  ]
+
   const scienceTabContent = (
     <div
       className="prose prose-sm max-w-none text-sm"
@@ -2040,7 +2081,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             )}
             {form.training_mode && (
               <span className="bg-amber-400/80 text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold">
-                Training mode
+                {t('results:header.trainingRun')}
               </span>
             )}
           </div>
@@ -2052,6 +2093,14 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors"
           >
             {copyPlanState === 'copied' ? '✓ Copied' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={pdfState === 'generating'}
+            className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors disabled:opacity-50"
+          >
+            {pdfState === 'generating' ? 'Preparing…' : pdfState === 'error' ? 'Retry' : 'Download PDF'}
           </button>
           <button
             type="button"
@@ -2083,25 +2132,21 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
 
       {/* ── Desktop 3-stat strip ─────────────────────────────────────────────── */}
       <div className="hidden lg:block border-b border-gray-100">
-        <div className="grid grid-cols-3">
-          {[
-            { value: targets.carb_per_hour,     unit: 'g',  label: 'carbs / hour',   sub: `${targets.total_carbs}g total`,   modelValue: formModelTargets?.carb_per_hour,     overRange: targets.carb_per_hour > 120 },
-            { value: targets.sodium_per_hour,   unit: 'mg', label: 'sodium / hour',  sub: `${targets.total_sodium}mg total`,  modelValue: formModelTargets?.sodium_per_hour,   overRange: targets.sodium_per_hour > 1800 },
-            { value: targets.fluid_ml_per_hour, unit: 'ml', label: 'fluid / hour',   sub: null,                               modelValue: formModelTargets?.fluid_ml_per_hour, overRange: targets.fluid_ml_per_hour > 1500 },
-          ].map((m, i) => (
-            <div key={m.label} className={`px-4 py-3 text-center ${i < 2 ? 'border-r border-gray-100' : ''}`}>
-              <p className="text-[10px] font-medium uppercase tracking-[.07em] text-gray-400 mb-1">
+        <div className="grid grid-cols-3 gap-3 px-5 py-4">
+          {targetTiles.map(m => (
+            <div key={m.label} className="rounded-xl bg-[#E1F5EE] px-4 py-3 text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-[.07em] text-[#0F6E56] mb-1">
                 {m.label}
               </p>
-              <p className="text-2xl font-bold text-[#1B1B1B] leading-none">
+              <p className="text-3xl font-bold text-[#085041] leading-none">
                 {m.value}
-                <span className="text-sm text-gray-400 font-normal">{m.unit}</span>
+                <span className="text-sm text-[#0F6E56] font-normal ml-0.5">{m.unit}</span>
               </p>
               {m.sub && (
-                <p className="text-[10px] text-gray-300 mt-1">{m.sub}</p>
+                <p className="text-[10px] text-[#0F6E56]/70 mt-1">{m.sub}</p>
               )}
               {m.modelValue != null && (
-                <p className="text-xs text-gray-400 mt-1">Model suggested: {m.modelValue}{m.unit}/h</p>
+                <p className="text-xs text-[#0F6E56]/70 mt-1">Model suggested: {m.modelValue}{m.unit}/h</p>
               )}
             </div>
           ))}
@@ -2149,7 +2194,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               </button>
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={handleDownloadPdf}
+                disabled={pdfState === 'generating'}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
                 title="Download PDF"
               >
@@ -2190,6 +2236,21 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             </span>
             {conditionLabel && <span className="opacity-80">{conditionLabel}</span>}
           </p>
+        </div>
+
+        {/* Mobile target tiles */}
+        <div className="grid grid-cols-3 gap-2 px-5 py-3 bg-white border-b border-gray-100">
+          {targetTiles.map(m => (
+            <div key={m.label} className="rounded-xl bg-[#E1F5EE] px-2 py-2.5 text-center">
+              <p className="text-xl font-bold text-[#085041] leading-none">
+                {m.value}
+                <span className="text-xs text-[#0F6E56] font-normal ml-0.5">{m.unit}</span>
+              </p>
+              <p className="text-[9px] font-semibold uppercase tracking-[.05em] text-[#0F6E56] mt-1">
+                {m.label}
+              </p>
+            </div>
+          ))}
         </div>
 
         {/* Mobile tabs */}

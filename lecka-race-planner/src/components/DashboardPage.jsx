@@ -363,6 +363,36 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
   const [appliedTargets,  setAppliedTargets]  = useState(null)
   const [applyingWeather, setApplyingWeather] = useState(false)
   const [downloading,     setDownloading]     = useState(false)
+  const [emailState, setEmailState] = useState('idle') // idle | sending | sent | error
+
+  async function handleEmailPlan() {
+    const email = localStorage.getItem('lecka_user_email')
+    if (!email || !heroDetail) {
+      window.location.href = `/plan/${hero.id}`
+      return
+    }
+    setEmailState('sending')
+    try {
+      const res = await fetch('/api/send-plan', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          email,
+          inputs:           heroDetail.inputs ?? {},
+          targets:          appliedTargets ?? heroDetail.targets ?? {},
+          selectedProducts: heroDetail.selection ?? [],
+          region:           heroDetail.region ?? 'us',
+          lang:             heroDetail.lang ?? 'en',
+        }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setEmailState('sent')
+    } catch {
+      setEmailState('error')
+    } finally {
+      setTimeout(() => setEmailState('idle'), 4000)
+    }
+  }
 
   async function handleDownloadPdf() {
     setDownloading(true)
@@ -609,13 +639,18 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
             )}
             {downloading ? t('hero.generating') : t('hero.downloadPdf')}
           </button>
-          <a
-            href={`/plan/${hero.id}`}
-            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors"
+          <button
+            type="button"
+            onClick={handleEmailPlan}
+            disabled={emailState === 'sending' || !heroDetail}
+            className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-xl border-2 border-gray-200 text-gray-600 hover:border-gray-300 transition-colors disabled:opacity-40"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-            {t('hero.email')}
-          </a>
+            {emailState === 'sending' ? t('hero.emailSending')
+              : emailState === 'sent'  ? t('hero.emailSent')
+              : emailState === 'error' ? t('hero.emailError')
+              : t('hero.email')}
+          </button>
         </div>
       </div>
 

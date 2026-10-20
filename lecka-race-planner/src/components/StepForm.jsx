@@ -103,6 +103,7 @@ const DEFAULT_FORM = {
   gpx_parsed:        false,
   sport:             'running',
   triathlon_type:    '',
+  _from_home:        false,
   swim_minutes:      '',
   bike_time_h:       '',
   bike_time_m:       '',
@@ -440,44 +441,46 @@ function StepOne({ form, setForm }) {
         <p className="text-xs text-gray-400 mt-1.5">{t('form:field.startTime.hint')}</p>
       </div>
 
-      {/* Sport selector */}
-      <div>
-        <FieldLabel>{t('form:field.sport')}</FieldLabel>
-        <div className="flex gap-2">
-          <Pill
-            label={t('form:field.sport.running')}
-            selected={form.sport === 'running'}
-            onClick={() => setForm(f => ({
-              ...f,
-              sport:          'running',
-              triathlon_type: '',
-              race_type:      f.custom_km ? distanceToRaceType(parseFloat(f.custom_km)) : '',
-            }))}
-          />
-          <Pill
-            label={t('form:field.sport.cycling')}
-            selected={form.sport === 'cycling'}
-            onClick={() => setForm(f => ({
-              ...f,
-              sport:          'cycling',
-              triathlon_type: '',
-              race_type:      'cycling',
-              surface_type:   'road',
-            }))}
-          />
-          <Pill
-            label={t('form:field.sport.triathlon')}
-            selected={form.sport === 'triathlon'}
-            onClick={() => setForm(f => ({
-              ...f,
-              sport:          'triathlon',
-              triathlon_type: '',
-              race_type:      '',
-              surface_type:   'road',
-            }))}
-          />
+      {/* Sport selector — hidden when the sport was already chosen on the homepage */}
+      {!form._from_home && (
+        <div>
+          <FieldLabel>{t('form:field.sport')}</FieldLabel>
+          <div className="flex gap-2">
+            <Pill
+              label={t('form:field.sport.running')}
+              selected={form.sport === 'running'}
+              onClick={() => setForm(f => ({
+                ...f,
+                sport:          'running',
+                triathlon_type: '',
+                race_type:      f.custom_km ? distanceToRaceType(parseFloat(f.custom_km)) : '',
+              }))}
+            />
+            <Pill
+              label={t('form:field.sport.cycling')}
+              selected={form.sport === 'cycling'}
+              onClick={() => setForm(f => ({
+                ...f,
+                sport:          'cycling',
+                triathlon_type: '',
+                race_type:      'cycling',
+                surface_type:   'road',
+              }))}
+            />
+            <Pill
+              label={t('form:field.sport.triathlon')}
+              selected={form.sport === 'triathlon'}
+              onClick={() => setForm(f => ({
+                ...f,
+                sport:          'triathlon',
+                triathlon_type: '',
+                race_type:      '',
+                surface_type:   'road',
+              }))}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Running and cycling: GPX upload, distance, elevation, surface */}
       {form.sport !== 'triathlon' && (
@@ -1149,22 +1152,21 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
         </div>
       </div>
 
-      {/* Gut training mode */}
+      {/* Plan purpose: race day vs. gut-training run */}
       <div>
-        <FieldLabel>{t('form:field.gut.label')}</FieldLabel>
-        <p className="text-xs text-gray-400 mb-2">
-          {t('form:field.gut.hint')}
-        </p>
-        <div className="flex gap-2">
-          <Pill
-            label={t('form:field.gut.yes')}
-            selected={form.training_mode === true}
-            onClick={() => setForm(f => ({ ...f, training_mode: true }))}
-          />
-          <Pill
-            label={t('form:field.gut.no')}
+        <FieldLabel>{t('form:field.planFor')}</FieldLabel>
+        <div className="space-y-2">
+          <OptionCard
+            label={t('form:field.planFor.race')}
+            desc={t('form:field.planFor.race.desc')}
             selected={form.training_mode === false}
             onClick={() => setForm(f => ({ ...f, training_mode: false }))}
+          />
+          <OptionCard
+            label={t('form:field.planFor.training')}
+            desc={t('form:field.planFor.training.desc')}
+            selected={form.training_mode === true}
+            onClick={() => setForm(f => ({ ...f, training_mode: true }))}
           />
         </div>
       </div>
@@ -1792,14 +1794,18 @@ export default function StepForm({ onComplete }) {
   const [region, setRegion] = useState(() => getSavedRegion() ?? null)
   const [form, setForm] = useState(() => {
     try {
+      // Read only — StrictMode calls initializers twice in dev, so the key is
+      // removed in the effect below rather than here.
       const raw = sessionStorage.getItem('lecka_pro_prefill')
-      if (raw) {
-        sessionStorage.removeItem('lecka_pro_prefill')
-        return { ...DEFAULT_FORM, ...JSON.parse(raw) }
-      }
+      if (raw) return { ...DEFAULT_FORM, ...JSON.parse(raw) }
     } catch {}
     return loadDraft() ?? DEFAULT_FORM
   })
+
+  // Consume the homepage prefill once it has been applied to the form
+  useEffect(() => {
+    try { sessionStorage.removeItem('lecka_pro_prefill') } catch {}
+  }, [])
   const [fromSimple, setFromSimple] = useState(() => loadDraft()?._from_simple === true)
   const [fromSimpleDismissed, setFromSimpleDismissed] = useState(false)
   const [profilePrefilled, setProfilePrefilled] = useState(false)
