@@ -56,7 +56,8 @@ async function getAllProducts() {
       : 'http://localhost:3000'
     const res = await fetch(`${baseUrl}/api/products`)
     if (!res.ok) throw new Error(`products API ${res.status}`)
-    return res.json()
+    // await so a non-JSON body (e.g. Vercel's protection page) lands in the catch
+    return await res.json()
   } catch (err) {
     console.warn('[send-plan] products API failed, using bundled JSON:', err.message)
     return _require('../src/config/products.json')
