@@ -63,7 +63,7 @@
   },
 
   "sodium_duration_scale": {
-    "_comment": "Scales the sodium target down for short events where sodium replacement is not physiologically meaningful. At <45 min, sweat losses are negligible. Ramps to full rate by 90 min. Applied as a multiplier before condition and profile modifiers.",
+    "_comment": "Scales the sodium target down for short events where sodium replacement is not physiologically meaningful. At <45 min, sweat losses are negligible. Ramps to full rate by 90 min (DGE 2020 sets sodium guidance for activity over 90 min). Applied to the final clamped sodium_per_hour.",
     "anchors": [
       { "minutes": 0,  "multiplier": 0.0 },
       { "minutes": 45, "multiplier": 0.4 },
@@ -218,7 +218,9 @@
       "loading_conditions": ["hot", "humid"],
       "loading_ml_per_kg": 10,
       "loading_sodium_mg_per_litre": 3770,
-      "warning_preload_template": "Hot race over 4 hours: you can pre-load sodium. Studied protocol: about {ml} ml of drink containing about {mg} mg sodium, sipped over an hour and finished 30–45 min before the start. Try it in training first. Skip it if you have high blood pressure or kidney problems."
+      "_comment": "Sims 2007 (men, MSSE; women, J Appl Physiol) and Hamouti 2014: 10 ml/kg of a 164 mmol/L sodium drink. Sims: 7 portions over 60 min, starting 105 min before exercise (finished 45 min before). Table salt is 39.3% sodium.",
+      "salt_sodium_fraction": 0.393,
+      "warning_preload_template": "Hot or humid race of 4 hours or more: you can pre-load sodium. Studied protocol: about {ml} ml of water with about {salt} g table salt dissolved in it (about {mg} mg sodium; a level teaspoon of salt is about 6 g). Sip it over about an hour, finishing about 45 minutes before the start. Try it in training first. Skip it if you have high blood pressure or kidney problems."
     },
     "fluid": {
       "max_safe_ml_per_hour": 1000,

@@ -76,9 +76,9 @@
 
   "pdf.sodium.line1": "Heißes oder feuchtes Rennen ab 4 Stunden: Du kannst vor dem Start Natrium vorladen.",
   "pdf.sodium.line2": "Dies ist das in Laborstudien bei Hitze verwendete Protokoll, angepasst an dein Gewicht:",
-  "pdf.sodium.line3": "  •  Etwa {{ml}} ml Getränk mit etwa {{mg}} mg Natrium",
-  "pdf.sodium.line3_perKg": "  •  Etwa {{mlPerKg}} ml pro kg Körpergewicht eines Getränks mit etwa {{mgPerL}} mg Natrium pro Liter",
-  "pdf.sodium.line4": "  •  Über etwa eine Stunde trinken, 30–45 Min. vor dem Start fertig sein",
+  "pdf.sodium.line3": "  •  Etwa {{ml}} ml Wasser mit etwa {{salt}} g Speisesalz (etwa {{mg}} mg Natrium)",
+  "pdf.sodium.line3_perKg": "  •  Etwa {{mlPerKg}} ml pro kg Körpergewicht Wasser mit etwa {{saltPerL}} g Speisesalz pro Liter (etwa {{mgPerL}} mg Natrium pro Liter)",
+  "pdf.sodium.line4": "  •  Über etwa eine Stunde trinken, etwa 45 Min. vor dem Start fertig sein",
   "pdf.sodium.line5": "  •  Zuerst im Training ausprobieren",
   "pdf.sodium.line6": "  •  Nicht anwenden bei Bluthochdruck oder Nierenproblemen",
   "pdf.sodium.line7": "Im Rennen nach Durst trinken. Zusätzliches Salz schützt nicht vor zu viel Trinken.",

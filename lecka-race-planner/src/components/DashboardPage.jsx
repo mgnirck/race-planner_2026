@@ -434,6 +434,8 @@ function HeroCard({ hero, heroDetail, userId, onEdit, onDelete }) {
         elevation_gain_m: inp.elevation_gain_m ?? 0,
         distance_km:      parseFloat(inp.custom_km) || 0,
         training_mode:    inp.training_mode ?? false,
+        age_bracket:      inp.age_bracket ?? null,
+        sweat_profile:    inp.sweat_profile || 'average',
       })
     } catch {
       return null

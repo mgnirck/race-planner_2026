@@ -76,9 +76,9 @@
 
   "pdf.sodium.line1": "Hot or humid race of 4 hours or more: you can pre-load sodium before the start.",
   "pdf.sodium.line2": "This is the protocol used in lab studies in the heat, sized to your body weight:",
-  "pdf.sodium.line3": "  •  About {{ml}} ml of drink containing about {{mg}} mg sodium",
-  "pdf.sodium.line3_perKg": "  •  About {{mlPerKg}} ml per kg body weight of a drink with about {{mgPerL}} mg sodium per litre",
-  "pdf.sodium.line4": "  •  Sip it over about an hour and finish 30–45 min before the start",
+  "pdf.sodium.line3": "  •  About {{ml}} ml of water with about {{salt}} g table salt (about {{mg}} mg sodium)",
+  "pdf.sodium.line3_perKg": "  •  About {{mlPerKg}} ml per kg body weight of water with about {{saltPerL}} g table salt per litre (about {{mgPerL}} mg sodium per litre)",
+  "pdf.sodium.line4": "  •  Sip it over about an hour, finishing about 45 min before the start",
   "pdf.sodium.line5": "  •  Try it in training first",
   "pdf.sodium.line6": "  •  Skip it if you have high blood pressure or kidney problems",
   "pdf.sodium.line7": "During the race, drink to thirst. Extra salt does not protect against drinking too much.",

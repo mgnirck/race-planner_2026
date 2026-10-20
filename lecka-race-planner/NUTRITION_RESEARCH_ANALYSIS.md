@@ -25,7 +25,7 @@ Lecka's nutrition plan is built on **ISSN 2018, Burke et al. (IOC 2019), and ACS
 - No individual sweat-rate measurement — field-tested sweat rate would be the single biggest accuracy improvement
 - No formula versioning — plans generated at different times may differ slightly if research anchors are updated
 - Age modifier is bracket-based (under 40 / 40–49 / 50–59 / 60+), not continuous — a continuous VO2max-decline curve would be more precise
-- Sweat saltiness is not asked yet — every plan uses the "average" sodium concentration (700 mg/L). Individual sweat sodium varies roughly 230–2,070 mg/L and remains the largest unmodelled variable
+- Sweat saltiness is an optional, self-reported question — athletes who are not sure get the "average" sodium concentration (700 mg/L). Individual sweat sodium varies roughly 230–2,070 mg/L, and self-report is only a rough guide, so it remains the largest source of error
 
 ---
 
@@ -146,7 +146,7 @@ sodium_per_hour = fluid_ml_per_hour ÷ 1000 × sodium concentration (mg per litr
 
 Sodium concentration by sweat profile:
   light:     500 mg/L
-  average:   700 mg/L   (default — used for every plan today)
+  average:   700 mg/L   (default — used when the athlete is not sure)
   salty:    1000 mg/L
 
 Then duration scaling for events under 90 min (below).
@@ -156,6 +156,8 @@ Worked example — 70 kg male, hot, intermediate, marathon:
   fluid  = 70 × 8 × 1.0 × 1.4 × 1.0 = 784 ml/h
   sodium = 784 ÷ 1000 × 700         = 549 mg/h
 ```
+
+**Sweat profile question.** The form asks (optionally) how salty the athlete's sweat is. A sweat test is the reliable way to know: under 30 mmol/L (about 690 mg/L) maps to light, 30–60 mmol/L to average, and 60 mmol/L (about 1,380 mg/L) or more to salty — the bands used by Lara et al. 2017 in marathon runners. Without a test, frequent white salt marks on clothing or skin after long sessions suggest salty sweat, but this sign has not been validated against measured sweat sodium, so "Not sure" defaults to average.
 
 **Why sodium follows fluid.** Sports guidelines set sodium as a concentration in what you drink, not as a rate per kilogram of body weight. Tying sodium to fluid keeps the two in proportion: when heat, body size or fitness raise your sweat rate, both rise together. Gender, conditions and athlete profile therefore affect sodium only through the fluid target. Elevation does not change sodium.
 
@@ -167,11 +169,11 @@ Worked example — 70 kg male, hot, intermediate, marathon:
 
 **Why 700 mg/L as the default** — It sits at the top of the ACSM range and in the middle of the DGE range. "Salty" (1,000 mg/L) stays inside the DGE range.
 
-**How much sodium athletes actually lose** — Across 1,303 tested athletes, endurance athletes sweated 1.28 ± 0.57 L/h and lost about 1,190 ± 640 mg sodium per hour (Barnes et al. 2019). Sweat sodium ranges from about 230 to 2,070 mg/L between individuals. A typical plan replaces roughly 40–60% of average losses; full replacement is not the goal.
+**How much sodium athletes actually lose** — Across 1,303 tested athletes, endurance athletes sweated 1.28 ± 0.57 L/h and lost about 1,190 ± 640 mg sodium per hour (Barnes et al. 2019). Sweat sodium ranges from about 230 to 2,070 mg/L between individuals. At the average profile, plans provide roughly 390–700 mg/h, about 30–60% of that average loss; full replacement is not the goal.
 
 **Heat adaptation** — After a summer of heat exposure, sweat volume rises but sweat sodium concentration falls 22–59% (Brown et al. 2022). This is why heat raises fluid, and therefore sodium, without an extra sodium multiplier.
 
-**Performance and cramps** — One randomised trial found salt capsules (about 2.6 g sodium in total) shortened half-Ironman finish times (Del Coso et al. 2016). A systematic review found minimal evidence overall that sodium during exercise improves endurance performance. Cramps are not reliably linked to sodium or hydration (Schwellnus 2009; Schwellnus et al. 2011), so the plan does not promise cramp prevention.
+**Performance and cramps** — One randomised trial found salt capsules (about 2.6 g sodium in total) shortened half-Ironman finish times (Del Coso et al. 2016). A systematic review of five trials found minimal evidence that sodium taken during exercise improves endurance performance, though none of the trials was run in hot conditions (McCubbin et al. 2018). Cramps are not reliably linked to sodium or hydration (Schwellnus 2009; Schwellnus et al. 2011), so the plan does not promise cramp prevention.
 
 ### Sample outputs
 
@@ -206,17 +208,17 @@ For races of 4 hours or more, your plan shows a reminder: drink to thirst, and i
 
 ### Pre-race sodium loading
 
-For hot or humid races of 4 hours or more, your plan shows the studied pre-load protocol: 10 ml per kg body weight of a drink containing about 3,770 mg sodium per litre (164 mmol/L), sipped over about an hour and finished 30–45 minutes before the start. For a 70 kg athlete this is about 700 ml containing about 2,600 mg sodium. In small lab studies in the heat this raised plasma volume and reduced heat strain (Sims et al. 2007; Hamouti et al. 2014). Try it in training first, and skip it if you have high blood pressure or kidney problems.
+For hot or humid races of 4 hours or more, your plan shows the studied pre-load protocol: 10 ml per kg body weight of a drink containing about 3,770 mg sodium per litre (164 mmol/L, about 9.5 g table salt per litre). In the Sims studies the drink was taken in seven portions over 60 minutes, finishing 45 minutes before exercise; in Hamouti et al. it was drunk 90 minutes before. For a 70 kg athlete this is about 700 ml of water with about 6.5 g table salt (about 2,600 mg sodium; a level teaspoon of salt is about 6 g). In small lab studies in the heat this raised plasma volume before exercise, reduced heat strain, and lengthened time to exhaustion or improved time-trial performance (Sims et al. 2007, in men and in women; Hamouti et al. 2014). Try it in training first, and skip it if you have high blood pressure or kidney problems.
 
 ### Known limitations
-1. **Sweat saltiness is not asked yet** — the engine supports light / average / salty, but every plan currently uses "average"
+1. **Sweat saltiness is self-reported** — light / average / salty is optional and most athletes have no sweat test; "Not sure" uses average
 2. **Fluid modifiers are proxies** — gender and athlete profile approximate sweat rate; a weigh-before-and-after sweat test is more accurate
 3. **Conditions are categorical** — continuous temperature would model sweat rate more precisely
 4. **No individual sweat-rate input** — still the single biggest accuracy improvement available
 
 ### Correction note (October 2026)
 
-Earlier versions of this page based the sodium target on 8 mg per kg body weight, citing an "ISSN 2015 Position Stand on Sodium and Fluid in Exercise" and a 4–10 mg/kg/h range. We could not verify either source, so both have been removed. Earlier versions also suggested a pre-race loading dose of 20.5 g in 2.5 L, which was well above the studied protocol; it has been replaced.
+Earlier versions of this page based the sodium target on 8 mg per kg body weight, citing an "ISSN 2015 Position Stand on Sodium and Fluid in Exercise" and a 4–10 mg/kg/h range. We could not verify either source, so both have been removed. Earlier versions also suggested a pre-race loading dose of 20.5 g in 2.5 L, which was well above the studied protocol; it has been replaced. Earlier versions also said salt intake reduces cramping; that claim has been removed.
 
 ---
 
@@ -446,12 +448,12 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 - [x] 60-minute carb anchor corrected from 35 g/h to 42 g/h
 - [x] Sodium model v2: sodium = fluid × concentration (mg/L), sweat-profile ready (Oct 2026)
 - [x] Overdrinking / hyponatremia reminder for races ≥ 4 hours (Oct 2026)
+- [x] Optional sweat profile question in the form (light / average / salty, with sweat-test bands) (Oct 2026)
 
 ### Pending
 - [ ] Continuous temperature input (replaces categorical conditions)
 - [ ] Individual sweat-rate estimator tool (weigh before/after field test → feeds sodium/fluid targets)
 - [ ] Formula versioning (reproducible plans even after research updates)
-- [ ] Sweat profile question in the form (light / average / salty) — engine already supports it; waiting for athlete signal
 
 ---
 
@@ -471,8 +473,10 @@ Bar carbs are not counted toward your during-race carb target; they serve pre- a
 12. **Hoffman & Stuempfle (2015)** — Sodium supplementation and exercise-associated hyponatremia during prolonged exercise, Med Sci Sports Exerc 47:1781–1787
 13. **Del Coso et al. (2016)** — Effects of oral salt supplementation on physical performance during a half-ironman: a randomized controlled trial, Scand J Med Sci Sports 26:156
 14. **Schwellnus (2009)** — Cause of exercise-associated muscle cramps, Br J Sports Med 43:401; **Schwellnus et al. (2011)** — Cramping in 210 Ironman triathletes, Br J Sports Med 45:650
-15. **Sims et al. (2007)** — Sodium loading aids fluid balance and reduces physiological strain in the heat, Med Sci Sports Exerc 39:123–130
-16. **Hamouti et al. (2014)** — Ingestion of sodium plus water improves cardiovascular function and performance during dehydrating cycling in the heat, Scand J Med Sci Sports
+15. **Sims et al. (2007)** — Sodium loading aids fluid balance and reduces physiological strain of trained men exercising in the heat, Med Sci Sports Exerc 39:123–130; **Sims et al. (2007)** — Preexercise sodium loading aids fluid balance and endurance for women exercising in the heat, J Appl Physiol 103:534–541
+16. **Hamouti et al. (2014)** — Ingestion of sodium plus water improves cardiovascular function and performance during dehydrating cycling in the heat, Scand J Med Sci Sports 24:507–518
+17. **McCubbin et al. (2018)** — Impact of sodium ingestion during exercise on endurance performance: a systematic review, Int J Sports Sci 8:97–107
+18. **Lara et al. (2017)** — Sweat sodium loss influences serum sodium concentration in a marathon, Scand J Med Sci Sports 27:152–160
 
 ---
 

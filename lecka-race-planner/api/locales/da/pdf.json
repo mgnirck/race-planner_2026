@@ -76,9 +76,9 @@
 
   "pdf.sodium.line1": "Varmt eller fugtigt løb på 4 timer eller mere: du kan indtage ekstra natrium før start.",
   "pdf.sodium.line2": "Dette er protokollen fra laboratoriestudier i varme, tilpasset din kropsvægt:",
-  "pdf.sodium.line3": "  •  Ca. {{ml}} ml drik med ca. {{mg}} mg natrium",
-  "pdf.sodium.line3_perKg": "  •  Ca. {{mlPerKg}} ml pr. kg kropsvægt af en drik med ca. {{mgPerL}} mg natrium pr. liter",
-  "pdf.sodium.line4": "  •  Drik det over ca. en time, og vær færdig 30–45 min før start",
+  "pdf.sodium.line3": "  •  Ca. {{ml}} ml vand med ca. {{salt}} g bordsalt (ca. {{mg}} mg natrium)",
+  "pdf.sodium.line3_perKg": "  •  Ca. {{mlPerKg}} ml pr. kg kropsvægt vand med ca. {{saltPerL}} g bordsalt pr. liter (ca. {{mgPerL}} mg natrium pr. liter)",
+  "pdf.sodium.line4": "  •  Drik det over ca. en time, og vær færdig ca. 45 min før start",
   "pdf.sodium.line5": "  •  Prøv det først under træning",
   "pdf.sodium.line6": "  •  Undlad det, hvis du har forhøjet blodtryk eller nyreproblemer",
   "pdf.sodium.line7": "Drik efter tørst under løbet. Ekstra salt beskytter ikke mod at drikke for meget.",

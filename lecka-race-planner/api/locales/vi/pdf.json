@@ -76,9 +76,9 @@
 
   "pdf.sodium.line1": "Cuộc đua nóng hoặc ẩm từ 4 giờ trở lên: bạn có thể nạp natri trước khi xuất phát.",
   "pdf.sodium.line2": "Đây là quy trình dùng trong các nghiên cứu phòng thí nghiệm ở nhiệt độ cao, theo cân nặng của bạn:",
-  "pdf.sodium.line3": "  •  Khoảng {{ml}} ml đồ uống chứa khoảng {{mg}} mg natri",
-  "pdf.sodium.line3_perKg": "  •  Khoảng {{mlPerKg}} ml mỗi kg cân nặng, đồ uống chứa khoảng {{mgPerL}} mg natri mỗi lít",
-  "pdf.sodium.line4": "  •  Uống từ từ trong khoảng một giờ, xong trước giờ xuất phát 30–45 phút",
+  "pdf.sodium.line3": "  •  Khoảng {{ml}} ml nước pha khoảng {{salt}} g muối ăn (khoảng {{mg}} mg natri)",
+  "pdf.sodium.line3_perKg": "  •  Khoảng {{mlPerKg}} ml nước mỗi kg cân nặng, pha khoảng {{saltPerL}} g muối ăn mỗi lít (khoảng {{mgPerL}} mg natri mỗi lít)",
+  "pdf.sodium.line4": "  •  Uống từ từ trong khoảng một giờ, xong trước giờ xuất phát khoảng 45 phút",
   "pdf.sodium.line5": "  •  Hãy thử trong buổi tập trước",
   "pdf.sodium.line6": "  •  Không dùng nếu bạn bị huyết áp cao hoặc có vấn đề về thận",
   "pdf.sodium.line7": "Trong cuộc đua, hãy uống theo cảm giác khát. Thêm muối không bảo vệ bạn khỏi việc uống quá nhiều.",

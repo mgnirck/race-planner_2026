@@ -483,7 +483,11 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
               {modelTargets ? (
                 <p className="text-xs text-gray-400 mt-1 leading-tight">Model suggested: {modelTargets.sodium_per_hour}mg/h</p>
               ) : (
-                <p className="text-xs text-gray-400 italic mt-1 leading-tight">From gels + electrolytes</p>
+                <p className="text-xs text-gray-400 italic mt-1 leading-tight">
+                  {targets.sodium_mg_per_litre
+                    ? t('nutrition.sodiumBasis', { mgPerL: targets.sodium_mg_per_litre })
+                    : 'From gels + electrolytes'}
+                </p>
               )}
             </div>
             <div>

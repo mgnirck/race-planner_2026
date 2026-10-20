@@ -118,6 +118,7 @@ const DEFAULT_FORM = {
   humidity:        'dry',
   effort:          '',
   athlete_profile: '',
+  sweat_profile:   '',   // '' = not sure → engine default ('average')
   caffeine_ok:     null,
   training_mode:   false,
   custom_targets_mode: false,
@@ -1132,6 +1133,28 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
               />
             </div>
           </div>
+
+          {/* Sweat saltiness (optional) — sets sodium mg per litre of fluid */}
+          <div>
+            <FieldLabel>{t('form:field.sweat')} <span className="text-gray-400 font-normal">{t('form:field.optional')}</span></FieldLabel>
+            <p className="text-xs text-gray-400 mb-2">{t('form:field.sweat.hint')}</p>
+            <div className="space-y-2">
+              {[
+                { key: '',        label: t('form:field.sweat.unsure'),  desc: t('form:field.sweat.unsure.desc')  },
+                { key: 'light',   label: t('form:field.sweat.light'),   desc: t('form:field.sweat.light.desc')   },
+                { key: 'average', label: t('form:field.sweat.average'), desc: t('form:field.sweat.average.desc') },
+                { key: 'salty',   label: t('form:field.sweat.salty'),   desc: t('form:field.sweat.salty.desc')   },
+              ].map(s => (
+                <OptionCard
+                  key={s.key || 'unsure'}
+                  label={s.label}
+                  desc={s.desc}
+                  selected={(form.sweat_profile ?? '') === s.key}
+                  onClick={() => setForm(f => ({ ...f, sweat_profile: s.key }))}
+                />
+              ))}
+            </div>
+          </div>
         </>
       )}
 
@@ -1895,6 +1918,7 @@ export default function StepForm({ onComplete }) {
           elevation_gain_m: form.elevation_gain_m,
           distance_km:      parseFloat(form.custom_km) || 0,
           age_bracket:      form.age_bracket ?? null,
+          sweat_profile:    form.sweat_profile || 'average',
         })
         setPreviewTargets(preview)
       } catch {
@@ -1934,6 +1958,7 @@ export default function StepForm({ onComplete }) {
       distance_km:      parseFloat(form.custom_km) || 0,
       training_mode:    form.training_mode,
       age_bracket:      form.age_bracket ?? null,
+      sweat_profile:    form.sweat_profile || 'average',
     })
 
     const useCustomTargets =

@@ -16,6 +16,12 @@ const rateLimitMap = new Map()
 const RATE_LIMIT   = 5
 const WINDOW_MS    = 60_000
 
+// Shared sodium/hydration guardrails (sodium model v2 — see NUTRITION_RESEARCH_ANALYSIS.md §2)
+const SODIUM_GUARDRAILS = `Sodium and hydration rules (evidence-based, always follow):
+- Never claim that sodium, salt or electrolytes prevent or cure muscle cramps. The evidence does not support it.
+- Low blood sodium in long races is caused mainly by drinking more than you sweat. Extra salt does not prevent it. For races of 4 hours or more, advise drinking to thirst, not drinking extra to "stay ahead".
+- If you mention pre-race sodium loading, use only the studied protocol: about 10 ml per kg body weight of water with about 3,770 mg sodium per litre (about 9.5 g table salt per litre), sipped over about an hour and finished about 45 minutes before the start, for hot or humid races of 4 hours or more. Never suggest larger doses.`
+
 const TRIATHLON_RACE_TYPES = new Set(['triathlon_sprint', 'triathlon_olympic', 'triathlon_70_3', 'triathlon_140_6'])
 
 function buildTriathlonPhaseBlock(input) {
@@ -255,6 +261,8 @@ Lecka's voice: pragmatic and direct. State facts clearly. Support recommendation
 
 You will receive a race plan and a list of segments with calculated nutrition needs. For each segment, suggest specific products and quantities from the athlete's plan, and add one short coaching note (1 sentence) specific to that segment's challenges.
 
+${SODIUM_GUARDRAILS}
+
 Respond ONLY with valid JSON. No prose before or after. No markdown.`,
         messages: [{ role: 'user', content: buildCheckpointFillPrompt(plan, segments, available_products) }],
       }),
@@ -320,6 +328,8 @@ Guidelines:
 - Watch out for: the one or two most likely pre-race nutrition mistakes for this specific athlete. 2–3 direct sentences. Reference their actual race and profile.
 
 IMPORTANT — electrolyte guidance: Lecka does not currently sell electrolyte products. For electrolyte needs, recommend widely available options such as electrolyte tablets (e.g. Nuun, Precision Hydration tabs), sports drink powder mixed into water, or simply salted food. Do not suggest a "Lecka electrolyte" product.
+
+${SODIUM_GUARDRAILS}
 
 Respond ONLY with this exact JSON (no markdown, no extra keys):
 {
@@ -456,7 +466,9 @@ should cover one of: why the carb target is what it is, why the sodium
 target matters for these specific conditions, how to execute the timing
 on race day, one honest note about what commonly goes wrong and how
 to avoid it. Total length: 120–180 words. Do not mention Lecka by name
-— the athlete already knows whose plan this is.`,
+— the athlete already knows whose plan this is.
+
+${SODIUM_GUARDRAILS}`,
         messages: [
           {
             role:    'user',

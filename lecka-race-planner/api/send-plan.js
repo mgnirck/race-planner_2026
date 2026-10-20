@@ -704,14 +704,19 @@ function generatePDF(inputs, targets, selectedProducts, resolvedAddonItems = [],
     const hasWeight = isFinite(weightKg) && weightKg >= 30 && weightKg <= 200
     const ml = hasWeight ? Math.round((weightKg * rules.loading_ml_per_kg) / 50) * 50 : null
     const mg = hasWeight ? Math.round(((ml / 1000) * rules.loading_sodium_mg_per_litre) / 100) * 100 : null
+    const salt = hasWeight ? Math.round((mg / 1000 / rules.salt_sodium_fraction) * 2) / 2 : null
 
     const lines = [
       t('pdf.sodium.line1'),
       t('pdf.sodium.line2'),
       '',
       hasWeight
-        ? t('pdf.sodium.line3', { ml, mg })
-        : t('pdf.sodium.line3_perKg', { mlPerKg: rules.loading_ml_per_kg, mgPerL: rules.loading_sodium_mg_per_litre }),
+        ? t('pdf.sodium.line3', { ml, mg, salt })
+        : t('pdf.sodium.line3_perKg', {
+          mlPerKg:  rules.loading_ml_per_kg,
+          mgPerL:   rules.loading_sodium_mg_per_litre,
+          saltPerL: Math.round((rules.loading_sodium_mg_per_litre / 1000 / rules.salt_sodium_fraction) * 2) / 2,
+        }),
       t('pdf.sodium.line4'),
       t('pdf.sodium.line5'),
       t('pdf.sodium.line6'),

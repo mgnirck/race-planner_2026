@@ -221,11 +221,13 @@ export function calculateTargets(inputs) {
   ) {
     const ml = Math.round((weight_kg * sodiumRules.loading_ml_per_kg) / 50) * 50
     const mg = Math.round(((ml / 1000) * sodiumRules.loading_sodium_mg_per_litre) / 100) * 100
+    const salt = Math.round((mg / 1000 / sodiumRules.salt_sodium_fraction) * 2) / 2
     warnings.push({
       type: 'sodium_loading_recommendation',
       message: sodiumRules.warning_preload_template
         .replace('{ml}', String(ml))
-        .replace('{mg}', String(mg)),
+        .replace('{mg}', String(mg))
+        .replace('{salt}', String(salt)),
       severity: 'info',
     })
   }
