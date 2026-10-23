@@ -51,21 +51,8 @@ try {
   console.warn('[send-plan] Could not load Lecka white logo PNG:', err.message)
 }
 
-async function getAllProducts() {
-  try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'http://localhost:3000'
-    const res = await fetch(`${baseUrl}/api/products`)
-    if (!res.ok) throw new Error(`products API ${res.status}`)
-    // await so a non-JSON body (e.g. Vercel's protection page) lands in the catch
-    return await res.json()
-  } catch (err) {
-    console.warn('[send-plan] products API failed, using bundled JSON:', err.message)
-    return _require('../src/config/products.json')
-  }
-}
 import { getServerT } from './_lib/i18n-server.js'
+import { getProductCatalog } from './_lib/products.js'
 import { sql, ensureMigrated, allowEmailSend, insertPlan, getUserFromRequest } from './_lib/db.js'
 
 const APP_URL = process.env.APP_URL || 'https://plan.getlecka.com'
@@ -1117,7 +1104,7 @@ export default async function handler(req, res) {
       if (rows.length === 0) return res.status(404).json({ error: 'Plan not found' })
 
       const { inputs = {}, targets = {}, selection = [], region = 'us', lang = 'en' } = rows[0]
-      const allProducts = await getAllProducts()
+      const allProducts = await getProductCatalog()
       const resolvedSelection = (selection ?? []).map(item => {
         const product = allProducts.find(p => p.id === (item.product_id ?? item.product?.id ?? item.id))
         return product ? { ...item, product } : item
@@ -1156,7 +1143,7 @@ export default async function handler(req, res) {
       // Same sanitising as the email path, so the download matches the emailed PDF
       const clean = sanitizePlanRequest(
         { inputs, targets, selectedProducts, resolvedAddonItems, region, lang },
-        await getAllProducts(),
+        await getProductCatalog(),
       )
       const pdfBuffer = generatePDF(clean.inputs, clean.targets, clean.selectedProducts, clean.resolvedAddonItems, clean.region, clean.lang)
       const slug = (clean.inputs.race_name || clean.targets.race_type || 'plan')
@@ -1173,7 +1160,7 @@ export default async function handler(req, res) {
 
   const { email, inputs, targets, selectedProducts, resolvedAddonItems = [], region = 'us', lang = 'en' } = req.body ?? {}
 
-  const allProductsCatalog = await getAllProducts()
+  const allProductsCatalog = await getProductCatalog()
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!email || typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
