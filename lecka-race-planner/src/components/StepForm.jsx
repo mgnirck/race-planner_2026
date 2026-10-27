@@ -22,6 +22,8 @@ import competitorProductsData from '../config/competitor-products.json'
 import { useProducts }      from '../hooks/useProducts.js'
 import { parseGPX, estimateElevationImpact } from '../utils/gpx-parser.js'
 import { distanceToRaceType } from '../utils/form-helpers.js'
+// Side effect: turns ?race=…&time=… links (Shopify race quiz) into lecka_pro_prefill
+import '../utils/url-prefill.js'
 import { getSavedRegion, saveRegion } from '../embed.js'
 import { isAvailableInRegion } from '../engine/region-utils.js'
 import WeightInput, { toKg } from './shared/WeightInput.jsx'
