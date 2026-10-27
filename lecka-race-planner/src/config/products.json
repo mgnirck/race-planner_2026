@@ -565,23 +565,7 @@
         ]
       },
       "dk": {
-        "variants": [
-          {
-            "shopify_variant_id": "51596039815434",
-            "units_per_pack": 12,
-            "price": 209.0
-          },
-          {
-            "shopify_variant_id": "51601533468938",
-            "units_per_pack": 6,
-            "price": 115.0
-          },
-          {
-            "shopify_variant_id": "51596039782666",
-            "units_per_pack": 1,
-            "price": 21.0
-          }
-        ]
+        "variants": []
       },
       "ch": {
         "variants": [
@@ -732,23 +716,7 @@
         ]
       },
       "dk": {
-        "variants": [
-          {
-            "shopify_variant_id": "51596043976970",
-            "units_per_pack": 12,
-            "price": 209.0
-          },
-          {
-            "shopify_variant_id": "51601529372938",
-            "units_per_pack": 6,
-            "price": 115.0
-          },
-          {
-            "shopify_variant_id": "51596043944202",
-            "units_per_pack": 1,
-            "price": 21.0
-          }
-        ]
+        "variants": []
       },
       "ch": {
         "variants": [
@@ -910,13 +878,7 @@
         ]
       },
       "dk": {
-        "variants": [
-          {
-            "shopify_variant_id": "50971167916298",
-            "units_per_pack": 12,
-            "price": 259.0
-          }
-        ]
+        "variants": []
       },
       "ch": {
         "variants": [
@@ -993,13 +955,7 @@
         "variants": []
       },
       "dk": {
-        "variants": [
-          {
-            "shopify_variant_id": "50971111981322",
-            "units_per_pack": 9,
-            "price": 179.0
-          }
-        ]
+        "variants": []
       },
       "ch": {
         "variants": []
