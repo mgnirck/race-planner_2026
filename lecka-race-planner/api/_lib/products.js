@@ -36,13 +36,15 @@ export async function getProductCatalog() {
     if (rows.length === 0) return FALLBACK_PRODUCTS
 
     // Merge DB live data (availability, variants) with static metadata from
-    // products.json (nutrition facts, lab reports, etc. not stored in DB).
+    // products.json (nutrition facts, lab reports, etc.). Nutrition facts come
+    // from products.json, which follows the Lecka product master; the DB copies
+    // are only used for products that are not in products.json.
     const productMap = new Map()
 
     for (const row of rows) {
       if (!productMap.has(row.id)) {
+        const staticProduct = staticById[row.id]
         productMap.set(row.id, {
-          ...(staticById[row.id] ?? {}),
           id: row.id,
           name: row.name,
           type: row.type,
@@ -52,6 +54,8 @@ export async function getProductCatalog() {
           caffeine_mg: row.caffeine_mg,
           dual_transporter: row.dual_transporter,
           net_weight_g: row.net_weight_g ? Number(row.net_weight_g) : null,
+          ...(staticProduct ?? {}),
+          ...(staticProduct ? { name: row.name, type: row.type } : {}),
           regions: {},
         })
       }

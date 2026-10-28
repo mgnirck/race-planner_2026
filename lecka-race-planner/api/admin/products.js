@@ -7,7 +7,8 @@
  * PATCH  ?op=variant                  → update a variant's price or shopify_variant_id
  * POST   ?op=variant                  → add a new variant
  * DELETE ?op=variant                  → remove a variant
- * POST   ?op=seed                     → re-seed product_catalog from bundled products.json
+ * POST   ?op=seed                     → sync product facts from bundled products.json
+ *                                        (adds missing regions/variants, never changes existing ones)
  *
  * Auth: X-Admin-Password header on all requests.
  */
@@ -283,6 +284,9 @@ async function seedProducts(req, res) {
         updated_at = NOW()
     `
 
+    // Regions and variants: only add what the DB doesn't have yet. Existing
+    // availability, Shopify variant IDs and prices are managed in the admin and
+    // are never deleted or overwritten here.
     for (const region of PRODUCT_REGIONS) {
       const variants = p.regions?.[region]?.variants ?? []
       const available = variants.length > 0
@@ -290,18 +294,21 @@ async function seedProducts(req, res) {
       await sql`
         INSERT INTO product_regions (product_id, region, available)
         VALUES (${p.id}, ${region}, ${available})
-        ON CONFLICT (product_id, region) DO UPDATE SET
-          available = EXCLUDED.available, updated_at = NOW()
+        ON CONFLICT (product_id, region) DO NOTHING
       `
 
-      // Re-seed variants: delete existing then re-insert
-      await sql`DELETE FROM product_variants WHERE product_id = ${p.id} AND region = ${region}`
+      const { rows: existing } = await sql`
+        SELECT 1 FROM product_variants WHERE product_id = ${p.id} AND region = ${region} LIMIT 1
+      `
+      if (existing.length > 0) continue
+
       for (let j = 0; j < variants.length; j++) {
         const v = variants[j]
+        if (!v.shopify_variant_id) continue
         await sql`
           INSERT INTO product_variants
             (product_id, region, shopify_variant_id, units_per_pack, price, sort_order)
-          VALUES (${p.id}, ${region}, ${v.shopify_variant_id ?? ''}, ${v.units_per_pack}, ${v.price}, ${j})
+          VALUES (${p.id}, ${region}, ${v.shopify_variant_id}, ${v.units_per_pack}, ${v.price}, ${j})
         `
       }
     }
