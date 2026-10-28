@@ -5,11 +5,14 @@
  * Usage:  node scripts/test-race-quiz.mjs
  *
  * Extracts the pure logic between "calc:start" and "calc:end" in
- * shopify/race-fuel-quiz.liquid and checks that:
- *   - carbs, sodium and fluid per hour equal calculateTargets() from the engine
- *     for the quiz defaults (70 kg, intermediate, humid) on every race × goal × sweat
- *   - every kit covers the race carbs and is the cheapest pack mix
- *   - the planner link params map onto a valid lecka_pro_prefill
+ * shopify/race-fuel-quiz.liquid and checks, for every race, distance, climbing,
+ * goal, finish time and sweat answer the quiz can produce:
+ *   - the quiz's numbers equal what the full planner shows for the same answers:
+ *     the quiz's own planner link → prefillFromParams() → the engine inputs
+ *     StepForm builds (with the planner's defaults: 70 kg, gender male, age
+ *     not given) → calculateTargets()
+ *   - every kit covers the race carbs and the hour plan adds up to the kit
+ *   - the cheapest pack mix is picked
  *
  * Exits with code 1 on any failure. No dependencies.
  */
@@ -22,49 +25,88 @@ const block = liquid.split('/* calc:start')[1]?.split('/* calc:end */')[0]
 if (!block) throw new Error('calc block not found')
 const CALC = new Function(block.replace(/^[^\n]*\n/, '') + '\nreturn CALC')()
 
-let failures = 0
+let failures = 0, cases = 0
 function check(ok, msg) {
-  if (!ok) { failures++; console.log('FAIL', msg) }
+  if (!ok) { failures++; if (failures < 40) console.log('FAIL', msg) }
 }
 
-const SWEATS = ['light', 'average', 'salty']
-const live = () => null // fallback prices, everything in stock
-
-for (const race of Object.keys(CALC.RACES)) {
-  CALC.GOALS.forEach((goal, i) => {
-    const base = CALC.RACES[race].min[i]
-    for (const minutes of [base - 30, base, base + 45]) {
-      for (const sweat of SWEATS) {
-        const q = CALC.targets(race, goal, minutes, sweat)
-        const e = calculateTargets({
-          race_type: race, goal_minutes: minutes, weight_kg: 70, conditions: 'humid',
-          effort: goal, sweat_profile: sweat, athlete_profile: 'intermediate',
-        })
-        const tag = `${race} ${goal} ${minutes}min ${sweat}`
-        check(q.carbH === e.carb_per_hour, `${tag}: carbs ${q.carbH} vs engine ${e.carb_per_hour}`)
-        check(q.naH === e.sodium_per_hour, `${tag}: sodium ${q.naH} vs engine ${e.sodium_per_hour}`)
-        check(q.fluidH === e.fluid_ml_per_hour, `${tag}: fluid ${q.fluidH} vs engine ${e.fluid_ml_per_hour}`)
-      }
-    }
-
-    const tg = CALC.targets(race, goal, base, 'average')
-    const units = CALC.raceUnits(race, tg)
-    const carbsInKit = units.gel * 25.4 + units.ultra * 62.5 + units.bar * 23.5
-    check(carbsInKit >= tg.carbs, `${race} ${goal}: kit carbs ${carbsInKit} < ${tg.carbs}`)
-    for (const mult of [1, 3]) {
-      const kit = CALC.buildKit(race, units, mult, base, live)
-      const got = kit.lines.reduce((s, l) => s + l.units, 0)
-      const need = (units.gel + units.ultra + units.bar) * mult
-      check(got >= need, `${race} ${goal} ×${mult}: ${got} units < ${need}`)
-      check(kit.total > 0, `${race} ${goal} ×${mult}: empty kit`)
-      if (mult === 1) {
-        const lines = kit.lines.map(l => `${l.qty}× ${l.name}`).join(', ')
-        console.log(`${race.padEnd(15)} ${goal.padEnd(9)} ${String(base).padStart(3)}min  ` +
-          `${tg.carbH} g/h ${tg.naH} mg/h  covered ${CALC.sodiumCovered(units)}/${tg.sodium} mg  ` +
-          `${kit.total.toLocaleString('vi-VN')} ₫  ${lines}`)
-      }
-    }
+// StepForm: DEFAULT_FORM + prefill, then the calculateTargets() call in handleSubmit
+const DEFAULT_FORM = { weight_value: '70', weight_unit: 'kg', gender: 'male', temperature: '', humidity: 'dry',
+  elevation_gain_m: 0, custom_km: '', training_mode: false, age_bracket: null, sweat_profile: '', athlete_profile: '' }
+function deriveConditions(f) {
+  if (f.temperature === 'cool') return 'cool'
+  if (f.temperature === 'mild') return f.humidity === 'humid' ? 'warm' : 'mild'
+  if (f.temperature === 'warm') return f.humidity === 'humid' ? 'humid' : 'warm'
+  if (f.temperature === 'hot') return 'hot'
+  return 'mild'
+}
+function plannerTargets(params, minutes) {
+  const qs = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]))
+  const f = { ...DEFAULT_FORM, ...prefillFromParams(qs) }
+  // Triathlon: the planner asks for splits; assume they add up to the quiz time
+  const goal = f.goal_time_h != null ? Number(f.goal_time_h) * 60 + Number(f.goal_time_m) : minutes
+  return calculateTargets({
+    race_type: f.race_type, goal_minutes: goal, weight_kg: Number(f.weight_value), gender: f.gender,
+    conditions: deriveConditions(f), effort: f.effort, athlete_profile: f.athlete_profile,
+    elevation_gain_m: f.elevation_gain_m, distance_km: parseFloat(f.custom_km) || 0,
+    training_mode: f.training_mode, age_bracket: f.age_bracket, sweat_profile: f.sweat_profile || 'average',
   })
+}
+
+const live = () => null // fallback prices, everything in stock
+const DISTANCES = {
+  '10k': [10], half_marathon: [21.1], marathon: [42.2], triathlon_70_3: [113],
+  custom: [1, 5, 15, 30.5, 50, 65, 100, 170, 500], cycling: [20, 60, 100, 160, 300],
+}
+const CLIMBS = [0, 150, 600, 1500, 3500, 9000]
+const SWEATS = ['light', 'average', 'salty', 'unsure']
+
+for (const kind of CALC.KINDS) {
+  for (const km of DISTANCES[kind]) {
+    for (const elev of kind === 'triathlon_70_3' ? [0] : CLIMBS) {
+      CALC.GOALS.forEach((goal, gi) => {
+        const est = CALC.estimateMinutes(kind, km, elev, gi)
+        for (const minutes of [est, Math.max(5, est - 25), est + 40]) {
+          for (const sweat of SWEATS) {
+            cases++
+            const race = CALC.raceType(kind, km)
+            const q = CALC.targets(race, goal, minutes, sweat === 'unsure' ? 'average' : sweat, km, elev)
+            const e = plannerTargets(CALC.plannerParams(kind, km, elev > 0, elev, minutes, goal, sweat), minutes)
+            const tag = `${kind} ${km}km +${elev}m ${goal} ${minutes}min ${sweat}`
+            check(q.carbH === e.carb_per_hour, `${tag}: carbs ${q.carbH} vs planner ${e.carb_per_hour}`)
+            check(q.naH === e.sodium_per_hour, `${tag}: sodium ${q.naH} vs planner ${e.sodium_per_hour}`)
+            check(q.fluidH === e.fluid_ml_per_hour, `${tag}: fluid ${q.fluidH} vs planner ${e.fluid_ml_per_hour}`)
+          }
+        }
+
+        const tg = CALC.targets(CALC.raceType(kind, km), goal, est, 'average', km, elev)
+        const units = CALC.raceUnits(CALC.raceType(kind, km), tg, est)
+        const n = units.gel + units.ultra + units.bar
+        const carbsInKit = units.gel * CALC.AVG_CARBS.gel + units.ultra * CALC.AVG_CARBS.ultra + units.bar * CALC.AVG_CARBS.bar
+        check(carbsInKit >= tg.carbs, `${kind} ${km}km ${goal}: kit carbs ${carbsInKit} < ${tg.carbs}`)
+        const rows = CALC.schedule(units, tg.hours)
+        const inRows = rows.reduce((s, r) => s + r.gel + r.ultra + r.bar, 0)
+        check(inRows === n, `${kind} ${km}km ${goal}: hour plan has ${inRows} of ${n} products`)
+        for (const mult of [1, 3]) {
+          const kit = CALC.buildKit(units, mult, est, live)
+          check(kit.units >= n * mult, `${kind} ${km}km ${goal} ×${mult}: ${kit.units} units < ${n * mult}`)
+          check(kit.total > 0, `${kind} ${km}km ${goal} ×${mult}: empty kit`)
+        }
+      })
+    }
+  }
+}
+
+// A few plans to eyeball
+for (const [kind, km, elev, gi] of [['10k', 10, 0, 1], ['marathon', 42.2, 0, 1], ['custom', 50, 2000, 1],
+  ['custom', 100, 4000, 0], ['triathlon_70_3', 113, 0, 1], ['cycling', 100, 1200, 1]]) {
+  const goal = CALC.GOALS[gi], est = CALC.estimateMinutes(kind, km, elev, gi), race = CALC.raceType(kind, km)
+  const tg = CALC.targets(race, goal, est, 'average', km, elev)
+  const units = CALC.raceUnits(race, tg, est)
+  const kit = CALC.buildKit(units, 1, est, live)
+  const rows = CALC.schedule(units, tg.hours).map(r => `${r.gel}g/${r.ultra}u/${r.bar}b`).join(' ')
+  console.log(`${kind.padEnd(14)} ${String(km).padStart(5)} km +${String(elev).padEnd(4)} m ${goal.padEnd(9)} ` +
+    `${Math.floor(est / 60)}:${String(est % 60).padStart(2, '0')}  ${tg.carbH} g/h  ${kit.total.toLocaleString('vi-VN')} ₫  hours: ${rows}`)
 }
 
 // Cheapest pack mix: 11 gels as singles (572k) loses to one variety pack (550k)
@@ -72,15 +114,16 @@ const c = CALC.cheapest(11, [{ units: 1, price: 52000 }, { units: 12, price: 550
 check(c[0] === 0 && c[1] === 1, `cheapest(11 gels) = ${c}`)
 
 // Planner link → prefill
-const p = prefillFromParams(new URLSearchParams('race=marathon&time=270&effort=hard&sweat=salty&climate=humid'))
-check(p.race_type === 'marathon' && p.custom_km === '42.2' && p.goal_time_h === '4' && p.goal_time_m === '30', 'prefill marathon')
+const p = prefillFromParams(new URLSearchParams('race=ultra_50k&km=65&surface=trail&elev=2400&time=480&effort=hard&sweat=salty&climate=humid&profile=intermediate'))
+check(p.race_type === 'ultra_50k' && p.custom_km === '65' && p.surface_type === 'trail' && p.elevation_gain_m === 2400, 'prefill trail ultra')
+check(p.goal_time_h === '8' && p.goal_time_m === '0' && p.athlete_profile === 'intermediate', 'prefill time and profile')
 check(p.effort === 'hard' && p.sweat_profile === 'salty' && p.temperature === 'warm' && p.humidity === 'humid', 'prefill prefs')
 const tri = prefillFromParams(new URLSearchParams('race=triathlon_70_3&time=390'))
 check(tri.sport === 'triathlon' && tri.triathlon_type === 'triathlon_70_3' && !tri.goal_time_h, 'prefill triathlon')
-const bike = prefillFromParams(new URLSearchParams('race=cycling&km=100&time=225'))
-check(bike.sport === 'cycling' && bike.custom_km === '100' && bike.goal_time_m === '45', 'prefill cycling')
+const bike = prefillFromParams(new URLSearchParams('race=cycling&km=100&time=225&elev=1200'))
+check(bike.sport === 'cycling' && bike.custom_km === '100' && bike.goal_time_m === '45' && bike.elevation_gain_m === 1200, 'prefill cycling')
 check(prefillFromParams(new URLSearchParams('race=nope')) === null, 'prefill rejects unknown race')
 check(prefillFromParams(new URLSearchParams('lang=vi')) === null, 'prefill ignores links without race')
 
-console.log(failures ? `\n${failures} failure(s)` : '\nAll checks passed')
+console.log(failures ? `\n${failures} failure(s) in ${cases} cases` : `\nAll checks passed (${cases} quiz answers compared with the planner)`)
 process.exit(failures ? 1 : 0)

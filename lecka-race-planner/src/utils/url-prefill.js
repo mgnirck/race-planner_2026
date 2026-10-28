@@ -4,7 +4,7 @@
  * Lets a page that links to /planner/pro (the Shopify race quiz) pre-fill the
  * planner through the query string, e.g.
  *
- *   /planner/pro?region=vn&lang=vi&race=marathon&time=270&effort=race_pace&sweat=salty&climate=humid
+ *   /planner/pro?region=vn&lang=vi&race=marathon&time=270&effort=race_pace&sweat=salty&climate=humid&profile=intermediate
  *
  * The params are turned into the same `lecka_pro_prefill` sessionStorage entry
  * the homepage writes, so StepForm needs no second prefill path. This module
@@ -16,11 +16,17 @@
  *           triathlon_70_3 | triathlon_olympic | triathlon_140_6 | cycling
  *   time    goal finish time in minutes (ignored for triathlon: the planner
  *           asks for swim/bike/run splits)
- *   km      distance, only needed for cycling
+ *   km      distance for running (overrides the race's standard distance and
+ *           sets the race type from it) and cycling
+ *   elev    elevation gain in metres (running and cycling)
+ *   surface trail | road (running)
  *   effort  easy | race_pace | hard
+ *   profile untrained | intermediate | trained | elite
  *   sweat   light | average | salty
  *   climate humid | hot | warm | mild | cool
  */
+
+import { distanceToRaceType } from './form-helpers.js'
 
 const RUN_KM = {
   '5k':          '5',
@@ -47,9 +53,10 @@ const CLIMATE = {
   hot:   { temperature: 'hot',  humidity: 'dry'   },
 }
 
-const EFFORTS = ['easy', 'race_pace', 'hard']
-const SWEATS  = ['light', 'average', 'salty']
-const QUIZ_PARAMS = ['race', 'time', 'km', 'effort', 'sweat', 'climate']
+const EFFORTS  = ['easy', 'race_pace', 'hard']
+const SWEATS   = ['light', 'average', 'salty']
+const PROFILES = ['untrained', 'intermediate', 'trained', 'elite']
+const QUIZ_PARAMS = ['race', 'time', 'km', 'elev', 'surface', 'effort', 'sweat', 'climate', 'profile']
 
 export function prefillFromParams(params) {
   const race = params.get('race')
@@ -73,17 +80,26 @@ export function prefillFromParams(params) {
       ...(km > 0 ? { custom_km: String(km), custom_km_display: String(km), dist_unit: 'km' } : {}),
     }
   } else if (RUN_KM[race]) {
-    const km = RUN_KM[race]
+    const customKm = parseFloat(params.get('km'))
+    const km = customKm > 0 && customKm <= 500 ? String(customKm) : RUN_KM[race]
+    const surface = params.get('surface')
     prefill = {
       sport:             'running',
-      race_type:         race,
+      race_type:         distanceToRaceType(parseFloat(km)),
       custom_km:         km,
       custom_km_display: km,
       dist_unit:         'km',
-      surface_type:      race.startsWith('ultra') ? 'trail' : 'road',
+      surface_type:      surface === 'trail' || surface === 'road' ? surface : (race.startsWith('ultra') ? 'trail' : 'road'),
     }
   } else {
     return null
+  }
+
+  const elev = parseInt(params.get('elev'), 10)
+  if (prefill.sport !== 'triathlon' && elev > 0 && elev < 20000) {
+    prefill.elevation_gain_m = elev
+    prefill.elev_display     = String(elev)
+    prefill.elev_unit        = 'm'
   }
 
   const minutes = parseInt(params.get('time'), 10)
@@ -97,6 +113,9 @@ export function prefillFromParams(params) {
 
   const sweat = params.get('sweat')
   if (SWEATS.includes(sweat)) prefill.sweat_profile = sweat
+
+  const profile = params.get('profile')
+  if (PROFILES.includes(profile)) prefill.athlete_profile = profile
 
   const climate = CLIMATE[params.get('climate')]
   if (climate) Object.assign(prefill, climate)
