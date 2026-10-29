@@ -21,9 +21,14 @@
   Formulas mirror lecka-race-planner/src/engine/nutrition-engine.js
   (distance_adaptive carbs with the elevation modifier, sodium = fluid ×
   concentration) with the full planner's defaults: 70 kg, intermediate
-  athlete, hot & humid race day. lecka-race-planner/scripts/test-race-quiz.mjs
+  athlete, and the race-day climate set in the store block (hot & humid). lecka-race-planner/scripts/test-race-quiz.mjs
   checks that both give the same numbers.
   Language follows the store language (vi → Vietnamese, everything else English).
+
+  This file is for getlecka.vn; race-fuel-quiz-com.liquid is the same quiz for
+  getlecka.com. Only the store block in the script (/* store:start */), the
+  language lines, this comment and the settings defaults differ; the test
+  checks that the rest stays identical, so change both files together.
 {% endcomment %}
 
 {%- liquid
@@ -194,7 +199,7 @@
     {%- endfor -%}
   },
   "cartTotal": {{ cart.total_price | default: 0 }},
-  "currency": {{ cart.currency.iso_code | default: 'VND' | json }},
+  "currency": {{ cart.currency.iso_code | json }},
   "cartAdd": {{ routes.cart_add_url | json }},
   "cartUrl": {{ routes.cart_url | json }},
   "settings": {
@@ -247,7 +252,8 @@
       sweat_unsure: 'Not sure', sweat_unsure_s: "We'll use the average",
       result: 'Your {race} carb plan',
       raceKm: '{km} km', raceTrail: '{race} trail', raceRide: '{km} km ride',
-      finish: 'Finish', climate: 'Hot & humid race day',
+      finish: 'Finish', climate_cool: 'Cool race day', climate_mild: 'Mild race day', climate_warm: 'Warm race day',
+      climate_hot: 'Hot race day', climate_humid: 'Hot & humid race day',
       carbsH: 'carbs per hour', carbsTotal: '{carbs} g carbs over {time} · {n} Lecka products',
       strategy: 'Your Lecka carb strategy',
       hour: '{from}–{to}', repeat: 'Keep this rhythm until the finish',
@@ -302,7 +308,8 @@
       sweat_unsure: 'Không chắc', sweat_unsure_s: 'Chúng tôi dùng mức trung bình',
       result: 'Kế hoạch carb {race} của bạn',
       raceKm: '{km} km', raceTrail: '{race} trail', raceRide: 'đạp xe {km} km',
-      finish: 'Về đích', climate: 'Ngày đua nóng & ẩm',
+      finish: 'Về đích', climate_cool: 'Ngày đua mát', climate_mild: 'Ngày đua ôn hoà', climate_warm: 'Ngày đua ấm',
+      climate_hot: 'Ngày đua nóng', climate_humid: 'Ngày đua nóng & ẩm',
       carbsH: 'carb mỗi giờ', carbsTotal: 'Tổng {carbs} g carb trong {time} · {n} sản phẩm Lecka',
       strategy: 'Chiến lược carb với Lecka',
       hour: '{from}–{to}', repeat: 'Giữ nhịp này cho đến khi về đích',
@@ -341,35 +348,52 @@
 
   // Nutrition per unit from the Lecka product master (lecka-portal/content/products).
   var GELS = [
-    { sku: 'EGPASS', v1: 46733454049438, carbs: 27, na: 88,  name: 'Energy Gel Passion Fruit' },
-    { sku: 'EGBANA', v1: 46733439238302, carbs: 25, na: 98,  name: 'Energy Gel Banana' },
-    { sku: 'EGLIME', v1: 46773618016414, carbs: 27, na: 103, name: 'Energy Gel Lime Ginger' },
-    { sku: 'EGKUMQ', v1: 47845439864990, carbs: 26, na: 96,  name: 'Energy Gel Kumquat Honey' },
-    { sku: 'EGCOFF', v1: 46770291900574, carbs: 22, na: 120, name: 'Energy Gel Coffee Cacao', caffeine: true }
+    { sku: 'EGPASS', carbs: 27, na: 88 }, { sku: 'EGBANA', carbs: 25, na: 98 }, { sku: 'EGLIME', carbs: 27, na: 103 },
+    { sku: 'EGKUMQ', carbs: 26, na: 96 }, { sku: 'EGCOFF', carbs: 22, na: 120 }
   ];
-  var ULTRAS = [
-    { sku: 'UGPASS', v1: 47945560719518, v8: 47945560752286, carbs: 65, na: 405, name: 'Ultra Gel Passion Fruit Mango' },
-    { sku: 'UGBANA', v1: 47945511174302, v8: 47945511207070, carbs: 60, na: 452, name: 'Ultra Gel Banana Peanut Butter' }
-  ];
+  var ULTRAS = [{ sku: 'UGPASS', carbs: 65, na: 405 }, { sku: 'UGBANA', carbs: 60, na: 452 }];
   var BARS = [
-    { sku: 'EBANA',  v1: 46777743933598, carbs: 27, na: 92, name: 'Energy Bar Banana Cinnamon' },
-    { sku: 'EBTROP', v1: 46777782337694, carbs: 23, na: 77, name: 'Energy Bar Pineapple Banana' },
-    { sku: 'EBCACA', v1: 46772082835614, carbs: 21, na: 78, name: 'Energy Bar Cacao Banana' },
-    { sku: 'EBMANG', v1: 46777728008350, carbs: 23, na: 56, name: 'Energy Bar Mango Coconut' }
+    { sku: 'EBANA', carbs: 27, na: 92 }, { sku: 'EBTROP', carbs: 23, na: 77 },
+    { sku: 'EBCACA', carbs: 21, na: 78 }, { sku: 'EBMANG', carbs: 23, na: 56 }
   ];
-  var GEL_VARIETY = { v: 46773695021214, units: 12, name: 'Energy Gel Variety Pack (12)' };
-  var BAR_VARIETY = { v: 47845132140702, units: 12, name: 'Energy Bar Variety Box (12)' };
-  // Fallback prices (VND) if a variant is missing from the live store data
-  var FALLBACK_PRICE = {
-    46773695021214: 550000, 47845132140702: 450000,
-    47945560752286: 1000000, 47945511207070: 1000000,
-    47945560719518: 139000, 47945511174302: 139000
-  };
-  GELS.forEach(function (g) { FALLBACK_PRICE[g.v1] = 52000; });
-  BARS.forEach(function (b) { FALLBACK_PRICE[b.v1] = 40000; });
   function avg(list, k) { return list.reduce(function (s, p) { return s + p[k]; }, 0) / list.length; }
   var AVG_CARBS = { gel: avg(GELS, 'carbs'), ultra: avg(ULTRAS, 'carbs'), bar: avg(BARS, 'carbs') };
   var AVG_NA = { gel: avg(GELS, 'na'), ultra: avg(ULTRAS, 'na'), bar: avg(BARS, 'na') };
+
+  /* store:start — the only part of the script that differs between the store files */
+  // Race-day climate assumed by the quiz (cool | mild | warm | hot | humid)
+  var CLIMATE = 'humid';
+  // What getlecka.vn sells. Per product type, each option is one pack size with
+  // its fallback price (VND, used if the live price is missing); several
+  // variants in one option are flavours the kit rotates through.
+  var PACKS = {
+    gel: [
+      { units: 1, price: 52000, variants: [
+        { v: 46733454049438, name: 'Energy Gel Passion Fruit' },
+        { v: 46733439238302, name: 'Energy Gel Banana' },
+        { v: 46773618016414, name: 'Energy Gel Lime Ginger' },
+        { v: 47845439864990, name: 'Energy Gel Kumquat Honey' },
+        { v: 46770291900574, name: 'Energy Gel Coffee Cacao', caffeine: true }] },
+      { units: 12, price: 550000, variants: [{ v: 46773695021214, name: 'Energy Gel Variety Pack (12)' }] }
+    ],
+    ultra: [
+      { units: 1, price: 139000, variants: [
+        { v: 47945560719518, name: 'Ultra Gel Passion Fruit Mango' },
+        { v: 47945511174302, name: 'Ultra Gel Banana Peanut Butter' }] },
+      { units: 8, price: 1000000, variants: [
+        { v: 47945560752286, name: 'Ultra Gel Passion Fruit Mango (8)' },
+        { v: 47945511207070, name: 'Ultra Gel Banana Peanut Butter (8)' }] }
+    ],
+    bar: [
+      { units: 1, price: 40000, variants: [
+        { v: 46777743933598, name: 'Energy Bar Banana Cinnamon' },
+        { v: 46777782337694, name: 'Energy Bar Pineapple Banana' },
+        { v: 46772082835614, name: 'Energy Bar Cacao Banana' },
+        { v: 46777728008350, name: 'Energy Bar Mango Coconut' }] },
+      { units: 12, price: 450000, variants: [{ v: 47845132140702, name: 'Energy Bar Variety Box (12)' }] }
+    ]
+  };
+  /* store:end */
 
   var KINDS = ['10k', 'half_marathon', 'marathon', 'custom', 'triathlon_70_3', 'cycling'];
   var STANDARD_KM = { '10k': 10, 'half_marathon': 21.1, 'marathon': 42.2 };
@@ -408,7 +432,8 @@
   var ELEVATION = [[1, 1.00], [3, 1.05], [6, 1.10], [10, 1.15], [Infinity, 1.22]]; // [max avg grade %, carb modifier]
   var SODIUM_PER_L = { light: 500, average: 700, salty: 1000 };
   var SODIUM_SCALE = [[0, 0], [45, 0.4], [60, 0.65], [90, 1]];
-  var WEIGHT_KG = 70, FLUID_PER_KG = 8, HUMID = 1.35;
+  var CLIMATE_FLUID = { cool: 0.9, mild: 1.0, warm: 1.2, hot: 1.4, humid: 1.35 };
+  var WEIGHT_KG = 70, FLUID_PER_KG = 8;
 
   function interp(anchors, x) {
     if (x <= anchors[0][0]) return anchors[0][1];
@@ -432,7 +457,7 @@
       }
     }
     var bikeContext = race === 'cycling' || race.indexOf('triathlon') === 0;
-    var fluidH = Math.round(Math.min(Math.max(WEIGHT_KG * FLUID_PER_KG * HUMID, 400), bikeContext ? 1000 : 800));
+    var fluidH = Math.round(Math.min(Math.max(WEIGHT_KG * FLUID_PER_KG * CLIMATE_FLUID[CLIMATE], 400), bikeContext ? 1000 : 800));
     var naH = Math.round(Math.min(Math.max(fluidH / 1000 * SODIUM_PER_L[sweat || 'average'], 200), 1000));
     if (minutes < 90) naH = Math.round(naH * interp(SODIUM_SCALE, minutes));
     var h = minutes / 60;
@@ -486,52 +511,39 @@
 
   // live(v) → { p: price in currency units, a: available, t, i } or null
   function buildKit(units, multiplier, minutes, live) {
-    var lines = {};
-    function price(v) { var l = live(v); return l ? l.p : FALLBACK_PRICE[v]; }
-    function ok(v) { var l = live(v); return !l || l.a; }
-    function add(v, qty, unitsEach, name) {
-      if (!qty) return;
-      lines[v] = lines[v] || { v: v, qty: 0, units: 0, name: name };
-      lines[v].qty += qty; lines[v].units += qty * unitsEach;
+    function ok(x) { var l = live(x.v); return !l || l.a; }
+    // Pack options still in stock; no caffeine gel in races under 90 min when there is a choice
+    function options(type) {
+      return PACKS[type].map(function (o) {
+        var vs = o.variants.filter(ok);
+        var calm = vs.filter(function (x) { return !x.caffeine; });
+        if (minutes < 90 && calm.length) vs = calm;
+        if (!vs.length) return null;
+        var l = live(vs[0].v);
+        return { units: o.units, price: l ? l.p : o.price, variants: vs, fallback: o.price };
+      }).filter(Boolean);
     }
-    function rotate(list, n, useV) {
-      for (var i = 0; i < n; i++) { var p = list[i % list.length]; add(p[useV], 1, useV === 'v8' ? 8 : 1, p.name); }
-    }
-
-    var gels = GELS.filter(function (g) { return ok(g.v1) && (!g.caffeine || minutes >= 90); });
-    var ultras = ULTRAS.filter(function (u) { return ok(u.v1) || ok(u.v8); });
-    var bars = BARS.filter(function (b) { return ok(b.v1); });
-
+    var opts = { gel: options('gel'), ultra: options('ultra'), bar: options('bar') };
     var need = { gel: units.gel * multiplier, ultra: units.ultra * multiplier, bar: units.bar * multiplier };
-    if (!ultras.length) { need.gel += Math.ceil(need.ultra * AVG_CARBS.ultra / AVG_CARBS.gel); need.ultra = 0; }
-    if (!bars.length)   { need.gel += Math.ceil(need.bar * AVG_CARBS.bar / AVG_CARBS.gel);   need.bar = 0; }
+    // Sold out: cover those carbs with gels
+    if (!opts.ultra.length) { need.gel += Math.ceil(need.ultra * AVG_CARBS.ultra / AVG_CARBS.gel); need.ultra = 0; }
+    if (!opts.bar.length)   { need.gel += Math.ceil(need.bar * AVG_CARBS.bar / AVG_CARBS.gel);   need.bar = 0; }
 
-    if (need.gel) {
-      var gp = [{ units: 1, price: price((gels[0] || GELS[0]).v1) }];
-      if (ok(GEL_VARIETY.v)) gp.push({ units: 12, price: price(GEL_VARIETY.v) });
-      var gc = cheapest(need.gel, gp);
-      if (gc[1]) add(GEL_VARIETY.v, gc[1], 12, GEL_VARIETY.name);
-      rotate(gels.length ? gels : GELS, gc[0], 'v1');
-    }
-    if (need.ultra) {
-      var u1 = ultras.filter(function (u) { return ok(u.v1); });
-      var u8 = ultras.filter(function (u) { return ok(u.v8); });
-      var up = [];
-      if (u1.length) up.push({ units: 1, price: price(u1[0].v1), list: u1, key: 'v1' });
-      if (u8.length) up.push({ units: 8, price: price(u8[0].v8), list: u8, key: 'v8' });
-      var uc = cheapest(need.ultra, up);
-      up.forEach(function (p, i) { rotate(p.list, uc[i], p.key); });
-    }
-    if (need.bar) {
-      var bp = [{ units: 1, price: price(bars[0].v1) }];
-      if (ok(BAR_VARIETY.v)) bp.push({ units: 12, price: price(BAR_VARIETY.v) });
-      var bc = cheapest(need.bar, bp);
-      if (bc[1]) add(BAR_VARIETY.v, bc[1], 12, BAR_VARIETY.name);
-      rotate(bars, bc[0], 'v1');
-    }
+    var lines = {};
+    ['gel', 'ultra', 'bar'].forEach(function (type) {
+      if (!need[type] || !opts[type].length) return;
+      var count = cheapest(need[type], opts[type]);
+      opts[type].forEach(function (o, i) {
+        for (var k = 0; k < count[i]; k++) {
+          var x = o.variants[k % o.variants.length], l = live(x.v);
+          lines[x.v] = lines[x.v] || { v: x.v, qty: 0, units: 0, name: x.name, price: l ? l.p : o.fallback };
+          lines[x.v].qty++; lines[x.v].units += o.units;
+        }
+      });
+    });
 
     var list = Object.keys(lines).map(function (k) { return lines[k]; });
-    var total = list.reduce(function (s, l) { return s + l.qty * price(l.v); }, 0);
+    var total = list.reduce(function (s, l) { return s + l.qty * l.price; }, 0);
     var got = list.reduce(function (s, l) { return s + l.units; }, 0);
     var needed = need.gel + need.ultra + need.bar;
     return { lines: list, total: total, units: got, spare: Math.max(0, got - needed) };
@@ -544,7 +556,7 @@
 
   // Query params for the full planner (src/utils/url-prefill.js reads them)
   function plannerParams(kind, km, trail, elev, minutes, goal, sweat) {
-    var q = { race: raceType(kind, km), time: minutes, effort: goal, profile: 'intermediate', climate: 'humid' };
+    var q = { race: raceType(kind, km), time: minutes, effort: goal, profile: 'intermediate', climate: CLIMATE };
     if (kind !== 'triathlon_70_3') q.km = km;
     if (kind !== 'cycling' && kind !== 'triathlon_70_3') q.surface = trail ? 'trail' : 'road';
     if (elev > 0) q.elev = elev;
@@ -554,7 +566,7 @@
 
   var CALC = { targets: targets, raceType: raceType, plannerParams: plannerParams, estimateMinutes: estimateMinutes, raceUnits: raceUnits,
                schedule: schedule, buildKit: buildKit, sodiumCovered: sodiumCovered, cheapest: cheapest,
-               KINDS: KINDS, STANDARD_KM: STANDARD_KM, GOALS: GOALS, AVG_CARBS: AVG_CARBS };
+               KINDS: KINDS, STANDARD_KM: STANDARD_KM, GOALS: GOALS, AVG_CARBS: AVG_CARBS, CLIMATE: CLIMATE };
   /* calc:end */
 
   /* ── Helpers ──────────────────────────────────────────────────────────── */
@@ -566,7 +578,7 @@
   var nf = new Intl.NumberFormat(LOCALE, {
     style: 'currency', currency: DATA.currency, maximumFractionDigits: DATA.currency === 'VND' ? 0 : 2
   });
-  function money(x) { return nf.format(Math.round(x)); }
+  function money(x) { return nf.format(DATA.currency === 'VND' ? Math.round(x) : Math.round(x * 100) / 100); }
   function num(x) { return new Intl.NumberFormat(LOCALE).format(x); }
   function hm(m) { return Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -734,7 +746,7 @@
       var sub = l.units !== l.qty ? l.units + ' ' + t('pcs') : '';
       return '<li>' + (d && d.i ? '<img src="' + esc(d.i) + '" alt="" loading="lazy" width="48" height="48">' : '') +
         '<span class="n">' + l.qty + ' ' + t('x') + ' ' + esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' +
-        '<span>' + money(l.qty * (d ? d.p : FALLBACK_PRICE[l.v])) + '</span></li>';
+        '<span>' + money(l.qty * l.price) + '</span></li>';
     }).join('');
 
     var pctOff = S.discountCode && S.discountPct > 0 ? S.discountPct : 0;
@@ -750,7 +762,7 @@
       '<div class="lrq-assume"><span class="lrq-time">' + esc(t('finish')) +
         ' <button type="button" data-a="time" data-v="-1" aria-label="−">−</button><strong>' + hm(st.minutes) +
         '</strong><button type="button" data-a="time" data-v="1" aria-label="+">+</button></span>' +
-        '<span>' + esc(t('goal_' + st.goal)) + ' · ' + esc(t('climate')) + '</span></div>' +
+        '<span>' + esc(t('goal_' + st.goal)) + ' · ' + esc(t('climate_' + CALC.CLIMATE)) + '</span></div>' +
       '<div class="lrq-hero"><b>' + tg.carbH + '<small> g</small></b><span>' + esc(t('carbsH')) + '</span>' +
         '<p>' + esc(t('carbsTotal', { carbs: num(tg.carbs), time: hm(st.minutes), n: nUnits })) + '</p></div>' +
       '<h4>' + esc(t('strategy')) + '</h4>' + plan + drink +

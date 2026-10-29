@@ -1,0 +1,978 @@
+{% comment %}
+  Lecka Race Fuel Quiz — race-fuel-quiz.liquid
+  =============================================
+  A short "What's your next race?" quiz: a carb plan per hour with Lecka
+  products, a simple drink & salt line, and a ready-to-buy Lecka kit that
+  goes straight to checkout.
+
+  getlecka.com version: English only, US store packs and prices in USD.
+
+  Install (2 minutes):
+    1. Online Store → Themes → … → Edit code → Sections → Add a new section
+       → name it "race-fuel-quiz-com" → replace everything with this file → Save.
+    2. Customize → Add section → "Race Fuel Quiz" → drag it under the hero.
+       The heading and text above the quiz are edited there (and translated
+       in Translate & Adapt like any other section).
+    3. Discounts → Create discount → Amount off order → code RACEKIT5, 5 %
+       (or change the code in the section settings; leave it empty for none).
+
+  Self-contained: no app, no iframe. Prices, stock, product names and images
+  are read live from the store (collections.all). Only variant IDs and
+  nutrition values live in the script below — nutrition per unit comes from
+  the Lecka product master (lecka-portal/content/products).
+  Formulas mirror lecka-race-planner/src/engine/nutrition-engine.js
+  (distance_adaptive carbs with the elevation modifier, sodium = fluid ×
+  concentration) with the full planner's defaults: 70 kg, intermediate
+  athlete, and the race-day climate set in the store block (warm). lecka-race-planner/scripts/test-race-quiz.mjs
+  checks that both give the same numbers.
+  Always English.
+
+  This file is for getlecka.com; race-fuel-quiz.liquid is the same quiz for
+  getlecka.vn. Only the store block in the script (/* store:start */), the
+  language lines, this comment and the settings defaults differ; the test
+  checks that the rest stays identical, so change both files together.
+{% endcomment %}
+
+{%- liquid
+  assign sid = section.id
+  assign lang = 'en'
+-%}
+
+<style>
+  #lrq-{{ sid }} {
+    --lrq-bg: {{ section.settings.color_bg }};
+    --lrq-card: {{ section.settings.color_card }};
+    --lrq-text: {{ section.settings.color_text }};
+    --lrq-accent: {{ section.settings.color_accent }};
+    --lrq-btn: {{ section.settings.color_button }};
+    --lrq-btn-text: {{ section.settings.color_button_text }};
+    --lrq-muted: color-mix(in srgb, var(--lrq-text) 60%, transparent);
+    --lrq-line: color-mix(in srgb, var(--lrq-text) 12%, transparent);
+    --lrq-tint: color-mix(in srgb, var(--lrq-accent) 12%, transparent);
+    background: var(--lrq-bg);
+    color: var(--lrq-text);
+    padding: {{ section.settings.padding_top }}px 16px {{ section.settings.padding_bottom }}px;
+  }
+  #lrq-{{ sid }} * { box-sizing: border-box; }
+  #lrq-{{ sid }} .lrq-header { max-width: 640px; margin: 0 auto 20px; text-align: {{ section.settings.heading_align }}; }
+  #lrq-{{ sid }} .lrq-header h2 {
+    font-size: clamp(26px, 7vw, {{ section.settings.heading_size }}px); line-height: 1.15; margin: 0 0 8px; color: var(--lrq-text);
+  }
+  #lrq-{{ sid }} .lrq-header .lrq-hsub { font-size: 16px; color: var(--lrq-muted); margin: 0; }
+  #lrq-{{ sid }} .lrq-card {
+    max-width: 640px; margin: 0 auto; background: var(--lrq-card);
+    border-radius: 20px; padding: 24px 20px; box-shadow: 0 6px 30px rgba(0,0,0,.06);
+  }
+  #lrq-{{ sid }} .lrq-eyebrow {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--lrq-accent); font-weight: 700; margin: 0 0 8px;
+  }
+  #lrq-{{ sid }} .lrq-dots { display: flex; gap: 6px; flex: none; }
+  #lrq-{{ sid }} .lrq-dots i { width: 22px; height: 4px; border-radius: 4px; background: var(--lrq-line); }
+  #lrq-{{ sid }} .lrq-dots i.on { background: var(--lrq-accent); }
+  #lrq-{{ sid }} .lrq-q { font-size: clamp(22px, 6vw, 30px); line-height: 1.15; margin: 0 0 6px; color: var(--lrq-text); }
+  #lrq-{{ sid }} .lrq-sub { color: var(--lrq-muted); margin: 0 0 18px; font-size: 15px; }
+  #lrq-{{ sid }} .lrq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #lrq-{{ sid }} .lrq-grid.one { grid-template-columns: 1fr; }
+  @media (min-width: 560px) { #lrq-{{ sid }} .lrq-grid.three { grid-template-columns: 1fr 1fr 1fr; } }
+  #lrq-{{ sid }} .lrq-chip {
+    appearance: none; border: 2px solid var(--lrq-line); background: transparent; color: var(--lrq-text);
+    border-radius: 14px; padding: 14px; min-height: 64px; text-align: left; cursor: pointer;
+    font: inherit; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+    transition: border-color .15s, background .15s, transform .1s;
+  }
+  #lrq-{{ sid }} .lrq-chip:hover { border-color: var(--lrq-accent); }
+  #lrq-{{ sid }} .lrq-chip:active { transform: scale(.98); }
+  #lrq-{{ sid }} .lrq-chip.on { border-color: var(--lrq-accent); background: var(--lrq-tint); }
+  #lrq-{{ sid }} .lrq-chip b { font-size: 16px; }
+  #lrq-{{ sid }} .lrq-chip small { font-size: 13px; color: var(--lrq-muted); }
+  #lrq-{{ sid }} .lrq-panel { margin: 14px 0 0; display: grid; gap: 12px; }
+  #lrq-{{ sid }} .lrq-field label { display: block; font-size: 14px; font-weight: 600; margin: 0 0 6px; }
+  #lrq-{{ sid }} .lrq-input { display: flex; align-items: center; gap: 8px; }
+  #lrq-{{ sid }} .lrq-input input {
+    width: 110px; font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 12px;
+    border: 2px solid var(--lrq-line); background: transparent; color: var(--lrq-text);
+  }
+  #lrq-{{ sid }} .lrq-input input.short { width: 76px; }
+  #lrq-{{ sid }} .lrq-input input:focus { outline: none; border-color: var(--lrq-accent); }
+  #lrq-{{ sid }} .lrq-input span { color: var(--lrq-muted); font-size: 15px; }
+  #lrq-{{ sid }} .lrq-check {
+    display: flex; gap: 12px; align-items: flex-start; border: 2px solid var(--lrq-line); border-radius: 14px;
+    padding: 12px 14px; cursor: pointer;
+  }
+  #lrq-{{ sid }} .lrq-check.on { border-color: var(--lrq-accent); background: var(--lrq-tint); }
+  #lrq-{{ sid }} .lrq-check input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--lrq-accent); flex: none; }
+  #lrq-{{ sid }} .lrq-check b { display: block; font-size: 15px; }
+  #lrq-{{ sid }} .lrq-check small { font-size: 13px; color: var(--lrq-muted); }
+  #lrq-{{ sid }} .lrq-hint { font-size: 13px; color: #c0392b; margin: 6px 0 0; }
+  #lrq-{{ sid }} .lrq-next { margin: 16px 0 0; }
+  #lrq-{{ sid }} .lrq-back {
+    appearance: none; background: none; border: 0; color: var(--lrq-muted); font: inherit;
+    font-size: 14px; padding: 12px 0 0; cursor: pointer; text-decoration: underline;
+  }
+  #lrq-{{ sid }} .lrq-assume { font-size: 13px; color: var(--lrq-muted); margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  #lrq-{{ sid }} .lrq-time { display: inline-flex; align-items: center; gap: 6px; }
+  #lrq-{{ sid }} .lrq-time button {
+    appearance: none; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--lrq-line);
+    background: transparent; color: var(--lrq-text); font: inherit; font-size: 18px; line-height: 1; cursor: pointer;
+  }
+  #lrq-{{ sid }} .lrq-time strong { font-size: 15px; color: var(--lrq-text); min-width: 44px; text-align: center; }
+  #lrq-{{ sid }} .lrq-hero { border-radius: 16px; padding: 18px 16px; background: var(--lrq-tint); text-align: center; margin: 0 0 16px; }
+  #lrq-{{ sid }} .lrq-hero b { display: block; font-size: clamp(40px, 12vw, 56px); line-height: 1; }
+  #lrq-{{ sid }} .lrq-hero b small { font-size: .45em; }
+  #lrq-{{ sid }} .lrq-hero span { display: block; font-size: 15px; font-weight: 600; margin: 4px 0 0; }
+  #lrq-{{ sid }} .lrq-hero p { font-size: 14px; color: var(--lrq-muted); margin: 6px 0 0; }
+  #lrq-{{ sid }} h4 { font-size: 18px; margin: 0 0 10px; color: var(--lrq-text); }
+  #lrq-{{ sid }} .lrq-hours { list-style: none; margin: 0 0 10px; padding: 0; }
+  #lrq-{{ sid }} .lrq-hours li { display: grid; grid-template-columns: 86px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--lrq-line); font-size: 14px; }
+  #lrq-{{ sid }} .lrq-hours .h { color: var(--lrq-muted); font-variant-numeric: tabular-nums; }
+  #lrq-{{ sid }} .lrq-hours .g { font-weight: 700; font-variant-numeric: tabular-nums; }
+  #lrq-{{ sid }} .lrq-tips { margin: 0 0 18px; padding: 0 0 0 18px; font-size: 14px; }
+  #lrq-{{ sid }} .lrq-tips li { margin: 4px 0; }
+  #lrq-{{ sid }} .lrq-drink { border: 1px solid var(--lrq-line); border-radius: 14px; padding: 12px 14px; margin: 0 0 20px; font-size: 14px; }
+  #lrq-{{ sid }} .lrq-drink b { display: block; margin: 0 0 4px; font-size: 15px; }
+  #lrq-{{ sid }} .lrq-drink p { margin: 0; }
+  #lrq-{{ sid }} .lrq-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+  #lrq-{{ sid }} .lrq-tabs .lrq-chip { min-height: 56px; padding: 10px 12px; }
+  #lrq-{{ sid }} .lrq-items { list-style: none; margin: 0 0 12px; padding: 0; }
+  #lrq-{{ sid }} .lrq-items li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--lrq-line); font-size: 14px; }
+  #lrq-{{ sid }} .lrq-items img { width: 48px; height: 48px; object-fit: contain; border-radius: 8px; background: #fff; flex: none; }
+  #lrq-{{ sid }} .lrq-items .n { flex: 1; }
+  #lrq-{{ sid }} .lrq-items .n small { display: block; color: var(--lrq-muted); }
+  #lrq-{{ sid }} .lrq-total { display: flex; justify-content: space-between; align-items: baseline; font-size: 15px; margin: 4px 0; }
+  #lrq-{{ sid }} .lrq-total.big { font-size: 20px; font-weight: 700; }
+  #lrq-{{ sid }} .lrq-note { font-size: 13px; color: var(--lrq-muted); margin: 6px 0 0; }
+  #lrq-{{ sid }} .lrq-ship { font-size: 14px; margin: 8px 0 14px; color: var(--lrq-accent); font-weight: 600; }
+  #lrq-{{ sid }} .lrq-cta {
+    appearance: none; display: block; width: 100%; border: 0; border-radius: 999px; padding: 17px 20px;
+    background: var(--lrq-btn); color: var(--lrq-btn-text); font: inherit; font-size: 17px; font-weight: 700;
+    cursor: pointer; text-align: center; text-decoration: none;
+  }
+  #lrq-{{ sid }} .lrq-cta[disabled] { opacity: .4; cursor: not-allowed; }
+  #lrq-{{ sid }} .lrq-cta.busy { opacity: .6; cursor: wait; }
+  #lrq-{{ sid }} .lrq-links { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 14px 0 0; }
+  #lrq-{{ sid }} .lrq-links button {
+    appearance: none; background: none; border: 0; font: inherit; font-size: 15px; color: var(--lrq-text);
+    text-decoration: underline; cursor: pointer; padding: 4px;
+  }
+  #lrq-{{ sid }} .lrq-plan { margin: 22px 0 0; border-radius: 16px; padding: 16px; border: 2px solid var(--lrq-accent); }
+  #lrq-{{ sid }} .lrq-plan b { display: block; font-size: 16px; margin: 0 0 4px; }
+  #lrq-{{ sid }} .lrq-plan p { font-size: 14px; color: var(--lrq-muted); margin: 0 0 12px; }
+  #lrq-{{ sid }} .lrq-plan a {
+    display: block; text-align: center; border-radius: 999px; padding: 13px 16px; font-weight: 700; font-size: 15px;
+    background: var(--lrq-accent); color: #fff; text-decoration: none;
+  }
+  #lrq-{{ sid }} .lrq-err { color: #c0392b; font-size: 14px; margin: 8px 0 0; text-align: center; }
+  #lrq-{{ sid }} .lrq-fine { font-size: 12px; color: var(--lrq-muted); margin: 16px 0 0; text-align: center; }
+  #lrq-{{ sid }} [hidden] { display: none !important; }
+</style>
+
+<section id="lrq-{{ sid }}" class="lrq" data-lang="{{ lang }}">
+  {%- if section.settings.heading != blank or section.settings.subheading != blank -%}
+    <div class="lrq-header">
+      {%- if section.settings.heading != blank -%}<h2>{{ section.settings.heading }}</h2>{%- endif -%}
+      {%- if section.settings.subheading != blank -%}<p class="lrq-hsub">{{ section.settings.subheading }}</p>{%- endif -%}
+    </div>
+  {%- endif -%}
+  <div class="lrq-card" aria-live="polite"><div data-lrq-root></div></div>
+</section>
+
+{%- comment -%}
+  Live store data for every variant: price (in 1/100 of the currency unit,
+  as Liquid gives it), stock, product title in the visitor's language, image.
+{%- endcomment -%}
+<script type="application/json" id="lrq-data-{{ sid }}">
+{
+  "variants": {
+    {%- for product in collections.all.products -%}
+      {%- for v in product.variants -%}
+        "{{ v.id }}": {
+          "p": {{ v.price }},
+          "a": {{ v.available | json }},
+          "t": {{ product.title | json }},
+          "i": {%- if product.featured_image -%}{{ product.featured_image | image_url: width: 160 | json }}{%- else -%}null{%- endif -%}
+        }{%- unless forloop.last -%},{%- endunless -%}
+      {%- endfor -%}
+      {%- unless forloop.last -%},{%- endunless -%}
+    {%- endfor -%}
+  },
+  "cartTotal": {{ cart.total_price | default: 0 }},
+  "currency": {{ cart.currency.iso_code | json }},
+  "cartAdd": {{ routes.cart_add_url | json }},
+  "cartUrl": {{ routes.cart_url | json }},
+  "settings": {
+    "discountCode": {{ section.settings.discount_code | strip | json }},
+    "discountPct": {{ section.settings.discount_percent | default: 0 }},
+    "freeShipping": {{ section.settings.free_shipping_threshold | default: 0 }},
+    "defaultKit": {{ section.settings.default_kit | json }},
+    "plannerUrl": {{ section.settings.planner_url | strip | json }},
+    "region": {{ section.settings.region | json }}
+  }
+}
+</script>
+
+<script>
+(function () {
+  var SID = {{ sid | json }};
+  var host = document.getElementById('lrq-' + SID);
+  if (!host) return;
+  var root = host.querySelector('[data-lrq-root]');
+  var DATA = JSON.parse(document.getElementById('lrq-data-' + SID).textContent);
+  var S = DATA.settings;
+  var LANG = host.getAttribute('data-lang');
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  var T = {
+    en: {
+      eyebrow: 'Race fuel in 30 seconds',
+      q1: "What's your next race?", q1sub: 'Get your carbs per hour and the right Lecka kit.',
+      q2: "What's your goal?", q2sub: 'Pick one, then adjust your finish time if you know it.',
+      q3: 'How salty is your sweat?', q3sub: 'Look at your cap or shirt after a long, hot session.',
+      back: '← Back', next: 'Next →',
+      race_10k: '10K', race_10k_s: '10 km',
+      race_half_marathon: 'Half marathon', race_half_marathon_s: '21.1 km',
+      race_marathon: 'Marathon', race_marathon_s: '42.2 km',
+      race_custom: 'Other distance', race_custom_s: 'Ultra, 5K, any km',
+      race_triathlon_70_3: 'Triathlon 70.3', race_triathlon_70_3_s: '1.9 · 90 · 21.1 km',
+      race_cycling: 'Cycling', race_cycling_s: 'Enter your distance',
+      dist: 'Race distance', ride: 'Ride distance', km: 'km',
+      distErr: 'Enter a distance from {min} to {max} km',
+      trail: 'Trail race', trail_s: 'Add the climbing for a more precise plan',
+      hilly: 'Hilly route', hilly_s: 'Add the climbing for a more precise plan',
+      elev: 'Elevation gain', m: 'm', elevErr: 'Enter 0 to 15,000 m',
+      goal_easy: 'Just finish', goal_easy_s: 'Comfortable, enjoy it',
+      goal_race_pace: 'Steady & strong', goal_race_pace_s: 'Controlled race pace',
+      goal_hard: 'Chasing a PB', goal_hard_s: 'Full gas',
+      timeLabel: 'Target finish time', h: 'h', min: 'min', timeErr: 'Enter your finish time',
+      sweat_light: 'Light', sweat_light_s: 'Rarely see salt marks',
+      sweat_average: 'Average', sweat_average_s: 'Some salt marks',
+      sweat_salty: 'Salty', sweat_salty_s: 'White marks, stinging eyes',
+      sweat_unsure: 'Not sure', sweat_unsure_s: "We'll use the average",
+      result: 'Your {race} carb plan',
+      raceKm: '{km} km', raceTrail: '{race} trail', raceRide: '{km} km ride',
+      finish: 'Finish', climate_cool: 'Cool race day', climate_mild: 'Mild race day', climate_warm: 'Warm race day',
+      climate_hot: 'Hot race day', climate_humid: 'Hot & humid race day',
+      carbsH: 'carbs per hour', carbsTotal: '{carbs} g carbs over {time} · {n} Lecka products',
+      strategy: 'Your Lecka carb strategy',
+      hour: '{from}–{to}', repeat: 'Keep this rhythm until the finish',
+      shortRace: 'Short race: your body has enough stored energy. Take 1 gel 10–15 min before the start for a boost.',
+      tipStart: 'Start 15–20 min in, then little and often – don’t wait until you feel empty.',
+      tipCoffee: 'Save the Coffee Cacao gel for the last third for a caffeine kick.',
+      tipBars: 'Eat bars in the first half (or on the bike), gels and Ultra Gels later.',
+      tipWater: 'Take every gel with a few sips of water.',
+      drinkTitle: 'Drink & salt',
+      drinkBody: 'Drink about {ml} ml and aim for about {na} mg sodium per hour.',
+      drinkGap: 'Your Lecka products give ~{got} mg per hour; an electrolyte drink covers the rest.',
+      drinkFull: 'Your Lecka products already cover that sodium.',
+      kitTitle: 'Your race kit',
+      kitRace: 'Race day', kitRace_s: '{n} products',
+      kitTrain: 'Race + 2 training runs', kitTrain_s: 'Practise your fuelling',
+      spare: '{n} extra for training', pcs: 'pcs',
+      subtotal: 'Kit total', youPay: 'You pay', youPayNote: '{pct}% off with code {code}, applied at checkout',
+      shipFree: '✓ Free shipping', shipMore: 'Add {amt} more for free shipping',
+      cta: 'Get my kit – checkout', ctaBusy: 'Adding…',
+      cartOnly: 'Add to cart and keep shopping',
+      planTitle: 'Want even more precise numbers?',
+      planBody: 'Add the weather, your body weight and race details in the full planner and get a minute-by-minute race plan. Takes 30 seconds.',
+      planCta: 'Get my free minute-by-minute race plan →',
+      err: 'Something went wrong. Please try again.',
+      fine: 'General guidance based on sports-nutrition research (ACSM, ISSN). Always try your fuelling in training first.',
+      x: '×', gel: 'Energy Gel', ultra: 'Ultra Gel', bar: 'Energy Bar', plus: ' + '
+    },
+    vi: {
+      eyebrow: 'Dinh dưỡng đua trong 30 giây',
+      q1: 'Giải đua tiếp theo của bạn là gì?', q1sub: 'Nhận lượng carb mỗi giờ và bộ sản phẩm Lecka phù hợp.',
+      q2: 'Mục tiêu của bạn?', q2sub: 'Chọn một mục tiêu, sau đó chỉnh thời gian về đích nếu bạn biết.',
+      q3: 'Mồ hôi của bạn mặn đến mức nào?', q3sub: 'Nhìn mũ hoặc áo sau một buổi tập dài, nóng.',
+      back: '← Quay lại', next: 'Tiếp tục →',
+      race_10k: '10K', race_10k_s: '10 km',
+      race_half_marathon: 'Bán marathon', race_half_marathon_s: '21,1 km',
+      race_marathon: 'Marathon', race_marathon_s: '42,2 km',
+      race_custom: 'Cự ly khác', race_custom_s: 'Ultra, 5K, bất kỳ km',
+      race_triathlon_70_3: 'Triathlon 70.3', race_triathlon_70_3_s: '1,9 · 90 · 21,1 km',
+      race_cycling: 'Đạp xe', race_cycling_s: 'Nhập quãng đường',
+      dist: 'Cự ly', ride: 'Quãng đường đạp', km: 'km',
+      distErr: 'Nhập cự ly từ {min} đến {max} km',
+      trail: 'Đường trail', trail_s: 'Thêm độ tăng độ cao để tính chính xác hơn',
+      hilly: 'Cung đường đồi núi', hilly_s: 'Thêm độ tăng độ cao để tính chính xác hơn',
+      elev: 'Độ tăng độ cao', m: 'm', elevErr: 'Nhập từ 0 đến 15.000 m',
+      goal_easy: 'Về đích là được', goal_easy_s: 'Thoải mái, tận hưởng',
+      goal_race_pace: 'Ổn định & mạnh mẽ', goal_race_pace_s: 'Pace thi đấu có kiểm soát',
+      goal_hard: 'Phá kỷ lục cá nhân', goal_hard_s: 'Dốc toàn lực',
+      timeLabel: 'Thời gian về đích mục tiêu', h: 'giờ', min: 'phút', timeErr: 'Nhập thời gian về đích',
+      sweat_light: 'Nhạt', sweat_light_s: 'Hiếm khi thấy vệt muối',
+      sweat_average: 'Trung bình', sweat_average_s: 'Đôi khi có vệt muối',
+      sweat_salty: 'Mặn', sweat_salty_s: 'Vệt muối trắng, cay mắt',
+      sweat_unsure: 'Không chắc', sweat_unsure_s: 'Chúng tôi dùng mức trung bình',
+      result: 'Kế hoạch carb {race} của bạn',
+      raceKm: '{km} km', raceTrail: '{race} trail', raceRide: 'đạp xe {km} km',
+      finish: 'Về đích', climate_cool: 'Ngày đua mát', climate_mild: 'Ngày đua ôn hoà', climate_warm: 'Ngày đua ấm',
+      climate_hot: 'Ngày đua nóng', climate_humid: 'Ngày đua nóng & ẩm',
+      carbsH: 'carb mỗi giờ', carbsTotal: 'Tổng {carbs} g carb trong {time} · {n} sản phẩm Lecka',
+      strategy: 'Chiến lược carb với Lecka',
+      hour: '{from}–{to}', repeat: 'Giữ nhịp này cho đến khi về đích',
+      shortRace: 'Cự ly ngắn: cơ thể bạn có đủ năng lượng dự trữ. Dùng 1 gel 10–15 phút trước xuất phát để tăng lực.',
+      tipStart: 'Bắt đầu từ phút 15–20, sau đó nạp đều từng chút – đừng đợi đến khi thấy đuối.',
+      tipCoffee: 'Để dành gel Cà phê Cacao cho 1/3 chặng cuối để thêm caffeine.',
+      tipBars: 'Ăn thanh năng lượng trong nửa đầu (hoặc khi đạp xe), gel và Ultra Gel về sau.',
+      tipWater: 'Uống vài ngụm nước với mỗi gel.',
+      drinkTitle: 'Nước & muối',
+      drinkBody: 'Uống khoảng {ml} ml nước và bổ sung khoảng {na} mg natri mỗi giờ.',
+      drinkGap: 'Sản phẩm Lecka cung cấp ~{got} mg mỗi giờ; phần còn lại bổ sung bằng nước điện giải.',
+      drinkFull: 'Sản phẩm Lecka của bạn đã đủ lượng natri này.',
+      kitTitle: 'Bộ sản phẩm cho giải đua',
+      kitRace: 'Ngày đua', kitRace_s: '{n} sản phẩm',
+      kitTrain: 'Ngày đua + 2 buổi tập', kitTrain_s: 'Tập nạp năng lượng trước',
+      spare: 'dư {n} để tập luyện', pcs: 'gói',
+      subtotal: 'Tổng bộ sản phẩm', youPay: 'Bạn trả', youPayNote: 'Giảm {pct}% với mã {code}, áp dụng khi thanh toán',
+      shipFree: '✓ Miễn phí vận chuyển', shipMore: 'Mua thêm {amt} để được miễn phí vận chuyển',
+      cta: 'Mua bộ này – thanh toán', ctaBusy: 'Đang thêm…',
+      cartOnly: 'Thêm vào giỏ và tiếp tục mua sắm',
+      planTitle: 'Muốn con số chính xác hơn nữa?',
+      planBody: 'Thêm thời tiết, cân nặng và chi tiết cung đường trong công cụ lập kế hoạch đầy đủ để nhận kế hoạch đua theo từng phút. Chỉ mất 30 giây.',
+      planCta: 'Nhận kế hoạch đua chi tiết miễn phí →',
+      err: 'Đã có lỗi xảy ra. Vui lòng thử lại.',
+      fine: 'Hướng dẫn chung dựa trên nghiên cứu dinh dưỡng thể thao (ACSM, ISSN). Hãy luôn thử trước trong buổi tập.',
+      x: '×', gel: 'Gel năng lượng', ultra: 'Ultra Gel', bar: 'Thanh năng lượng', plus: ' + '
+    }
+  }[LANG];
+  function t(key, vars) {
+    var s = T[key] != null ? T[key] : key;
+    if (vars) Object.keys(vars).forEach(function (k) { s = s.split('{' + k + '}').join(vars[k]); });
+    return s;
+  }
+
+  /* calc:start — pure logic, also run by lecka-race-planner/scripts/test-race-quiz.mjs */
+
+  // Nutrition per unit from the Lecka product master (lecka-portal/content/products).
+  var GELS = [
+    { sku: 'EGPASS', carbs: 27, na: 88 }, { sku: 'EGBANA', carbs: 25, na: 98 }, { sku: 'EGLIME', carbs: 27, na: 103 },
+    { sku: 'EGKUMQ', carbs: 26, na: 96 }, { sku: 'EGCOFF', carbs: 22, na: 120 }
+  ];
+  var ULTRAS = [{ sku: 'UGPASS', carbs: 65, na: 405 }, { sku: 'UGBANA', carbs: 60, na: 452 }];
+  var BARS = [
+    { sku: 'EBANA', carbs: 27, na: 92 }, { sku: 'EBTROP', carbs: 23, na: 77 },
+    { sku: 'EBCACA', carbs: 21, na: 78 }, { sku: 'EBMANG', carbs: 23, na: 56 }
+  ];
+  function avg(list, k) { return list.reduce(function (s, p) { return s + p[k]; }, 0) / list.length; }
+  var AVG_CARBS = { gel: avg(GELS, 'carbs'), ultra: avg(ULTRAS, 'carbs'), bar: avg(BARS, 'carbs') };
+  var AVG_NA = { gel: avg(GELS, 'na'), ultra: avg(ULTRAS, 'na'), bar: avg(BARS, 'na') };
+
+  /* store:start — the only part of the script that differs between the store files */
+  // Race-day climate assumed by the quiz (cool | mild | warm | hot | humid)
+  var CLIMATE = 'warm';
+  // What getlecka.com sells (packs only, no single units). Per product type,
+  // each option is one pack size with its fallback price (USD, used if the live
+  // price is missing); several variants in one option are flavours the kit
+  // rotates through. At equal size and price the first option wins.
+  var PACKS = {
+    gel: [
+      { units: 12, price: 27.95, variants: [{ v: 43844672356399, name: 'Energy Gel - Variety Pack (12)' }] },
+      { units: 12, price: 29.95, variants: [
+        { v: 43249546526767, name: 'Energy Gel - Passion Fruit (12)' },
+        { v: 43249546854447, name: 'Energy Gel - Banana (12)' },
+        { v: 44452873404463, name: 'Energy Gel - Lime Ginger (12)' },
+        { v: 44452862492719, name: 'Energy Gel - Kumquat Honey (12)' },
+        { v: 43649538064431, name: 'Energy Gel - Coffee Cacao (12)', caffeine: true }] },
+      { units: 24, price: 57.95, variants: [
+        { v: 44964717625391, name: 'Energy Gel - Passion Fruit (24)' },
+        { v: 45116295053359, name: 'Energy Gel - Banana (24)' },
+        { v: 45266323505199, name: 'Energy Gel - Lime Ginger (24)' },
+        { v: 45266319409199, name: 'Energy Gel - Kumquat Honey (24)' },
+        { v: 45266323669039, name: 'Energy Gel - Coffee Cacao (24)', caffeine: true }] }
+    ],
+    ultra: [
+      { units: 4, price: 28.95, variants: [{ v: 45648555737135, name: 'Ultra Gel - Variety Pack (4)' }] },
+      { units: 4, price: 28.95, variants: [
+        { v: 45180150153263, name: 'Ultra Gel - Passion Fruit Mango (4)' },
+        { v: 45612198821935, name: 'Ultra Gel - Banana Peanut Butter (4)' }] }
+    ],
+    bar: [
+      { units: 12, price: 29.95, variants: [{ v: 43249547018287, name: 'Energy Bar - Mixed Flavours (12)' }] },
+      { units: 12, price: 29.95, variants: [
+        { v: 43249548558383, name: 'Energy Bar - Mango Coconut (12)' },
+        { v: 43249547706415, name: 'Energy Bar - Pineapple Banana (12)' }] }
+    ]
+  };
+  /* store:end */
+
+  var KINDS = ['10k', 'half_marathon', 'marathon', 'custom', 'triathlon_70_3', 'cycling'];
+  var STANDARD_KM = { '10k': 10, 'half_marathon': 21.1, 'marathon': 42.2 };
+  var GOALS = ['easy', 'race_pace', 'hard'];
+
+  // Expected finish time per goal (just finish / steady / PB). Running: Riegel's
+  // formula from a 10 km time, with every 100 m climbing counted as 1 extra km.
+  var RUN_10K_MIN = [72, 58, 48];
+  var BIKE_KMH = [22, 26, 30];
+  var TRI_MIN = [450, 390, 330];
+  function estimateMinutes(kind, km, elev, goalIndex) {
+    var m;
+    if (kind === 'triathlon_70_3') m = TRI_MIN[goalIndex];
+    else if (kind === 'cycling') m = km / BIKE_KMH[goalIndex] * 60 + (elev || 0) / 1000 * 50;
+    else m = RUN_10K_MIN[goalIndex] * Math.pow((km + (elev || 0) / 100) / 10, 1.08);
+    return Math.max(5, Math.round(m / 5) * 5);
+  }
+
+  // form-helpers.js distanceToRaceType
+  function runRaceType(km) {
+    if (km < 7.5) return '5k';
+    if (km < 15.5) return '10k';
+    if (km < 31.6) return 'half_marathon';
+    if (km < 45) return 'marathon';
+    if (km < 75) return 'ultra_50k';
+    return 'ultra_100k';
+  }
+  function raceType(kind, km) {
+    return kind === 'triathlon_70_3' || kind === 'cycling' ? kind : runRaceType(km);
+  }
+
+  // formula-config.json + carb-strategies.js (distance_adaptive) + nutrition-engine.js
+  var CARB_ANCHORS = [[0, 0], [30, 0], [45, 20], [60, 42], [90, 50], [120, 58], [180, 63],
+                      [240, 67], [300, 71], [360, 74], [480, 77], [600, 79], [900, 82]];
+  var EFFORT_MOD = { easy: 0.85, race_pace: 1.0, hard: 1.15 };
+  var ELEVATION = [[1, 1.00], [3, 1.05], [6, 1.10], [10, 1.15], [Infinity, 1.22]]; // [max avg grade %, carb modifier]
+  var SODIUM_PER_L = { light: 500, average: 700, salty: 1000 };
+  var SODIUM_SCALE = [[0, 0], [45, 0.4], [60, 0.65], [90, 1]];
+  var CLIMATE_FLUID = { cool: 0.9, mild: 1.0, warm: 1.2, hot: 1.4, humid: 1.35 };
+  var WEIGHT_KG = 70, FLUID_PER_KG = 8;
+
+  function interp(anchors, x) {
+    if (x <= anchors[0][0]) return anchors[0][1];
+    for (var i = 1; i < anchors.length; i++) {
+      if (x <= anchors[i][0]) {
+        var a = anchors[i - 1], b = anchors[i];
+        return a[1] + (x - a[0]) / (b[0] - a[0]) * (b[1] - a[1]);
+      }
+    }
+    return anchors[anchors.length - 1][1];
+  }
+
+  function targets(race, effort, minutes, sweat, km, elev) {
+    var dev = EFFORT_MOD[effort] - 1;
+    var taper = minutes <= 240 ? 1 : Math.max(0.4, 1 - (minutes - 240) / 240 * 0.6);
+    var carbH = Math.round(Math.round(interp(CARB_ANCHORS, minutes) * (1 + dev * taper)));
+    if (elev > 0 && km > 0) {
+      var grade = elev / (km * 1000) * 100;
+      for (var i = 0; i < ELEVATION.length; i++) {
+        if (grade <= ELEVATION[i][0]) { carbH = Math.round(carbH * ELEVATION[i][1]); break; }
+      }
+    }
+    var bikeContext = race === 'cycling' || race.indexOf('triathlon') === 0;
+    var fluidH = Math.round(Math.min(Math.max(WEIGHT_KG * FLUID_PER_KG * CLIMATE_FLUID[CLIMATE], 400), bikeContext ? 1000 : 800));
+    var naH = Math.round(Math.min(Math.max(fluidH / 1000 * SODIUM_PER_L[sweat || 'average'], 200), 1000));
+    if (minutes < 90) naH = Math.round(naH * interp(SODIUM_SCALE, minutes));
+    var h = minutes / 60;
+    return { carbH: carbH, naH: naH, fluidH: fluidH, carbs: Math.round(carbH * h), sodium: Math.round(naH * h), hours: h };
+  }
+
+  // Share of race carbs per product type. Under 2.5 h gels do it all.
+  function mixFor(race, minutes) {
+    if (minutes < 150) return { gel: 1 };
+    if (race === 'ultra_50k' || race === 'ultra_100k') return { ultra: 0.4, bar: 0.2, gel: 0.4 };
+    if (race === 'triathlon_70_3') return { ultra: 0.3, bar: 0.2, gel: 0.5 };
+    if (race === 'cycling') return { ultra: 0.3, bar: 0.3, gel: 0.4 };
+    return { gel: 1 };
+  }
+
+  // Units of each product type eaten on race day
+  function raceUnits(race, tg, minutes) {
+    var mix = mixFor(race, minutes), out = { gel: 0, ultra: 0, bar: 0 };
+    Object.keys(mix).forEach(function (k) { out[k] = Math.ceil(tg.carbs * mix[k] / AVG_CARBS[k]); });
+    if (out.gel + out.ultra + out.bar === 0) out.gel = 1;
+    return out;
+  }
+
+  // Race-day units spread evenly over the hours (last hour may be partial)
+  function schedule(units, hours) {
+    var rows = [], n = Math.max(1, Math.ceil(hours - 1e-9));
+    function upTo(count, t) { return Math.round(count * Math.min(1, t / hours)); }
+    for (var i = 0; i < n; i++) {
+      var row = { from: i * 60, to: Math.min((i + 1) * 60, Math.round(hours * 60)) };
+      ['gel', 'ultra', 'bar'].forEach(function (k) { row[k] = upTo(units[k], i + 1) - upTo(units[k], i); });
+      row.carbs = Math.round(row.gel * AVG_CARBS.gel + row.ultra * AVG_CARBS.ultra + row.bar * AVG_CARBS.bar);
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  // Cheapest set of packs giving at least n units. packs: [{units, price}]
+  function cheapest(n, packs) {
+    var best = [{ cost: 0, use: null, prev: -1 }];
+    for (var u = 1; u <= n; u++) {
+      best[u] = null;
+      packs.forEach(function (p, i) {
+        var from = Math.max(0, u - p.units), c = best[from].cost + p.price;
+        if (!best[u] || c < best[u].cost) best[u] = { cost: c, use: i, prev: from };
+      });
+    }
+    var count = packs.map(function () { return 0; });
+    for (var k = n; k > 0; k = best[k].prev) count[best[k].use]++;
+    return count;
+  }
+
+  // live(v) → { p: price in currency units, a: available, t, i } or null
+  function buildKit(units, multiplier, minutes, live) {
+    function ok(x) { var l = live(x.v); return !l || l.a; }
+    // Pack options still in stock; no caffeine gel in races under 90 min when there is a choice
+    function options(type) {
+      return PACKS[type].map(function (o) {
+        var vs = o.variants.filter(ok);
+        var calm = vs.filter(function (x) { return !x.caffeine; });
+        if (minutes < 90 && calm.length) vs = calm;
+        if (!vs.length) return null;
+        var l = live(vs[0].v);
+        return { units: o.units, price: l ? l.p : o.price, variants: vs, fallback: o.price };
+      }).filter(Boolean);
+    }
+    var opts = { gel: options('gel'), ultra: options('ultra'), bar: options('bar') };
+    var need = { gel: units.gel * multiplier, ultra: units.ultra * multiplier, bar: units.bar * multiplier };
+    // Sold out: cover those carbs with gels
+    if (!opts.ultra.length) { need.gel += Math.ceil(need.ultra * AVG_CARBS.ultra / AVG_CARBS.gel); need.ultra = 0; }
+    if (!opts.bar.length)   { need.gel += Math.ceil(need.bar * AVG_CARBS.bar / AVG_CARBS.gel);   need.bar = 0; }
+
+    var lines = {};
+    ['gel', 'ultra', 'bar'].forEach(function (type) {
+      if (!need[type] || !opts[type].length) return;
+      var count = cheapest(need[type], opts[type]);
+      opts[type].forEach(function (o, i) {
+        for (var k = 0; k < count[i]; k++) {
+          var x = o.variants[k % o.variants.length], l = live(x.v);
+          lines[x.v] = lines[x.v] || { v: x.v, qty: 0, units: 0, name: x.name, price: l ? l.p : o.fallback };
+          lines[x.v].qty++; lines[x.v].units += o.units;
+        }
+      });
+    });
+
+    var list = Object.keys(lines).map(function (k) { return lines[k]; });
+    var total = list.reduce(function (s, l) { return s + l.qty * l.price; }, 0);
+    var got = list.reduce(function (s, l) { return s + l.units; }, 0);
+    var needed = need.gel + need.ultra + need.bar;
+    return { lines: list, total: total, units: got, spare: Math.max(0, got - needed) };
+  }
+
+  // Sodium from the race-day units (average per product type)
+  function sodiumCovered(units) {
+    return Math.round(units.gel * AVG_NA.gel + units.ultra * AVG_NA.ultra + units.bar * AVG_NA.bar);
+  }
+
+  // Query params for the full planner (src/utils/url-prefill.js reads them)
+  function plannerParams(kind, km, trail, elev, minutes, goal, sweat) {
+    var q = { race: raceType(kind, km), time: minutes, effort: goal, profile: 'intermediate', climate: CLIMATE };
+    if (kind !== 'triathlon_70_3') q.km = km;
+    if (kind !== 'cycling' && kind !== 'triathlon_70_3') q.surface = trail ? 'trail' : 'road';
+    if (elev > 0) q.elev = elev;
+    if (sweat && sweat !== 'unsure') q.sweat = sweat;
+    return q;
+  }
+
+  var CALC = { targets: targets, raceType: raceType, plannerParams: plannerParams, estimateMinutes: estimateMinutes, raceUnits: raceUnits,
+               schedule: schedule, buildKit: buildKit, sodiumCovered: sodiumCovered, cheapest: cheapest,
+               KINDS: KINDS, STANDARD_KM: STANDARD_KM, GOALS: GOALS, AVG_CARBS: AVG_CARBS, CLIMATE: CLIMATE };
+  /* calc:end */
+
+  /* ── Helpers ──────────────────────────────────────────────────────────── */
+  function live(v) {
+    var d = DATA.variants[v];
+    return d ? { p: d.p / 100, a: d.a, t: d.t, i: d.i } : null;
+  }
+  var LOCALE = LANG === 'vi' ? 'vi-VN' : 'en-US';
+  var nf = new Intl.NumberFormat(LOCALE, {
+    style: 'currency', currency: DATA.currency, maximumFractionDigits: DATA.currency === 'VND' ? 0 : 2
+  });
+  function money(x) { return nf.format(DATA.currency === 'VND' ? Math.round(x) : Math.round(x * 100) / 100); }
+  function num(x) { return new Intl.NumberFormat(LOCALE).format(x); }
+  function hm(m) { return Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function parseNum(s) { var n = parseFloat(String(s).replace(',', '.')); return isFinite(n) ? n : NaN; }
+  function track(name, extra) {
+    var payload = Object.assign({ race: st.kind, km: distKm(), trail: st.trail, elev: elevM(), goal: st.goal,
+      sweat: st.sweat, minutes: st.minutes, kit: st.kit }, extra || {});
+    try { if (window.Shopify && Shopify.analytics && Shopify.analytics.publish) Shopify.analytics.publish('lecka_race_quiz_' + name, payload); } catch (e) {}
+    try { (window.dataLayer = window.dataLayer || []).push(Object.assign({ event: 'lecka_race_quiz_' + name }, payload)); } catch (e) {}
+  }
+
+  /* ── State ────────────────────────────────────────────────────────────── */
+  var st = {
+    step: 1, kind: null, customKm: '', rideKm: '100', trail: false, elev: '',
+    goal: null, minutes: 0, timeH: '', timeM: '', timeEdited: false,
+    sweat: null, kit: S.defaultKit === 'training' ? 'training' : 'race'
+  };
+  var RANGE = { custom: [1, 500], cycling: [1, 1000] };
+
+  // Distance to 0.1 km and climbing to whole metres, as the full planner gets them
+  function distKm() {
+    var km = st.kind === 'custom' ? parseNum(st.customKm) : st.kind === 'cycling' ? parseNum(st.rideKm)
+      : st.kind === 'triathlon_70_3' ? 113 : CALC.STANDARD_KM[st.kind];
+    return Math.round(km * 10) / 10;
+  }
+  function canClimb() { return !!st.kind && st.kind !== 'triathlon_70_3'; }
+  function elevM() { return st.trail && canClimb() ? Math.max(0, Math.round(parseNum(st.elev) || 0)) : 0; }
+  function distOk() {
+    var r = RANGE[st.kind];
+    if (!r) return !!st.kind;
+    var km = distKm();
+    return km >= r[0] && km <= r[1];
+  }
+  function elevOk() {
+    if (!st.trail || !canClimb() || st.elev === '') return true;
+    var e = parseNum(st.elev);
+    return e >= 0 && e <= 15000;
+  }
+  function step1Ok() { return !!st.kind && distOk() && elevOk(); }
+  function typedMinutes() {
+    var h = st.timeH === '' ? 0 : parseInt(st.timeH, 10), m = st.timeM === '' ? 0 : parseInt(st.timeM, 10);
+    if (!(h >= 0) || !(m >= 0) || m > 59) return NaN;
+    return h * 60 + m;
+  }
+  function step2Ok() { var m = typedMinutes(); return !!st.goal && m >= 5 && m <= 6000; }
+  function setTime(m) { st.minutes = m; st.timeH = String(Math.floor(m / 60)); st.timeM = ('0' + (m % 60)).slice(-2); }
+  function race() { return CALC.raceType(st.kind, distKm()); }
+  function raceName() {
+    var km = num(distKm());
+    var name = st.kind === 'cycling' ? t('raceRide', { km: km })
+      : st.kind === 'custom' ? t('raceKm', { km: km }) : t('race_' + st.kind);
+    return st.trail && st.kind !== 'cycling' && st.kind !== 'triathlon_70_3' ? t('raceTrail', { race: name }) : name;
+  }
+
+  /* ── Render ───────────────────────────────────────────────────────────── */
+  function dots(n) {
+    return '<span class="lrq-dots">' + [1, 2, 3].map(function (i) { return '<i class="' + (i <= n ? 'on' : '') + '"></i>'; }).join('') + '</span>';
+  }
+  function head(step, title, sub) {
+    return '<p class="lrq-eyebrow"><span>' + esc(t('eyebrow')) + '</span>' + dots(step) + '</p>' +
+      '<h3 class="lrq-q">' + esc(title) + '</h3>' + (sub ? '<p class="lrq-sub">' + esc(sub) + '</p>' : '');
+  }
+  function chip(action, value, label, sub, on) {
+    return '<button type="button" class="lrq-chip' + (on ? ' on' : '') + '" data-a="' + action + '" data-v="' + value + '">' +
+      '<b>' + esc(label) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</button>';
+  }
+  function field(label, name, value, unit, cls, max, hintKey, hintVars, show) {
+    return '<div class="lrq-field"><label for="lrq-' + SID + '-' + name + '">' + esc(label) + '</label>' +
+      '<div class="lrq-input"><input id="lrq-' + SID + '-' + name + '" class="' + (cls || '') + '" type="number" inputmode="decimal" min="0" max="' + max +
+      '" data-f="' + name + '" value="' + esc(value) + '"><span>' + esc(unit) + '</span></div>' +
+      '<p class="lrq-hint" data-hint="' + name + '"' + (show ? '' : ' hidden') + '>' + esc(t(hintKey, hintVars)) + '</p></div>';
+  }
+  function back() { return '<button type="button" class="lrq-back" data-a="back">' + esc(t('back')) + '</button>'; }
+  function next(action, ok) {
+    return '<button type="button" class="lrq-cta lrq-next" data-a="' + action + '"' + (ok ? '' : ' disabled') + '>' + esc(t('next')) + '</button>';
+  }
+
+  function renderStep1() {
+    var h = head(1, t('q1'), t('q1sub')) + '<div class="lrq-grid">' + CALC.KINDS.map(function (k) {
+      return chip('kind', k, t('race_' + k), t('race_' + k + '_s'), st.kind === k);
+    }).join('') + '</div>';
+    if (st.kind) {
+      h += '<div class="lrq-panel">';
+      if (st.kind === 'custom' || st.kind === 'cycling') {
+        var r = RANGE[st.kind], name = st.kind === 'custom' ? 'customKm' : 'rideKm';
+        h += field(t(st.kind === 'custom' ? 'dist' : 'ride'), name, st[name], t('km'), '', r[1],
+          'distErr', { min: r[0], max: num(r[1]) }, st[name] !== '' && !distOk());
+      }
+      if (canClimb()) {
+        var bike = st.kind === 'cycling';
+        h += '<label class="lrq-check' + (st.trail ? ' on' : '') + '"><input type="checkbox" data-f="trail"' + (st.trail ? ' checked' : '') + '>' +
+          '<span><b>' + esc(t(bike ? 'hilly' : 'trail')) + '</b><small>' + esc(t(bike ? 'hilly_s' : 'trail_s')) + '</small></span></label>';
+        if (st.trail) h += field(t('elev'), 'elev', st.elev, t('m'), '', 15000, 'elevErr', null, !elevOk());
+      }
+      h += '</div>' + next('next1', step1Ok());
+    }
+    return h;
+  }
+
+  function renderStep2() {
+    var km = distKm(), elev = elevM();
+    var h = head(2, t('q2'), t('q2sub')) + '<div class="lrq-grid one three">' + CALC.GOALS.map(function (g, i) {
+      return chip('goal', g, t('goal_' + g), t('goal_' + g + '_s') + ' · ~' + hm(CALC.estimateMinutes(st.kind, km, elev, i)), st.goal === g);
+    }).join('') + '</div>';
+    if (st.goal) {
+      var bad = !(typedMinutes() >= 5 && typedMinutes() <= 6000);
+      h += '<div class="lrq-panel"><div class="lrq-field"><label for="lrq-' + SID + '-timeH">' + esc(t('timeLabel')) + '</label>' +
+        '<div class="lrq-input"><input id="lrq-' + SID + '-timeH" class="short" type="number" inputmode="numeric" min="0" max="99" data-f="timeH" value="' + esc(st.timeH) + '"><span>' + esc(t('h')) + '</span>' +
+        '<input class="short" type="number" inputmode="numeric" min="0" max="59" data-f="timeM" aria-label="' + esc(t('min')) + '" value="' + esc(st.timeM) + '"><span>' + esc(t('min')) + '</span></div>' +
+        '<p class="lrq-hint" data-hint="time"' + (bad ? '' : ' hidden') + '>' + esc(t('timeErr')) + '</p></div></div>';
+    }
+    return h + next('next2', step2Ok()) + back();
+  }
+
+  function renderStep3() {
+    return head(3, t('q3'), t('q3sub')) + '<div class="lrq-grid">' + ['light', 'average', 'salty', 'unsure'].map(function (s) {
+      return chip('sweat', s, t('sweat_' + s), t('sweat_' + s + '_s'), st.sweat === s);
+    }).join('') + '</div>' + back();
+  }
+
+  function unitsText(row) {
+    var parts = [];
+    [['gel', row.gel], ['ultra', row.ultra], ['bar', row.bar]].forEach(function (p) {
+      if (p[1]) parts.push(p[1] + ' ' + t('x') + ' ' + t(p[0]));
+    });
+    return parts.join(t('plus'));
+  }
+
+  function renderResult() {
+    var sweat = st.sweat === 'unsure' ? 'average' : st.sweat;
+    var r = race(), km = distKm(), elev = elevM();
+    var tg = CALC.targets(r, st.goal, st.minutes, sweat, km, elev);
+    var units = CALC.raceUnits(r, tg, st.minutes);
+    var raceKit = CALC.buildKit(units, 1, st.minutes, live);
+    var kit = st.kit === 'training' ? CALC.buildKit(units, 3, st.minutes, live) : raceKit;
+    st.lines = kit.lines;
+    var nUnits = units.gel + units.ultra + units.bar;
+
+    // Carb strategy
+    var plan;
+    if (st.minutes < 60) {
+      plan = '<p class="lrq-how">' + esc(t('shortRace')) + '</p>';
+    } else {
+      var rows = CALC.schedule(units, tg.hours), long = rows.length > 10;
+      plan = '<ul class="lrq-hours">' + (long ? rows.slice(0, 4) : rows).map(function (row) {
+        return '<li><span class="h">' + esc(t('hour', { from: hm(row.from), to: hm(row.to) })) + '</span>' +
+          '<span>' + esc(unitsText(row)) + '</span><span class="g">' + row.carbs + ' g</span></li>';
+      }).join('') + (long ? '<li><span class="h">' + esc(hm(240)) + '–' + esc(hm(st.minutes)) + '</span>' +
+        '<span>' + esc(t('repeat')) + '</span><span class="g">' + tg.carbH + ' g/h</span></li>' : '') + '</ul>';
+      var tips = [t('tipStart')];
+      if (units.bar) tips.push(t('tipBars'));
+      if (st.minutes >= 90 && units.gel) tips.push(t('tipCoffee'));
+      tips.push(t('tipWater'));
+      plan += '<ul class="lrq-tips">' + tips.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>';
+    }
+
+    // Drink & salt
+    var gotH = Math.round(CALC.sodiumCovered(units) / tg.hours / 10) * 10;
+    var drink = '<div class="lrq-drink"><b>' + esc(t('drinkTitle')) + '</b><p>' +
+      esc(t('drinkBody', { ml: num(Math.round(tg.fluidH / 50) * 50), na: num(Math.round(tg.naH / 10) * 10) })) + ' ' +
+      esc(gotH >= tg.naH * 0.95 ? t('drinkFull') : t('drinkGap', { got: num(gotH) })) + '</p></div>';
+
+    var items = kit.lines.map(function (l) {
+      var d = live(l.v), title = d && d.t ? d.t : l.name;
+      var sub = l.units !== l.qty ? l.units + ' ' + t('pcs') : '';
+      return '<li>' + (d && d.i ? '<img src="' + esc(d.i) + '" alt="" loading="lazy" width="48" height="48">' : '') +
+        '<span class="n">' + l.qty + ' ' + t('x') + ' ' + esc(title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>' +
+        '<span>' + money(l.qty * l.price) + '</span></li>';
+    }).join('');
+
+    var pctOff = S.discountCode && S.discountPct > 0 ? S.discountPct : 0;
+    var pay = kit.total * (1 - pctOff / 100);
+    var ship = '';
+    if (S.freeShipping > 0) {
+      var left = S.freeShipping - (DATA.cartTotal / 100 + pay);
+      ship = '<p class="lrq-ship">' + esc(left <= 0 ? t('shipFree') : t('shipMore', { amt: money(left) })) + '</p>';
+    }
+
+    return '<p class="lrq-eyebrow"><span>' + esc(t('eyebrow')) + '</span>' + dots(3) + '</p>' +
+      '<h3 class="lrq-q">' + esc(t('result', { race: raceName() })) + '</h3>' +
+      '<div class="lrq-assume"><span class="lrq-time">' + esc(t('finish')) +
+        ' <button type="button" data-a="time" data-v="-1" aria-label="−">−</button><strong>' + hm(st.minutes) +
+        '</strong><button type="button" data-a="time" data-v="1" aria-label="+">+</button></span>' +
+        '<span>' + esc(t('goal_' + st.goal)) + ' · ' + esc(t('climate_' + CALC.CLIMATE)) + '</span></div>' +
+      '<div class="lrq-hero"><b>' + tg.carbH + '<small> g</small></b><span>' + esc(t('carbsH')) + '</span>' +
+        '<p>' + esc(t('carbsTotal', { carbs: num(tg.carbs), time: hm(st.minutes), n: nUnits })) + '</p></div>' +
+      '<h4>' + esc(t('strategy')) + '</h4>' + plan + drink +
+      '<h4>' + esc(t('kitTitle')) + '</h4>' +
+      '<div class="lrq-tabs">' +
+        chip('kit', 'race', t('kitRace'), t('kitRace_s', { n: raceKit.units }), st.kit === 'race') +
+        chip('kit', 'training', t('kitTrain'), t('kitTrain_s'), st.kit === 'training') +
+      '</div>' +
+      '<ul class="lrq-items">' + items + '</ul>' +
+      (kit.spare ? '<p class="lrq-note">+ ' + esc(t('spare', { n: kit.spare })) + '</p>' : '') +
+      '<div class="lrq-total' + (pctOff ? '' : ' big') + '"><span>' + esc(t('subtotal')) + '</span><span>' + money(kit.total) + '</span></div>' +
+      (pctOff ? '<div class="lrq-total big"><span>' + esc(t('youPay')) + '</span><span>' + money(pay) + '</span></div>' +
+        '<p class="lrq-note" style="margin:0">' + esc(t('youPayNote', { pct: pctOff, code: S.discountCode })) + '</p>' : '') +
+      ship +
+      '<button type="button" class="lrq-cta" data-a="checkout">' + esc(t('cta')) + '</button>' +
+      '<p class="lrq-err" data-lrq-err hidden>' + esc(t('err')) + '</p>' +
+      '<div class="lrq-links"><button type="button" data-a="cart">' + esc(t('cartOnly')) + '</button></div>' +
+      (S.plannerUrl ? '<div class="lrq-plan"><b>' + esc(t('planTitle')) + '</b><p>' + esc(t('planBody')) + '</p>' +
+        '<a href="' + esc(plannerLink()) + '" target="_blank" rel="noopener" data-a="plan">' + esc(t('planCta')) + '</a></div>' : '') +
+      '<p class="lrq-fine">' + esc(t('fine')) + '</p>' +
+      back();
+  }
+
+  function render() {
+    root.innerHTML = st.step === 1 ? renderStep1() : st.step === 2 ? renderStep2() : st.step === 3 ? renderStep3() : renderResult();
+  }
+
+  function plannerLink() {
+    var q = Object.assign({ region: S.region, lang: LANG },
+      CALC.plannerParams(st.kind, distKm(), st.trail, elevM(), st.minutes, st.goal, st.sweat),
+      { utm_source: location.hostname, utm_medium: 'race_quiz', utm_campaign: st.kind });
+    return S.plannerUrl.replace(/\/+$/, '') + '/planner/pro?' +
+      Object.keys(q).map(function (k) { return k + '=' + encodeURIComponent(q[k]); }).join('&');
+  }
+
+  function addToCart(then) {
+    var btns = root.querySelectorAll('[data-a="checkout"],[data-a="cart"]');
+    btns.forEach(function (b) { b.disabled = true; });
+    var cta = root.querySelector('[data-a="checkout"]');
+    if (cta) { cta.textContent = t('ctaBusy'); cta.classList.add('busy'); }
+    var note = raceName() + ' · ' + hm(st.minutes) + ' · ' + st.goal + (elevM() ? ' · +' + elevM() + ' m' : '') + ' · ' + (st.sweat || '');
+    fetch(DATA.cartAdd + '.js', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ items: st.lines.map(function (l) { return { id: l.v, quantity: l.qty }; }) })
+    }).then(function (r) {
+      if (!r.ok) throw new Error('cart ' + r.status);
+      return fetch(DATA.cartUrl + '/update.js', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ attributes: { 'Race quiz': note } })
+      }).catch(function () {});
+    }).then(then).catch(function () {
+      btns.forEach(function (b) { b.disabled = false; });
+      if (cta) { cta.textContent = t('cta'); cta.classList.remove('busy'); }
+      var e = root.querySelector('[data-lrq-err]'); if (e) e.hidden = false;
+    });
+  }
+
+  function go(path) {
+    // /discount/CODE stores the code for checkout, then redirects
+    var code = S.discountCode;
+    location.href = code ? '/discount/' + encodeURIComponent(code) + '?redirect=' + encodeURIComponent(path) : path;
+  }
+
+  // Typing updates state and the Next button without re-rendering (keeps focus)
+  root.addEventListener('input', function (e) {
+    var f = e.target.getAttribute('data-f');
+    if (!f || f === 'trail') return;
+    st[f] = e.target.value;
+    if (f === 'timeH' || f === 'timeM') st.timeEdited = true;
+    var btn = root.querySelector('.lrq-next');
+    if (st.step === 1) {
+      if (btn) btn.disabled = !step1Ok();
+      var hd = root.querySelector('[data-hint="' + f + '"]');
+      if (hd) hd.hidden = f === 'elev' ? elevOk() : (st[f] === '' || distOk());
+    } else if (st.step === 2) {
+      if (btn) btn.disabled = !step2Ok();
+      var ht = root.querySelector('[data-hint="time"]');
+      var m = typedMinutes();
+      if (ht) ht.hidden = m >= 5 && m <= 6000;
+    }
+  });
+  root.addEventListener('change', function (e) {
+    if (e.target.getAttribute('data-f') !== 'trail') return;
+    st.trail = e.target.checked;
+    render();
+    if (st.trail) { var el = root.querySelector('[data-f="elev"]'); if (el) el.focus(); }
+  });
+
+  root.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-a]');
+    if (!el || el.disabled) return;
+    var a = el.getAttribute('data-a'), v = el.getAttribute('data-v');
+    var focus = null;
+    if (a === 'kind') {
+      st.kind = v;
+      if (v === 'custom') focus = 'customKm';
+      if (v === 'triathlon_70_3') st.trail = false;
+      st.goal = null; st.timeEdited = false;
+    }
+    else if (a === 'next1') { st.step = 2; track('race'); }
+    else if (a === 'goal') {
+      st.goal = v;
+      if (!st.timeEdited) setTime(CALC.estimateMinutes(st.kind, distKm(), elevM(), CALC.GOALS.indexOf(v)));
+    }
+    else if (a === 'next2') { st.minutes = typedMinutes(); st.step = 3; }
+    else if (a === 'sweat') { st.sweat = v; st.step = 4; track('result'); }
+    else if (a === 'back') { st.step = Math.max(1, st.step - 1); }
+    else if (a === 'time') {
+      var step = st.minutes < 120 ? 5 : 15;
+      setTime(Math.min(6000, Math.max(5, st.minutes + step * Number(v))));
+      st.timeEdited = true;
+    }
+    else if (a === 'kit') { st.kit = v; track('kit'); }
+    else if (a === 'checkout') { track('checkout'); addToCart(function () { go('/checkout'); }); return; }
+    else if (a === 'cart') { track('add_to_cart'); addToCart(function () { go(DATA.cartUrl); }); return; }
+    else if (a === 'plan') { track('full_plan'); return; }
+    else return;
+    render();
+    if (focus) { var f = root.querySelector('[data-f="' + focus + '"]'); if (f) f.focus(); }
+    if (a === 'next1' || a === 'next2' || a === 'sweat' || a === 'back') {
+      if (host.getBoundingClientRect().top < 0) host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  render();
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (en) {
+      if (en[0].isIntersecting) { track('view'); io.disconnect(); }
+    }, { threshold: 0.4 });
+    io.observe(host);
+  }
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Race Fuel Quiz (.com)",
+  "tag": "div",
+  "class": "section-race-fuel-quiz",
+  "settings": [
+    { "type": "header", "content": "Header" },
+    {
+      "type": "inline_richtext", "id": "heading", "label": "Heading",
+      "default": "Fuel your next race with real food",
+      "info": "Leave empty to hide. Translate it in Translate & Adapt."
+    },
+    {
+      "type": "inline_richtext", "id": "subheading", "label": "Text under the heading",
+      "default": "Answer 3 quick questions and get your personal carb plan and Lecka race kit."
+    },
+    {
+      "type": "select", "id": "heading_align", "label": "Alignment", "default": "center",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" }
+      ]
+    },
+    {
+      "type": "range", "id": "heading_size", "label": "Heading size (desktop)",
+      "min": 24, "max": 64, "step": 2, "unit": "px", "default": 40
+    },
+    { "type": "header", "content": "Checkout" },
+    {
+      "type": "text", "id": "discount_code", "label": "Discount code", "default": "RACEKIT5",
+      "info": "Create this code under Discounts first. Leave empty for no discount."
+    },
+    {
+      "type": "range", "id": "discount_percent", "label": "Discount shown in the quiz",
+      "min": 0, "max": 30, "step": 1, "unit": "%", "default": 5,
+      "info": "Only for display. The real discount is the code above."
+    },
+    {
+      "type": "number", "id": "free_shipping_threshold", "label": "Free shipping from (store currency)",
+      "default": 100, "info": "0 hides the free shipping line."
+    },
+    {
+      "type": "select", "id": "default_kit", "label": "Kit selected first", "default": "race",
+      "options": [
+        { "value": "race", "label": "Race day" },
+        { "value": "training", "label": "Race + 2 training runs" }
+      ]
+    },
+    { "type": "header", "content": "Full planner link" },
+    {
+      "type": "text", "id": "planner_url", "label": "Planner URL", "default": "https://plan.getlecka.com",
+      "info": "No trailing slash. Leave empty to hide the link."
+    },
+    {
+      "type": "select", "id": "region", "label": "Planner region", "default": "us",
+      "options": [
+        { "value": "vn", "label": "Vietnam" },
+        { "value": "us", "label": "United States" },
+        { "value": "de", "label": "Germany" },
+        { "value": "dk", "label": "Denmark" },
+        { "value": "ch", "label": "Switzerland" }
+      ]
+    },
+    { "type": "header", "content": "Colours" },
+    { "type": "color", "id": "color_bg", "label": "Section background", "default": "#F5F4F1" },
+    { "type": "color", "id": "color_card", "label": "Card background", "default": "#FFFFFF" },
+    { "type": "color", "id": "color_text", "label": "Text", "default": "#1B1B1B" },
+    { "type": "color", "id": "color_accent", "label": "Accent", "default": "#48C4B0" },
+    { "type": "color", "id": "color_button", "label": "Button", "default": "#1B1B1B" },
+    { "type": "color", "id": "color_button_text", "label": "Button text", "default": "#FFFFFF" },
+    { "type": "header", "content": "Spacing" },
+    { "type": "range", "id": "padding_top", "min": 0, "max": 100, "step": 4, "unit": "px", "label": "Top", "default": 40 },
+    { "type": "range", "id": "padding_bottom", "min": 0, "max": 100, "step": 4, "unit": "px", "label": "Bottom", "default": 40 }
+  ],
+  "presets": [{ "name": "Race Fuel Quiz (.com)" }]
+}
+{% endschema %}

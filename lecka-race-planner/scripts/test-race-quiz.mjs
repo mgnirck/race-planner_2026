@@ -4,8 +4,12 @@
  *
  * Usage:  node scripts/test-race-quiz.mjs
  *
- * Extracts the pure logic between "calc:start" and "calc:end" in
- * shopify/race-fuel-quiz.liquid and checks, for every race, distance, climbing,
+ * For both store files (shopify/race-fuel-quiz.liquid for getlecka.vn and
+ * shopify/race-fuel-quiz-com.liquid for getlecka.com):
+ *   - they are identical apart from the store block, the language lines, the
+ *     header comment and the settings defaults
+ * Then extracts the pure logic between "calc:start" and "calc:end" of each and
+ * checks, for every race, distance, climbing,
  * goal, finish time and sweat answer the quiz can produce:
  *   - the quiz's numbers equal what the full planner shows for the same answers:
  *     the quiz's own planner link → prefillFromParams() → the engine inputs
@@ -20,15 +24,23 @@ import { readFileSync } from 'node:fs'
 import { calculateTargets } from '../src/engine/nutrition-engine.js'
 import { prefillFromParams } from '../src/utils/url-prefill.js'
 
-const liquid = readFileSync(new URL('../../shopify/race-fuel-quiz.liquid', import.meta.url), 'utf8')
-const block = liquid.split('/* calc:start')[1]?.split('/* calc:end */')[0]
-if (!block) throw new Error('calc block not found')
-const CALC = new Function(block.replace(/^[^\n]*\n/, '') + '\nreturn CALC')()
+const FILES = ['race-fuel-quiz.liquid', 'race-fuel-quiz-com.liquid']
+const sources = FILES.map(f => readFileSync(new URL(`../../shopify/${f}`, import.meta.url), 'utf8'))
 
 let failures = 0, cases = 0
 function check(ok, msg) {
   if (!ok) { failures++; if (failures < 40) console.log('FAIL', msg) }
 }
+
+// Everything but the store-specific parts must match between the two files
+function shared(src) {
+  return src
+    .replace(/^\{% comment %\}[\s\S]*?\{% endcomment %\}/, '')
+    .replace(/\{%- liquid[\s\S]*?-%\}/, '')
+    .replace(/\/\* store:start[\s\S]*?\/\* store:end \*\//, '')
+    .replace(/\{% schema %\}[\s\S]*?\{% endschema %\}/, '')
+}
+check(shared(sources[0]) === shared(sources[1]), `${FILES[0]} and ${FILES[1]} differ outside the store-specific parts`)
 
 // StepForm: DEFAULT_FORM + prefill, then the calculateTargets() call in handleSubmit
 const DEFAULT_FORM = { weight_value: '70', weight_unit: 'kg', gender: 'male', temperature: '', humidity: 'dry',
@@ -54,6 +66,12 @@ function plannerTargets(params, minutes) {
 }
 
 const live = () => null // fallback prices, everything in stock
+
+for (const [fi, src] of sources.entries()) {
+const block = src.split('/* calc:start')[1]?.split('/* calc:end */')[0]
+if (!block) throw new Error(`calc block not found in ${FILES[fi]}`)
+const CALC = new Function(block.replace(/^[^\n]*\n/, '') + '\nreturn CALC')()
+console.log(`\n${FILES[fi]} (climate ${CALC.CLIMATE})`)
 const DISTANCES = {
   '10k': [10], half_marathon: [21.1], marathon: [42.2], triathlon_70_3: [113],
   custom: [1, 5, 15, 30.5, 50, 65, 100, 170, 500], cycling: [20, 60, 100, 160, 300],
@@ -106,12 +124,14 @@ for (const [kind, km, elev, gi] of [['10k', 10, 0, 1], ['marathon', 42.2, 0, 1],
   const kit = CALC.buildKit(units, 1, est, live)
   const rows = CALC.schedule(units, tg.hours).map(r => `${r.gel}g/${r.ultra}u/${r.bar}b`).join(' ')
   console.log(`${kind.padEnd(14)} ${String(km).padStart(5)} km +${String(elev).padEnd(4)} m ${goal.padEnd(9)} ` +
-    `${Math.floor(est / 60)}:${String(est % 60).padStart(2, '0')}  ${tg.carbH} g/h  ${kit.total.toLocaleString('vi-VN')} ₫  hours: ${rows}`)
+    `${Math.floor(est / 60)}:${String(est % 60).padStart(2, '0')}  ${tg.carbH} g/h  hours: ${rows}\n    kit ${kit.total}: ` +
+    kit.lines.map(l => `${l.qty}× ${l.name}`).join(', '))
 }
 
 // Cheapest pack mix: 11 gels as singles (572k) loses to one variety pack (550k)
 const c = CALC.cheapest(11, [{ units: 1, price: 52000 }, { units: 12, price: 550000 }])
 check(c[0] === 0 && c[1] === 1, `cheapest(11 gels) = ${c}`)
+}
 
 // Planner link → prefill
 const p = prefillFromParams(new URLSearchParams('race=ultra_50k&km=65&surface=trail&elev=2400&time=480&effort=hard&sweat=salty&climate=humid&profile=intermediate'))
