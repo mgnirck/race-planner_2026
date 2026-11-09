@@ -561,7 +561,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           {/* 2b: Intake schedule */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showKmFallback ? 6 : 12 }}>
             <p style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#9ca3af', margin: 0 }}>
-              When to take them
+              {t('common:ui.whenToTake')}
             </p>
             <div style={{ display: 'flex', gap: 0, border: '1.5px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
               <button
@@ -672,7 +672,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           {region == null ? (
             <div style={{ border: '2px solid #f3f4f6', borderRadius: 16, padding: 20, textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
               <p style={{ fontWeight: 600, color: '#1B1B1B', marginBottom: 4, marginTop: 0 }}>{t('region.selectHint')}</p>
-              <p style={{ margin: 0 }}>to see local pricing and order.</p>
+              <p style={{ margin: 0 }}>{t('common:ui.toSeePricing')}</p>
             </div>
           ) : regionType === 'international' ? (
             <div style={{ border: '1px solid #f3f4f6', background: '#fafafa', borderRadius: 16, padding: 20 }}>
@@ -832,7 +832,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
             </svg>
-            Share my plan
+            {t('common:ui.shareMyPlan')}
           </button>
         </div>
 

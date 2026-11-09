@@ -519,7 +519,7 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
           const addonPct = 100 - foundationPct
           return (
             <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">How it's covered</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">{t('common:ui.howCovered')}</p>
               <div className="flex justify-between text-xs mb-2">
                 <span className="text-[#48C4B0] font-medium">🌱 Lecka foundation: {foundationTargets.carb_per_hour}g carbs/hour</span>
                 <span className="text-gray-400">+ Add-ons: {Math.round(addonCoverage.carbs_per_hour)}g/hour</span>
@@ -720,7 +720,7 @@ function RaceTimelineV2({ events, totalDuration, totalKm }) {
           </p>
         )}
         {group.isAddon && (
-          <span className="text-[10px] text-gray-400 italic">Add-on — buy separately</span>
+          <span className="text-[10px] text-gray-400 italic">{t('common:ui.addonSep')}</span>
         )}
       </div>
     </div>
@@ -898,7 +898,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
           <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-4 flex-wrap">
             {(saveState === 'saved' || alreadySaved) ? (
               <>
-                <p className="text-sm font-semibold text-[#48C4B0]">✓ Plan saved to your account</p>
+                <p className="text-sm font-semibold text-[#48C4B0]">{t('common:ui.planSaved')}</p>
                 <a
                   href="/dashboard"
                   className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap"
@@ -909,8 +909,8 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
             ) : (
               <>
                 <div>
-                  <p className="text-sm font-bold text-[#1B1B1B]">Save this plan</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Add it to your race history.</p>
+                  <p className="text-sm font-bold text-[#1B1B1B]">{t('common:ui.savePlan')}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{t('common:ui.savePlanHint')}</p>
                 </div>
                 <button
                   type="button"
@@ -923,7 +923,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
                   {saveState === 'saving' ? 'Saving…' : 'Save to My Plans →'}
                 </button>
                 {saveState === 'error' && (
-                  <p className="text-xs text-red-500 mt-2 w-full">Something went wrong — please try again.</p>
+                  <p className="text-xs text-red-500 mt-2 w-full">{t('common:ui.tryAgain')}</p>
                 )}
               </>
             )}
@@ -1211,7 +1211,7 @@ function CoachNotes({ coachCopy, watchOut, loading, failed = false, onRetry, sta
           {watchOut && (
             <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-xl">
               <p className="text-xs font-semibold uppercase tracking-widest text-amber-600 mb-1">
-                Watch out for
+                {t('common:ui.watchOut')}
               </p>
               <p className="text-sm text-amber-900">{watchOut}</p>
             </div>
@@ -1847,7 +1847,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       {region == null ? (
         <div className="border-2 border-gray-100 rounded-2xl p-5 text-center text-sm text-gray-500">
           <p className="font-semibold text-[#1B1B1B] mb-1">{t('region.selectHint')}</p>
-          <p>to see local pricing and order.</p>
+          <p>{t('common:ui.toSeePricing')}</p>
         </div>
       ) : regionType === 'international' ? (
         <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-3">
@@ -1924,33 +1924,33 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           <div className="flex items-start gap-3 px-4 py-3">
             <span className="text-base leading-tight mt-0.5">🏊</span>
             <div>
-              <span className="text-sm font-semibold text-[#1B1B1B]">Swim</span>
+              <span className="text-sm font-semibold text-[#1B1B1B]">{t('common:ui.triSwim')}</span>
               <span className="text-xs text-gray-400 ml-2">0 → T+{triPhaseSummary.swimMin} min</span>
-              <p className="text-xs text-gray-500 mt-0.5">No intake. Start fuelling at T1.</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('common:ui.triSwimNote')}</p>
             </div>
           </div>
           <div className="flex items-start gap-3 px-4 py-3">
             <span className="text-base leading-tight mt-0.5">🚴</span>
             <div>
-              <span className="text-sm font-semibold text-[#1B1B1B]">Bike</span>
+              <span className="text-sm font-semibold text-[#1B1B1B]">{t('common:ui.triBike')}</span>
               <span className="text-xs text-gray-400 ml-2">T+{triPhaseSummary.swimMin} → T+{triPhaseSummary.bikeWindowEnd} min</span>
-              <p className="text-xs text-gray-500 mt-0.5">Primary fuelling window. {triPhaseSummary.bikeCarbs}g carbs, gels every 30 min.</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('common:ui.triBikeNote', { carbs: triPhaseSummary.bikeCarbs })}</p>
             </div>
           </div>
           <div className="flex items-start gap-3 px-4 py-3">
             <span className="text-base leading-tight mt-0.5">🏃</span>
             <div>
-              <span className="text-sm font-semibold text-[#1B1B1B]">Run</span>
+              <span className="text-sm font-semibold text-[#1B1B1B]">{t('common:ui.triRun')}</span>
               <span className="text-xs text-gray-400 ml-2">T+{triPhaseSummary.bikeWindowEnd} → T+{targets.total_duration_minutes} min</span>
-              <p className="text-xs text-gray-500 mt-0.5">Gel-only. Every 25 min. Keep it light.</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('common:ui.triRunNote')}</p>
             </div>
           </div>
         </div>
       )}
       {leckaSelection.some(i => i.product?.type === 'ultra_gel') && (
         <div className="border-l-4 border-amber-400 bg-amber-50 rounded-r-xl p-3">
-          <p className="text-xs font-semibold text-amber-900 mb-0.5">Running vest required</p>
-          <p className="text-xs text-amber-800">Ultra gels are larger than standard gels and need a running vest pocket to carry during the race.</p>
+          <p className="text-xs font-semibold text-amber-900 mb-0.5">{t('common:ui.vestTitle')}</p>
+          <p className="text-xs text-amber-800">{t('common:ui.vestBody')}</p>
         </div>
       )}
       {(() => {
@@ -2051,7 +2051,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                       items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-[10px] font-medium text-white/70 uppercase tracking-[.06em] mb-1">
-            Lecka Pro Plan
+            {t('common:ui.proPlan')}
           </p>
           <h1 className="text-base font-bold text-white leading-tight">{heroTitle}</h1>
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
@@ -2198,7 +2198,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 type="button"
                 onClick={handleCopyPlan}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
-                title="Copy plan"
+                title={t('common:ui.copyPlan')}
               >
                 📋
               </button>
@@ -2207,7 +2207,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 onClick={handleDownloadPdf}
                 disabled={pdfState === 'generating'}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
-                title="Download PDF"
+                title={t('common:ui.downloadPdf')}
               >
                 📄
               </button>
@@ -2215,7 +2215,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 type="button"
                 onClick={() => { setMobileTab('order'); setTimeout(() => emailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100) }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
-                title="Email plan"
+                title={t('common:ui.emailPlan')}
               >
                 ✉️
               </button>
@@ -2223,7 +2223,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 type="button"
                 onClick={() => setShowShareModal(true)}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white text-xs hover:bg-white/30 transition-colors"
-                title="Share"
+                title={t('common:ui.share')}
               >
                 🔗
               </button>
@@ -2467,7 +2467,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
               <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
             </svg>
-            Share my plan
+            {t('common:ui.shareMyPlan')}
           </button>
 
           {/* Footer links */}

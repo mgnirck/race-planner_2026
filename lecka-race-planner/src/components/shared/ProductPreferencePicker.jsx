@@ -50,7 +50,7 @@ function ProductPreferenceCard({ product, selected, onToggle, caffeineOk, t }) {
         </div>
       </button>
       {isExcluded && (
-        <p className="text-xs text-gray-400 mt-1 pl-1">Caffeine — excluded from your plan</p>
+        <p className="text-xs text-gray-400 mt-1 pl-1">{t('common:ui.cafExcluded')}</p>
       )}
     </div>
   )
@@ -70,8 +70,8 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
       {/* Ultra Gels — shown above regular gels */}
       {ultraGels.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">Ultra Gels</p>
-          <p className="text-xs text-gray-400 mb-3">Large format, real food. Best for ultra events and marathons over 4 hours.</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1">{t('common:ui.ultraGels')}</p>
+          <p className="text-xs text-gray-400 mb-3">{t('common:ui.ultraGelsDesc')}</p>
           <div className="space-y-2">
             {ultraGels.map(gel => (
               <ProductPreferenceCard
@@ -89,9 +89,9 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
 
       {/* Regular Gels */}
       <div>
-        <p className={`text-xs font-semibold uppercase tracking-widest text-gray-400 ${sport === 'triathlon' ? 'mb-1' : 'mb-3'}`}>Gels</p>
+        <p className={`text-xs font-semibold uppercase tracking-widest text-gray-400 ${sport === 'triathlon' ? 'mb-1' : 'mb-3'}`}>{t('common:ui.gels')}</p>
         {sport === 'triathlon' && (
-          <p className="text-xs text-gray-400 mb-3">Used on the bike and run legs.</p>
+          <p className="text-xs text-gray-400 mb-3">{t('common:ui.gelsTri')}</p>
         )}
         <div className="space-y-2">
           {gels.map(gel => (
@@ -109,9 +109,9 @@ export default function ProductPreferencePicker({ preferredProductIds, onToggle,
 
       {/* Bars */}
       <div>
-        <p className={`text-xs font-semibold uppercase tracking-widest text-gray-400 ${sport === 'triathlon' ? 'mb-1' : 'mb-3'}`}>Bars</p>
+        <p className={`text-xs font-semibold uppercase tracking-widest text-gray-400 ${sport === 'triathlon' ? 'mb-1' : 'mb-3'}`}>{t('common:ui.bars')}</p>
         {sport === 'triathlon' && (
-          <p className="text-xs text-gray-400 mb-3">Bike leg only — placed in your plan before T2.</p>
+          <p className="text-xs text-gray-400 mb-3">{t('common:ui.barsTri')}</p>
         )}
         <div className="space-y-2">
           {bars.map(bar => (

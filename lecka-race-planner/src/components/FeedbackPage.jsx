@@ -275,7 +275,7 @@ export default function FeedbackPage({ planId }) {
           {/* Product log — only shown if the plan has products */}
           {planProducts.length > 0 && (
             <div>
-              <FieldLabel>What did you use?</FieldLabel>
+              <FieldLabel>{t('common:ui.fbWhatUsed')}</FieldLabel>
               <p className="text-xs text-gray-400 mb-3">
                 Mark each product from your plan. Tap +/- to log actual quantities.
               </p>
@@ -344,7 +344,7 @@ export default function FeedbackPage({ planId }) {
                       {/* Actual quantity — only shown if status === 'used' or 'swapped' */}
                       {(status === 'used' || status === 'swapped') && (
                         <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-500 flex-1">Actual quantity</span>
+                          <span className="text-xs text-gray-500 flex-1">{t('common:ui.fbActualQty')}</span>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"

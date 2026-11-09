@@ -206,9 +206,10 @@ function FieldLabel({ children }) {
 // ── Step 0: Region ────────────────────────────────────────────────────────────
 
 function StepRegion({ region, onSelect }) {
+  const { t } = useTranslation(['form', 'common'])
   return (
     <div className="space-y-5">
-      <p className="text-xs text-gray-400">We use this to show you available products and local pricing.</p>
+      <p className="text-xs text-gray-400">{t('common:ui.regionWhy')}</p>
 
       {/* All non-international countries */}
       <div className="flex flex-wrap gap-2">
@@ -234,7 +235,7 @@ function StepRegion({ region, onSelect }) {
       {/* International */}
       {Object.entries(regionsConfig).some(([, cfg]) => cfg.type === 'international') && (
         <div>
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Other</p>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">{t('common:ui.other')}</p>
           <div className="flex flex-wrap gap-2">
             {Object.entries(regionsConfig)
               .filter(([, cfg]) => cfg.type === 'international')
@@ -895,8 +896,8 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
       {/* Custom targets toggle */}
       <div className="flex items-start justify-between gap-4 p-4 rounded-xl border-2 border-gray-100 bg-gray-50">
         <div className="flex-1">
-          <p className="text-sm font-semibold text-[#1B1B1B]">I already know my targets</p>
-          <p className="text-xs text-gray-400 mt-0.5">Enter your carb, sodium, and fluid targets directly — we'll map them to products</p>
+          <p className="text-sm font-semibold text-[#1B1B1B]">{t('common:ui.knowTargets')}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{t('common:ui.knowTargetsHint')}</p>
         </div>
         <button
           type="button"
@@ -949,7 +950,7 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
 
       {/* Age bracket (optional) */}
       <div>
-        <FieldLabel>Age bracket <span className="text-gray-400 font-normal">(optional)</span></FieldLabel>
+        <FieldLabel>{t('common:ui.ageBracket')} <span className="text-gray-400 font-normal">{t('form:field.optional')}</span></FieldLabel>
         <p className="text-xs text-gray-400 mb-2">
           Masters athletes absorb carbohydrates at a lower rate. Select your age group to adjust your targets.
         </p>
@@ -1296,6 +1297,7 @@ const competitorProducts = competitorProductsData.products
 const POPULAR_IDS = new Set(['maurten-gel-160', 'sis-beta-fuel-gel'])
 
 function AddonProductRow({ product, quantity, onChangeQty, onRemove }) {
+  const { t } = useTranslation(['form', 'common'])
   const isSelected = quantity > 0
   return (
     <div
@@ -1333,7 +1335,7 @@ function AddonProductRow({ product, quantity, onChangeQty, onRemove }) {
           )}
           {product.dual_transporter && (
             <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[#48C4B0]/10 text-[#48C4B0]">
-              Dual transport
+              {t('common:ui.dualTransport')}
             </span>
           )}
         </div>

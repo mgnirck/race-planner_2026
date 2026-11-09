@@ -1033,9 +1033,9 @@ export default function CheckpointPage({ planId }) {
                   {/* Totals row */}
                   <div className="grid grid-cols-9 gap-1 px-3 py-3 text-xs border-t-2 border-gray-200 bg-gray-50">
                     <div className="col-span-2">
-                      <span className="font-bold text-[#1B1B1B]">TOTAL</span>
+                      <span className="font-bold text-[#1B1B1B]">{t('common:ui.cpTotal')}</span>
                       <div className="mt-0.5">
-                        <span className="text-gray-500">Est. time: </span>
+                        <span className="text-gray-500">{t('common:ui.cpEstTime')} </span>
                         <span className={`font-semibold ${Math.abs(segments.reduce((s, seg) => s + seg.estMins, 0) - (targets.total_duration_minutes ?? 0)) < 15 ? 'text-green-600' : 'text-amber-600'}`}>
                           {formatDuration(segments.reduce((s, seg) => s + seg.estMins, 0))}
                         </span>
@@ -1060,7 +1060,7 @@ export default function CheckpointPage({ planId }) {
                     <div className="text-gray-500 font-semibold">
                       {segments.reduce((s, seg) => s + seg.sodium, 0)}mg
                     </div>
-                    <div className="col-span-2 text-gray-400 italic">See full plan</div>
+                    <div className="col-span-2 text-gray-400 italic">{t('common:ui.cpSeeFullPlan')}</div>
                   </div>
                 </div>
               </section>

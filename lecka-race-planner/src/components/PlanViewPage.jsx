@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react'
 import ResultsPage from './ResultsPage'
 import SimpleResultsPage from './SimpleResultsPage'
 import Nav from './Nav'
+import { useTranslation } from 'react-i18next'
 
 const planId = window.location.pathname.split('/')[2]
 
 export default function PlanViewPage() {
+  const { t } = useTranslation()
   const [plan,    setPlan]    = useState(null)
   const [isOwner, setIsOwner] = useState(false)
   const [error,   setError]   = useState(null)
@@ -25,7 +27,7 @@ export default function PlanViewPage() {
         setIsOwner(data.isOwner ?? false)
         setPlan(data)
       })
-      .catch(() => setError('Could not load plan.'))
+      .catch(() => setError(t('common:ui.planLoadError')))
   }, [])
 
   if (error) {
@@ -33,7 +35,7 @@ export default function PlanViewPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500 mb-4">{error}</p>
-          <a href="/planner/pro" className="text-[#48C4B0] font-semibold hover:underline">Build your own plan →</a>
+          <a href="/planner/pro" className="text-[#48C4B0] font-semibold hover:underline">{t('common:ui.buildOwn')}</a>
         </div>
       </div>
     )

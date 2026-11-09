@@ -1237,7 +1237,7 @@ export default function DashboardPage() {
         <div className="max-w-lg mx-auto px-5 pt-8 space-y-6">
 
           <div className="text-center space-y-1">
-            <p className="text-xs text-gray-400">Trusted by athletes who fuel with real food worldwide.</p>
+            <p className="text-xs text-gray-400">{t('common:ui.trusted')}</p>
             <p className="text-xs text-gray-400">
               Provided by{' '}
               <a

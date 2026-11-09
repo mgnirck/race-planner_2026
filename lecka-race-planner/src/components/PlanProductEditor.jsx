@@ -201,7 +201,7 @@ export default function PlanProductEditor({
       {/* Lecka products */}
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
-          Lecka products
+          {t('common:ui.pedLecka')}
         </p>
         <div>
           {activeLeckaProducts.map(product => (
@@ -228,7 +228,7 @@ export default function PlanProductEditor({
           Real food foundation — gut-friendly base for your race.
         </p>
 
-        <AddChip onClick={() => setShowLeckaPicker(v => !v)} label="+ Add Lecka product" />
+        <AddChip onClick={() => setShowLeckaPicker(v => !v)} label={t('common:ui.pedAddLecka')} />
 
         {showLeckaPicker && (
           <div className="mt-1 border border-gray-100 rounded-xl overflow-hidden">
@@ -260,7 +260,7 @@ export default function PlanProductEditor({
               )
             })}
             {availableToAdd.length === 0 && (
-              <p className="px-3 py-3 text-xs text-gray-400 text-center">All products already in plan</p>
+              <p className="px-3 py-3 text-xs text-gray-400 text-center">{t('common:ui.pedAllAdded')}</p>
             )}
           </div>
         )}
@@ -293,7 +293,7 @@ export default function PlanProductEditor({
                     <p className="text-xs font-semibold text-[#1B1B1B] truncate">
                       {product.display_name ?? product.name}
                     </p>
-                    <p className="text-[10px] text-gray-400 italic">buy separately</p>
+                    <p className="text-[10px] text-gray-400 italic">{t('common:ui.buyBySep')}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <AdjBtn onClick={() => adjustAddon(product.id, -1)}>−</AdjBtn>
@@ -307,7 +307,7 @@ export default function PlanProductEditor({
           </div>
         )}
 
-        <AddChip onClick={() => setShowAddonPicker(v => !v)} label="+ Add other brand" />
+        <AddChip onClick={() => setShowAddonPicker(v => !v)} label={t('common:ui.pedAddOther')} />
 
         {showAddonPicker && (
           <div className="mt-1 border border-gray-100 rounded-xl overflow-hidden">
@@ -356,7 +356,7 @@ export default function PlanProductEditor({
                   className="w-full bg-[#48C4B0] text-white rounded-lg py-1.5 text-xs font-semibold
                              disabled:opacity-40"
                 >
-                  Add to plan
+                  {t('common:ui.pedAddToPlan')}
                 </button>
               </div>
             ) : (
@@ -370,8 +370,8 @@ export default function PlanProductEditor({
                   <span className="text-[9px] font-bold text-gray-400">+</span>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-[#1B1B1B]">Custom product…</p>
-                  <p className="text-[10px] text-gray-400">enter name and carbs manually</p>
+                  <p className="text-xs font-semibold text-[#1B1B1B]">{t('common:ui.pedCustom')}</p>
+                  <p className="text-[10px] text-gray-400">{t('common:ui.pedCustomHint')}</p>
                 </div>
               </button>
             )}
