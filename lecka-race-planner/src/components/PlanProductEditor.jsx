@@ -326,7 +326,7 @@ export default function PlanProductEditor({
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-[#1B1B1B]">{p.display_name}</p>
-                  <p className="text-[10px] text-gray-400">{p.carbs_per_unit}g carbs · {p.note}</p>
+                  <p className="text-[10px] text-gray-400">{t('form:product.carbs', { value: p.carbs_per_unit })} · {p.note}</p>
                 </div>
               </button>
             ))}

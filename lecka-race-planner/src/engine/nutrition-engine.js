@@ -228,6 +228,7 @@ export function calculateTargets(inputs) {
         .replace('{ml}', String(ml))
         .replace('{mg}', String(mg))
         .replace('{salt}', String(salt)),
+      params: { ml, mg, salt },
       severity: 'info',
     })
   }

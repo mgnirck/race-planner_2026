@@ -23,7 +23,7 @@ import researchMarkdown from '../../NUTRITION_RESEARCH_ANALYSIS.md?raw'
 import { useProducts } from '../hooks/useProducts.js'
 import LanguageSwitcher from './LanguageSwitcher.jsx'
 import i18n from '../i18n.js'
-import { getRaceLabel, getEffortLabel, getConditionLabel } from '../i18n-utils.js'
+import { getRaceLabel, getEffortLabel, getConditionLabel, translateNote } from '../i18n-utils.js'
 import { formatAddonSummary } from '../engine/kit-calculator.js'
 import ShareModal from './ShareModal.jsx'
 import PlanLeftColumn from './PlanLeftColumn.jsx'
@@ -406,7 +406,7 @@ function WarningBox({ warnings }) {
             key={i}
             className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-3 text-sm text-[#1B1B1B]"
           >
-            <p className="leading-snug font-medium">{w.message}</p>
+            <p className="leading-snug font-medium">{t(`warning.${w.type}`, { ...(w.params ?? {}), defaultValue: w.message })}</p>
           </div>
         ))}
       </div>
@@ -446,11 +446,11 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
 
   const carbHint = (() => {
     const c = targets.carb_per_hour
-    if (c === 0)  return 'No fuelling needed for this distance'
-    if (c <= 30)  return 'About 1 gel per hour'
-    if (c <= 50)  return 'About 1–2 gels per hour'
-    if (c <= 70)  return 'About 2 gels per hour'
-    return 'About 2–3 gels per hour'
+    if (c === 0)  return t('carbHint.none')
+    if (c <= 30)  return t('carbHint.one')
+    if (c <= 50)  return t('carbHint.oneToTwo')
+    if (c <= 70)  return t('carbHint.two')
+    return t('carbHint.twoToThree')
   })()
 
   const customWarnings = modelTargets ? [
@@ -696,7 +696,7 @@ function RaceTimelineV2({ events, totalDuration, totalKm }) {
       <ProductIcon product={event.product} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-[#1B1B1B]">{event.product.name}</p>
-        <p className="text-[10px] text-gray-400">{event.note}</p>
+        <p className="text-[10px] text-gray-400">{translateNote(t, event.note)}</p>
       </div>
     </div>
   )
@@ -1992,7 +1992,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               className="text-xs text-gray-400 hover:text-[#48C4B0] transition-colors disabled:opacity-40 flex items-center gap-1"
             >
               <span>↻</span>
-              <span>{proCoachLoading ? 'Refreshing…' : 'Refresh with new product selection'}</span>
+              <span>{proCoachLoading ? t('coachNotes.refreshing') : t('coachNotes.refresh')}</span>
             </button>
           </div>
         </>
@@ -2296,10 +2296,10 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               <NutritionSummary targets={targets} provided={provided} foundationTargets={foundationTargets} addonCoverage={addonCoverage} modelTargets={formModelTargets} />
               <section>
                 <SectionLabel>
-                  {form.fuelling_style === 'gels_only'       ? 'Your gels'
-                   : form.fuelling_style === 'gels_and_bars'  ? 'Your gels and bars'
-                   : form.fuelling_style === 'drink_mix_base' ? 'Your gels (drink mix coming soon)'
-                   : 'What to take'}
+                  {form.fuelling_style === 'gels_only'       ? t('section.yourGels')
+                   : form.fuelling_style === 'gels_and_bars'  ? t('section.yourGelsAndBars')
+                   : form.fuelling_style === 'drink_mix_base' ? t('section.yourGelsDrinkMix')
+                   : t('section.whatToTake')}
                 </SectionLabel>
                 <PlanProductEditor
                   region={region}
@@ -2409,10 +2409,10 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           {/* What to take */}
           <section>
             <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
-              {form.fuelling_style === 'gels_only'       ? 'Your gels'
-               : form.fuelling_style === 'gels_and_bars'  ? 'Your gels and bars'
-               : form.fuelling_style === 'drink_mix_base' ? 'Your gels'
-               : 'What to take'}
+              {form.fuelling_style === 'gels_only'       ? t('section.yourGels')
+               : form.fuelling_style === 'gels_and_bars'  ? t('section.yourGelsAndBars')
+               : form.fuelling_style === 'drink_mix_base' ? t('section.yourGels')
+               : t('section.whatToTake')}
             </p>
             <PlanProductEditor
               region={region}

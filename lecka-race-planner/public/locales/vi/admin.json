@@ -2,7 +2,7 @@
   "title": "Lecka Admin",
   "enterPassword": "Nhập mật khẩu",
   "passwordPlaceholder": "Mật khẩu",
-  "unlock": "Mở khoá",
+  "unlock": "Mở khóa",
   "incorrectPassword": "Mật khẩu không đúng.",
   "verifyFailed": "Không thể kiểm tra mật khẩu — vui lòng thử lại.",
   "verifying": "Đang kiểm tra…",

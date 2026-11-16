@@ -167,5 +167,13 @@
   "field.addons.sodiumPlaceholder": "e.g. 0",
   "field.addons.caffeinePlaceholder": "e.g. 0",
   "field.weight.placeholder": "e.g. 70",
-  "field.weight.errorRange": "Enter a valid weight ({{min}}–{{max}} {{unit}})"
+  "field.weight.errorRange": "Enter a valid weight ({{min}}–{{max}} {{unit}})",
+  "field.splits.errorNumber": "Enter a number",
+  "field.splits.errorTime": "Enter a valid time",
+  "field.splits.errorMin": "Min {{min}} min",
+  "field.splits.errorMax": "Max {{max}} min",
+  "field.triathlonOption.triathlon_sprint": "750m swim · 20km bike · 5km run",
+  "field.triathlonOption.triathlon_olympic": "1.5km swim · 40km bike · 10km run",
+  "field.triathlonOption.triathlon_70_3": "1.9km swim · 90km bike · 21km run",
+  "field.triathlonOption.triathlon_140_6": "3.8km swim · 180km bike · 42km run"
 }

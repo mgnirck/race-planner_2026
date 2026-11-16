@@ -284,13 +284,13 @@ function StepOne({ form, setForm }) {
   const bikeOk        = splitBounds && bikeMin !== null && bikeMin >= splitBounds.bike[0] && bikeMin <= splitBounds.bike[1]
   const runOk         = splitBounds && runMin  !== null && runMin  >= splitBounds.run[0]  && runMin  <= splitBounds.run[1]
   const swimError     = swimTouched && splitBounds && !swimOk
-    ? (!Number.isFinite(swimMin) ? 'Enter a number' : swimMin < splitBounds.swim[0] ? `Min ${splitBounds.swim[0]} min` : `Max ${splitBounds.swim[1]} min`)
+    ? (!Number.isFinite(swimMin) ? t('form:field.splits.errorNumber') : swimMin < splitBounds.swim[0] ? t('form:field.splits.errorMin', { min: splitBounds.swim[0] }) : t('form:field.splits.errorMax', { max: splitBounds.swim[1] }))
     : null
   const bikeError     = bikeTouched && splitBounds && !bikeOk
-    ? (bikeMin === null ? 'Enter a valid time' : bikeMin < splitBounds.bike[0] ? `Min ${splitBounds.bike[0]} min` : `Max ${splitBounds.bike[1]} min`)
+    ? (bikeMin === null ? t('form:field.splits.errorTime') : bikeMin < splitBounds.bike[0] ? t('form:field.splits.errorMin', { min: splitBounds.bike[0] }) : t('form:field.splits.errorMax', { max: splitBounds.bike[1] }))
     : null
   const runError      = runTouched && splitBounds && !runOk
-    ? (runMin === null ? 'Enter a valid time' : runMin < splitBounds.run[0] ? `Min ${splitBounds.run[0]} min` : `Max ${splitBounds.run[1]} min`)
+    ? (runMin === null ? t('form:field.splits.errorTime') : runMin < splitBounds.run[0] ? t('form:field.splits.errorMin', { min: splitBounds.run[0] }) : t('form:field.splits.errorMax', { max: splitBounds.run[1] }))
     : null
 
   function handleDistChange(rawValue) {
@@ -652,7 +652,7 @@ function StepOne({ form, setForm }) {
               <Pill
                 key={opt.key}
                 label={opt.label}
-                sublabel={opt.sublabel}
+                sublabel={t(`form:field.triathlonOption.${opt.key}`, { defaultValue: opt.sublabel })}
                 selected={form.triathlon_type === opt.key}
                 onClick={() => setForm(f => ({
                   ...f,
