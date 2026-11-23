@@ -134,7 +134,7 @@ function aggregateByProduct(selection, region, catalog = FALLBACK_PRODUCTS) {
 function formatRaceDate(dateStr) {
   if (!dateStr) return null
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  return d.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 function daysUntilRace(dateStr) {
@@ -489,13 +489,13 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: form.race_date ? 10 : 0 }}>
             <span style={{ background: '#f9fafb', border: '1px solid #f3f4f6', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#1B1B1B' }}>
-              {targets.carb_per_hour}g carbs/hr
+              {t('pill.carbs', { value: targets.carb_per_hour })}
             </span>
             <span style={{ background: '#f9fafb', border: '1px solid #f3f4f6', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#1B1B1B' }}>
-              {targets.sodium_per_hour}mg sodium/hr
+              {t('pill.sodium', { value: targets.sodium_per_hour })}
             </span>
             <span style={{ background: '#f9fafb', border: '1px solid #f3f4f6', borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#1B1B1B' }}>
-              {targets.fluid_ml_per_hour}ml fluid/hr
+              {t('pill.fluid', { value: targets.fluid_ml_per_hour })}
             </span>
           </div>
           {form.race_date && (
@@ -505,7 +505,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
               </span>
               {dayCount !== null && dayCount > 0 && (
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#48C4B0', padding: '2px 10px', borderRadius: 20 }}>
-                  {dayCount}d to go
+                  {t('header.daysToGo', { count: dayCount })}
                 </span>
               )}
             </div>
@@ -517,7 +517,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
             marginTop: 10, marginBottom: 2, lineHeight: 1.5,
             paddingLeft: 8, paddingRight: 8,
           }}>
-            Built for your inputs. Adjust ±10–15% based on how your stomach responds in training.
+            {t('simple.confidenceNote')}
           </p>
         </div>
 
@@ -546,7 +546,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                     </p>
                     {extra > 0 && (
                       <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0' }}>
-                        +{extra} for training
+                        {t('simple.extraForTraining', { count: extra })}
                       </p>
                     )}
                   </div>
@@ -572,7 +572,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                   background: timeUnit === 'min' ? '#1B1B1B' : 'transparent',
                   color:      timeUnit === 'min' ? '#fff'    : '#6b7280',
                 }}
-              >min</button>
+              >{t('simple.unitMin')}</button>
               <button
                 type="button"
                 onClick={() => { setTimeUnit('km'); try { localStorage.setItem('lecka_time_unit', 'km') } catch {} }}
@@ -587,7 +587,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
 
           {showKmFallback && (
             <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 10 }}>
-              No distance data — showing minutes
+              {t('simple.noDistance')}
             </p>
           )}
 
@@ -636,7 +636,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                       )}
                       {(event.product.carbs_per_unit ?? 0) > 0 && (
                         <p style={{ fontSize: 12, color: '#9ca3af', margin: '2px 0 0' }}>
-                          {event.product.carbs_per_unit}g carbs
+                          {t('product.carbs', { value: event.product.carbs_per_unit })}
                         </p>
                       )}
                     </div>
@@ -665,7 +665,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           >
             <option value="" disabled>{t('region.selectPlaceholder')}</option>
             {Object.entries(regionsConfig).map(([key, cfg]) => (
-              <option key={key} value={key}>{cfg.label}</option>
+              <option key={key} value={key}>{t(`common:region.${key}`, { defaultValue: cfg.label })}</option>
             ))}
           </select>
 
@@ -677,7 +677,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           ) : regionType === 'international' ? (
             <div style={{ border: '1px solid #f3f4f6', background: '#fafafa', borderRadius: 16, padding: 20 }}>
               <p style={{ fontSize: 14, color: '#1B1B1B', lineHeight: 1.6, marginTop: 0 }}>
-                Lecka isn&apos;t available in your country yet — use this plan with any real food gel matching the targets above.
+                {t('cta.internationalNote')}
               </p>
               <a
                 href="https://www.getlecka.com"
@@ -685,12 +685,12 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                 rel="noopener noreferrer"
                 className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
               >
-                Find Lecka → getlecka.com
+                {t('cta.findLeckaSite')}
               </a>
             </div>
           ) : aggregated.length === 0 ? (
             <div style={{ borderLeft: '4px solid #48C4B0', background: 'rgba(72,196,176,0.05)', borderRadius: '0 8px 8px 0', padding: 16, fontSize: 14, color: '#1B1B1B' }}>
-              We couldn&apos;t find products available in your region. Try switching region above.
+              {t('cta.noProducts')}
             </div>
           ) : (
             <div style={{ border: '1px solid #f3f4f6', background: '#fafafa', borderRadius: 16, padding: 20 }}>
@@ -698,14 +698,14 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                 {aggregated.map(row => {
                   const packSummary = row.cartItems
                     .map(item => item.units_per_pack === 1
-                      ? `${item.quantity} single`
-                      : `${item.quantity}×${item.units_per_pack}-pack`)
+                      ? `${item.quantity} ${t('product.single')}`
+                      : t('simple.multiPack', { qty: item.quantity, units: item.units_per_pack }))
                     .join(' + ')
                   return (
                     <div key={row.product.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: 14, fontWeight: 600, color: '#1B1B1B', margin: '0 0 2px' }}>{row.product.name}</p>
-                        <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>{row.totalUnits} for race · {packSummary}</p>
+                        <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>{t('product.forRace', { count: row.totalUnits })} · {packSummary}</p>
                       </div>
                       <p style={{ fontSize: 14, fontWeight: 700, color: '#1B1B1B', margin: 0, flexShrink: 0 }}>
                         {formatPrice(row.linePrice, regionConfig.currency_symbol, regionConfig.decimals ?? 2)}
@@ -715,7 +715,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                 })}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f3f4f6', paddingTop: 12, marginBottom: 16 }}>
-                <span style={{ fontSize: 13, color: '#6b7280' }}>{totalPacks} pack{totalPacks !== 1 ? 's' : ''}</span>
+                <span style={{ fontSize: 13, color: '#6b7280' }}>{t('cta.packs', { count: totalPacks })}</span>
                 <span style={{ fontSize: 18, fontWeight: 800, color: '#1B1B1B' }}>
                   {formattedSubtotal}
                 </span>
@@ -729,11 +729,11 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                     rel="noopener noreferrer"
                     className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
                   >
-                    Buy my plan — {formattedSubtotal} →
+                    {t('cta.buyMyPlanPrice', { price: formattedSubtotal })}
                   </a>
                   {region === 'us' && (
                     <p style={{ fontSize: 12, fontWeight: 600, color: '#48C4B0', textAlign: 'center', marginTop: 8, marginBottom: 0 }}>
-                      Discount code NUTRIPLAN10 applied automatically
+                      {t('cta.discountAuto')}
                     </p>
                   )}
                 </>
@@ -746,7 +746,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                   rel="noopener noreferrer"
                   className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
                 >
-                  Shop at {regionConfig.label} →
+                  {t('cta.shopAt', { name: t(`common:region.${region}`, { defaultValue: regionConfig.label }) })}
                 </a>
               )}
             </div>
@@ -784,7 +784,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                 padding: '2px 8px', borderRadius: 20, background: '#f5f3ff',
                 border: '1px solid #ddd6fe', fontSize: 10, fontWeight: 600, color: '#7c3aed',
               }}>
-                AI · Lecka knowledge
+                {t('coachNotes.aiLabel')}
               </span>
               {teaserParas.map((para, i) => (
                 <p key={i} style={{
@@ -808,7 +808,7 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                   onClick={() => setCoachExpanded(v => !v)}
                   style={{ fontSize: 12, fontWeight: 600, color: '#48C4B0', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >
-                  {coachExpanded ? 'Show less ↑' : 'Read more →'}
+                  {coachExpanded ? t('coachNotes.showLess') : t('coachNotes.readMore')}
                 </button>
               )}
             </div>
@@ -840,11 +840,11 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
           <SectionLabel>{t('section.emailPlan')}</SectionLabel>
           {form.email && planSent ? (
             <div style={{ border: '2px solid rgba(72,196,176,0.4)', background: 'rgba(72,196,176,0.05)', borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#48C4B0', margin: 0 }}>✓ Your plan has been sent to {form.email}</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#48C4B0', margin: 0 }}>{t('email.sentTo', { email: form.email })}</p>
             </div>
           ) : emailState === 'success' ? (
             <div style={{ border: '2px solid rgba(72,196,176,0.4)', background: 'rgba(72,196,176,0.05)', borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#48C4B0', margin: 0 }}>✓ Plan sent to {emailInput}</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#48C4B0', margin: 0 }}>{t('sendPlan.sentTitle', { email: emailInput })}</p>
             </div>
           ) : (
             <form onSubmit={handleSendEmail} noValidate>
@@ -873,12 +873,12 @@ export default function SimpleResultsPage({ targets, selection, form, onBack }) 
                     opacity: (emailState === 'sending' || !emailInput.trim()) ? 0.5 : 1,
                   }}
                 >
-                  {emailState === 'sending' ? 'Sending…' : 'Send plan'}
+                  {emailState === 'sending' ? t('email.sending') : t('email.send')}
                 </button>
               </div>
               {emailState === 'error' && (
                 <p style={{ fontSize: 12, color: '#ef4444', marginTop: 8 }}>
-                  Something went wrong — please try again.
+                  {t('common:ui.tryAgain')}
                 </p>
               )}
             </form>

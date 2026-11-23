@@ -89,5 +89,7 @@
   "footer.useLeckaInClaude": "Dùng Lecka trong Claude →",
   "plan.delete": "Xóa",
   "plan.editReminderDate": "Chỉnh sửa ngày nhắc nhở",
-  "plan.edit": "Chỉnh sửa"
+  "plan.edit": "Chỉnh sửa",
+  "plan.modePro": "Pro",
+  "plan.modeBasic": "Cơ bản"
 }

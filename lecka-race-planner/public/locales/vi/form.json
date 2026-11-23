@@ -175,5 +175,19 @@
   "field.triathlonOption.triathlon_sprint": "Bơi 750m · Đạp xe 20km · Chạy 5km",
   "field.triathlonOption.triathlon_olympic": "Bơi 1,5km · Đạp xe 40km · Chạy 10km",
   "field.triathlonOption.triathlon_70_3": "Bơi 1,9km · Đạp xe 90km · Chạy 21km",
-  "field.triathlonOption.triathlon_140_6": "Bơi 3,8km · Đạp xe 180km · Chạy 42km"
+  "field.triathlonOption.triathlon_140_6": "Bơi 3,8km · Đạp xe 180km · Chạy 42km",
+  "field.triathlonTotal": "Tổng: {{h}} giờ {{m}} phút",
+  "field.goalTime.tooFast": "Đây là mục tiêu rất nhanh so với cự ly này. Hãy kiểm tra lại thời gian mục tiêu — kế hoạch dinh dưỡng của bạn sẽ được tính dựa trên con số này.",
+  "field.goalTime.tooSlow": "Đây là mục tiêu rất chậm so với cự ly này. Hãy kiểm tra lại thời gian mục tiêu — kế hoạch dinh dưỡng của bạn sẽ được tính dựa trên con số này.",
+  "field.ageBracket.hint": "Vận động viên lớn tuổi (masters) hấp thụ carbohydrate chậm hơn. Chọn nhóm tuổi của bạn để điều chỉnh mục tiêu.",
+  "field.ageBracket.under40": "Dưới 40",
+  "field.humidity.dry": "Khô",
+  "field.humidity.humid": "Ẩm",
+  "product.popular": "Phổ biến",
+  "product.custom": "Tự thêm",
+  "product.packWeight": "gói {{value}}g",
+  "customProduct.errName": "Vui lòng nhập tên sản phẩm (tối đa 60 ký tự).",
+  "customProduct.errCarbs": "Carb phải là số từ 0 đến 150.",
+  "customProduct.errSodium": "Natri phải trong khoảng 0–2000 mg.",
+  "customProduct.errCaffeine": "Caffeine phải trong khoảng 0–300 mg."
 }

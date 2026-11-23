@@ -89,5 +89,7 @@
   "footer.useLeckaInClaude": "Use Lecka in Claude →",
   "plan.delete": "Delete",
   "plan.editReminderDate": "Edit reminder date",
-  "plan.edit": "Edit"
+  "plan.edit": "Edit",
+  "plan.modePro": "Pro",
+  "plan.modeBasic": "Basic"
 }

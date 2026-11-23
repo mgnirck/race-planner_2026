@@ -28,6 +28,7 @@ export function translateNote(t, note) {
   let m
   if (note === 'Consume 15–60 min before the start') return t('results:note.before', { defaultValue: note })
   if (note === 'Consume within 60 min of finishing') return t('results:note.after', { defaultValue: note })
+  if (note === 'Add-on — buy separately') return t('common:ui.addonSep', { defaultValue: note })
   if (note === 'Join the waitlist — launching soon') return t('results:note.waitlist', { defaultValue: note })
   if (note === 'Eat ~90 min before start — well before your swim') return t('results:note.beforeSwim', { defaultValue: note })
   if (note === 'Best in the first half — peanut butter slows absorption') return t('results:note.peanutButter', { defaultValue: note })

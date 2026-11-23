@@ -137,7 +137,7 @@ export default function SharePlanImage({ plan, format, onReady }) {
 
       {/* TOTALS */}
       <div style={{ fontSize: fs(19), color: 'rgba(255,255,255,0.6)', textAlign: 'center' }}>
-        {totalCarbs}g carbs total · {totalSodium}mg sodium total
+        {t('share.totals', { carbs: totalCarbs, sodium: totalSodium })}
       </div>
 
       {/* PRODUCTS or international message */}

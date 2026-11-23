@@ -8,6 +8,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '../i18n.js'
+import { getRaceLabel, getConditionLabel } from '../i18n-utils.js'
 import { useProducts } from '../hooks/useProducts.js'
 import FALLBACK_PRODUCTS from '../config/products.json'
 
@@ -115,7 +117,7 @@ function PlanSummaryPanel({ plan }) {
   })()
 
   const raceName = inputs.race_name
-    || RACE_LABELS[targets.race_type]
+    || (targets.race_type ? getRaceLabel(t, targets.race_type) : null)
     || targets.race_type
     || '—'
 
@@ -129,17 +131,17 @@ function PlanSummaryPanel({ plan }) {
           <p className="text-sm font-bold text-[#1B1B1B] leading-snug">{raceName}</p>
           <p className="text-gray-500 mt-1">
             {formatGoalTime(targets.total_duration_minutes)}
-            {targets.conditions ? ` · ${CONDITION_LABELS[targets.conditions] ?? targets.conditions}` : ''}
+            {targets.conditions ? ` · ${getConditionLabel(t, targets.conditions)}` : ''}
           </p>
           <div className="space-y-0.5 mt-2">
             {inputs.race_date && (
-              <p className="text-gray-500">{new Date(inputs.race_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+              <p className="text-gray-500">{new Date(inputs.race_date + 'T00:00:00').toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
             )}
             {panelRaceTotalKm > 0 && (
-              <p className="text-gray-500">{panelRaceTotalKm} km total</p>
+              <p className="text-gray-500">{t('cp.kmTotal', { km: panelRaceTotalKm })}</p>
             )}
             {(inputs.elevation_gain_m ?? 0) > 0 && (
-              <p className="text-gray-500">+{inputs.elevation_gain_m}m elevation</p>
+              <p className="text-gray-500">{t('cp.elevationGain', { m: inputs.elevation_gain_m })}</p>
             )}
           </div>
         </div>
@@ -311,6 +313,8 @@ function SegmentEditPopover({ seg, segTarget, products, segmentDataAll, editingI
 
 export default function CheckpointPage({ planId }) {
   const { t } = useTranslation(['common', 'form'])
+  // Built-in point names are English internally (also used in the PDF export); translate for display only
+  const pointLabel = name => name === 'Start' ? t('cp.pointStart') : name === 'Finish' ? t('cp.pointFinish') : name === 'Checkpoint' ? t('cp.pointCheckpoint') : name
   const [plan,         setPlan]         = useState(null)
   const [planLoading,  setPlanLoading]  = useState(true)
   const [checkpoints,  setCheckpoints]  = useState([])
@@ -991,7 +995,7 @@ export default function CheckpointPage({ planId }) {
                            className={`grid grid-cols-9 gap-1 px-3 py-3 text-xs border-t border-gray-100
                                        ${seg.drop_bag ? 'bg-[#48C4B0]/5' : ''}`}>
                         <div className="col-span-2">
-                          <p className="font-semibold text-[#1B1B1B] leading-snug">{seg.name}</p>
+                          <p className="font-semibold text-[#1B1B1B] leading-snug">{`${pointLabel(seg.fromName)} → ${pointLabel(seg.toName)}`}</p>
                           {seg.drop_bag && (
                             <span className="inline-block mt-0.5 text-[10px] font-semibold
                                              text-[#48C4B0] border border-[#48C4B0] rounded px-1">

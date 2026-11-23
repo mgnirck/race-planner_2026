@@ -472,7 +472,7 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.carb_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.carbsPerHour')}</p>
               {modelTargets ? (
-                <p className="text-xs text-gray-400 mt-1 leading-tight">Model suggested: {modelTargets.carb_per_hour}g/h</p>
+                <p className="text-xs text-gray-400 mt-1 leading-tight">{t('nutrition.modelSuggested', { value: `${modelTargets.carb_per_hour}g/h` })}</p>
               ) : (
                 <p className="text-xs text-gray-400 italic mt-1 leading-tight">{carbHint}</p>
               )}
@@ -481,12 +481,12 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.sodium_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.sodiumPerHour')}</p>
               {modelTargets ? (
-                <p className="text-xs text-gray-400 mt-1 leading-tight">Model suggested: {modelTargets.sodium_per_hour}mg/h</p>
+                <p className="text-xs text-gray-400 mt-1 leading-tight">{t('nutrition.modelSuggested', { value: `${modelTargets.sodium_per_hour}mg/h` })}</p>
               ) : (
                 <p className="text-xs text-gray-400 italic mt-1 leading-tight">
                   {targets.sodium_mg_per_litre
                     ? t('nutrition.sodiumBasis', { mgPerL: targets.sodium_mg_per_litre })
-                    : 'From gels + electrolytes'}
+                    : t('nutrition.sodiumFromProducts')}
                 </p>
               )}
             </div>
@@ -494,7 +494,7 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
               <p className="text-2xl font-bold text-[#48C4B0]">{targets.fluid_ml_per_hour}</p>
               <p className="text-xs text-gray-400 mt-0.5 leading-tight">{labelParts('nutrition.fluidPerHour')}</p>
               {modelTargets ? (
-                <p className="text-xs text-gray-400 mt-1 leading-tight">Model suggested: {modelTargets.fluid_ml_per_hour}ml/h</p>
+                <p className="text-xs text-gray-400 mt-1 leading-tight">{t('nutrition.modelSuggested', { value: `${modelTargets.fluid_ml_per_hour}ml/h` })}</p>
               ) : (
                 <p className="text-xs text-gray-400 italic mt-1 leading-tight">{t('nutrition.fluidNote')}</p>
               )}
@@ -502,7 +502,7 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
           </div>
           {customWarnings.length > 0 && (
             <p className="text-xs text-amber-600 mt-3 leading-snug">
-              This is above typical research guidelines — make sure you&apos;ve trained at this intake.
+              {t('nutrition.aboveGuidelines')}
             </p>
           )}
         </div>
@@ -521,8 +521,8 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
             <div className="border-t border-gray-100 pt-4">
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">{t('common:ui.howCovered')}</p>
               <div className="flex justify-between text-xs mb-2">
-                <span className="text-[#48C4B0] font-medium">🌱 Lecka foundation: {foundationTargets.carb_per_hour}g carbs/hour</span>
-                <span className="text-gray-400">+ Add-ons: {Math.round(addonCoverage.carbs_per_hour)}g/hour</span>
+                <span className="text-[#48C4B0] font-medium">{t('nutrition.foundation', { carbs: foundationTargets.carb_per_hour })}</span>
+                <span className="text-gray-400">{t('nutrition.addons', { carbs: Math.round(addonCoverage.carbs_per_hour) })}</span>
               </div>
               <div className="h-2 rounded-full overflow-hidden flex">
                 <div className="h-full bg-[#48C4B0] transition-all" style={{ width: `${foundationPct}%` }} />
@@ -593,7 +593,7 @@ function NutritionSummary({ targets, provided, foundationTargets, addonCoverage,
 
       </div>
       <p className="text-xs text-gray-400 text-center mt-2">
-        Numbers are personalised to your weight, conditions, and training level.
+        {t('nutrition.personalisedNote')}
       </p>
     </section>
   )
@@ -713,9 +713,9 @@ function RaceTimelineV2({ events, totalDuration, totalKm }) {
         <p className="text-[10px] text-gray-400">{group.scheduleText}</p>
         {(group.product.carbs_per_unit > 0 || group.product.sodium_per_unit > 0) && (
           <p className="text-[10px]">
-            <span className="text-gray-500">{group.product.carbs_per_unit}g carbs</span>
+            <span className="text-gray-500">{t('product.carbs', { value: group.product.carbs_per_unit })}</span>
             {group.product.sodium_per_unit > 0 && (
-              <span className="text-gray-400"> · {group.product.sodium_per_unit}mg sodium</span>
+              <span className="text-gray-400"> · {t('product.sodium', { value: group.product.sodium_per_unit })}</span>
             )}
           </p>
         )}
@@ -879,7 +879,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
                 >
                   {emailState === 'sending'
                     ? t('email.sending')
-                    : isLoggedIn ? t('email.send') : 'Send my plan + save it →'}
+                    : isLoggedIn ? t('email.send') : t('email.sendAndSave')}
                 </button>
               </div>
               {showError && (
@@ -903,7 +903,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
                   href="/dashboard"
                   className="text-sm font-semibold text-[#48C4B0] hover:underline whitespace-nowrap"
                 >
-                  View in My Plans →
+                  {t('save.viewInMyPlans')}
                 </a>
               </>
             ) : (
@@ -920,7 +920,7 @@ function PlanDeliveryCard({ targets, selection, form, region = 'us', hideSave = 
                              font-semibold hover:bg-[#3db09d] transition-colors
                              disabled:opacity-50 whitespace-nowrap flex-shrink-0"
                 >
-                  {saveState === 'saving' ? 'Saving…' : 'Save to My Plans →'}
+                  {saveState === 'saving' ? t('save.saving') : t('save.button')}
                 </button>
                 {saveState === 'error' && (
                   <p className="text-xs text-red-500 mt-2 w-full">{t('common:ui.tryAgain')}</p>
@@ -1755,24 +1755,24 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
     const fmtMin = m => { const h = Math.floor(m / 60); const mn = m % 60; return h > 0 ? `${h}h${mn > 0 ? String(mn).padStart(2, '0') : ''}` : `${mn}min` }
     const productLines = effectiveSelection.map(item => {
       const timingSummary = item.timing_minutes?.length > 0
-        ? `at ${item.timing_minutes.map(fmtMin).join(', ')}`
+        ? t('copy.at', { times: item.timing_minutes.map(fmtMin).join(', ') })
         : ''
       return `• ${item.quantity}x ${item.product.name}${timingSummary ? ` (${timingSummary})` : ''}`
     }).join('\n')
     const summary = [
-      `--- ${raceName} Nutrition Plan ---`,
-      form.goal_time ? `Goal time: ${form.goal_time}` : null,
-      conditionLabel ? `Conditions: ${conditionLabel}` : null,
+      t('copy.title', { race: raceName }),
+      form.goal_time ? t('copy.goalTime', { time: form.goal_time }) : null,
+      conditionLabel ? t('copy.conditions', { value: conditionLabel }) : null,
       '',
-      'Targets:',
-      `• ${targets.carb_per_hour}g carbs/hour`,
-      `• ${targets.sodium_per_hour}mg sodium/hour`,
-      `• ${targets.fluid_ml_per_hour}ml fluid/hour`,
+      t('copy.targets'),
+      `• ${t('copy.carbs', { value: targets.carb_per_hour })}`,
+      `• ${t('copy.sodium', { value: targets.sodium_per_hour })}`,
+      `• ${t('copy.fluid', { value: targets.fluid_ml_per_hour })}`,
       '',
-      productLines ? 'Products:' : null,
+      productLines ? t('copy.products') : null,
       productLines || null,
       '',
-      'Built with Lecka — getlecka.com',
+      t('copy.footer'),
     ].filter(l => l !== null).join('\n')
 
     copyToClipboard(summary)
@@ -1783,7 +1783,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   function formatRaceDate(dateStr) {
     if (!dateStr) return null
     const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     })
   }
@@ -1839,7 +1839,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
             ].join(' ')}
           >
-            {cfg.label}
+            {t(`common:region.${key}`, { defaultValue: cfg.label })}
           </button>
         ))}
       </div>
@@ -1852,7 +1852,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
       ) : regionType === 'international' ? (
         <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-3">
           <p className="text-sm text-[#1B1B1B] leading-relaxed">
-            Lecka isn&apos;t available in your country yet — use this plan with any real food gel matching the targets above.
+            {t('cta.internationalNote')}
           </p>
           <a
             href="https://www.getlecka.com"
@@ -1860,12 +1860,12 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             rel="noopener noreferrer"
             className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
           >
-            Find Lecka → getlecka.com
+            {t('cta.findLeckaSite')}
           </a>
         </div>
       ) : aggregated.length === 0 ? (
         <div className="border-l-4 border-[#48C4B0] bg-[#48C4B0]/5 rounded-r-lg p-4 text-sm text-[#1B1B1B] leading-snug">
-          We couldn&apos;t find products available in your region. Try switching region above.
+          {t('cta.noProducts')}
         </div>
       ) : (
         <div className="border border-gray-100 bg-gray-50/50 rounded-2xl p-5 space-y-4">
@@ -1897,7 +1897,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
           {regionType === 'distributor' && (
             <a href={regionConfig.store_url} target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors">
-              Shop at {regionConfig.label} →
+              {t('cta.shopAt', { name: t(`common:region.${region}`, { defaultValue: regionConfig.label }) })}
             </a>
           )}
 
@@ -2005,9 +2005,9 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
   )
 
   const targetTiles = [
-    { value: targets.carb_per_hour,     unit: 'g',  label: 'carbs / hour',  sub: `${targets.total_carbs}g total`,  modelValue: formModelTargets?.carb_per_hour },
-    { value: targets.sodium_per_hour,   unit: 'mg', label: 'sodium / hour', sub: `${targets.total_sodium}mg total`, modelValue: formModelTargets?.sodium_per_hour },
-    { value: targets.fluid_ml_per_hour, unit: 'ml', label: 'fluid / hour',  sub: null,                              modelValue: formModelTargets?.fluid_ml_per_hour },
+    { value: targets.carb_per_hour,     unit: 'g',  label: t('tiles.carbsPerHour'),  sub: t('tiles.total', { value: `${targets.total_carbs}g` }),  modelValue: formModelTargets?.carb_per_hour },
+    { value: targets.sodium_per_hour,   unit: 'mg', label: t('tiles.sodiumPerHour'), sub: t('tiles.total', { value: `${targets.total_sodium}mg` }), modelValue: formModelTargets?.sodium_per_hour },
+    { value: targets.fluid_ml_per_hour, unit: 'ml', label: t('tiles.fluidPerHour'),  sub: null,                              modelValue: formModelTargets?.fluid_ml_per_hour },
   ]
 
   const scienceTabContent = (
@@ -2066,7 +2066,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               ) : null
             })()}
             <span className="bg-black/15 text-white rounded-full px-2.5 py-0.5 text-[10px]">
-              {form.goal_time ? `Target ${formatDuration(targets.total_duration_minutes)}`
+              {form.goal_time ? t('header.target', { time: formatDuration(targets.total_duration_minutes) })
                               : formatDuration(targets.total_duration_minutes)}
             </span>
             {conditionLabel && (
@@ -2081,12 +2081,12 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             )}
             {form.race_date && daysUntilRace(form.race_date) > 0 && (
               <span className="bg-white/20 text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold">
-                {new Date(form.race_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {daysUntilRace(form.race_date)}d to go
+                {new Date(form.race_date).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {t('header.daysToGo', { count: daysUntilRace(form.race_date) })}
               </span>
             )}
             {form.race_date && daysUntilRace(form.race_date) === 0 && (
               <span className="bg-[#F64866] text-white rounded-full px-2.5 py-0.5 text-[10px] font-semibold">
-                Race day! 🎉
+                {t('header.raceDay')}
               </span>
             )}
             {form.training_mode && (
@@ -2102,7 +2102,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             onClick={handleCopyPlan}
             className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors"
           >
-            {copyPlanState === 'copied' ? '✓ Copied' : 'Copy'}
+            {copyPlanState === 'copied' ? t('action.copied') : t('action.copy')}
           </button>
           <button
             type="button"
@@ -2110,31 +2110,31 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
             disabled={pdfState === 'generating'}
             className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors disabled:opacity-50"
           >
-            {pdfState === 'generating' ? 'Preparing…' : pdfState === 'error' ? 'Retry' : 'Download PDF'}
+            {pdfState === 'generating' ? t('action.preparing') : pdfState === 'error' ? t('action.retry') : t('common:ui.downloadPdf')}
           </button>
           <button
             type="button"
             onClick={() => emailRef.current?.scrollIntoView({ behavior: 'smooth' })}
             className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors"
           >
-            Email
+            {t('action.email')}
           </button>
           <button
             type="button"
             onClick={() => setShowShareModal(true)}
             className="bg-white/20 hover:bg-white/30 border-none rounded-lg px-2.5 py-1.5 text-white text-xs transition-colors"
           >
-            Share
+            {t('common:ui.share')}
           </button>
           {regionType === 'international' ? (
             <a href="https://www.getlecka.com" target="_blank" rel="noopener noreferrer"
                className="bg-[#F64866] hover:bg-[#e03558] rounded-lg px-3 py-1.5 text-white text-xs font-semibold transition-colors">
-              Find Lecka →
+              {t('cta.findLeckaShort')}
             </a>
           ) : (
             <a href={cartURL} target="_blank" rel="noopener noreferrer"
                className="bg-[#F64866] hover:bg-[#e03558] rounded-lg px-3 py-1.5 text-white text-xs font-semibold transition-colors">
-              Buy plan →
+              {t('cta.buyPlanShort')}
             </a>
           )}
         </div>
@@ -2156,14 +2156,14 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
                 <p className="text-[10px] text-[#0F6E56]/70 mt-1">{m.sub}</p>
               )}
               {m.modelValue != null && (
-                <p className="text-xs text-[#0F6E56]/70 mt-1">Model suggested: {m.modelValue}{m.unit}/h</p>
+                <p className="text-xs text-[#0F6E56]/70 mt-1">{t('nutrition.modelSuggested', { value: `${m.modelValue}${m.unit}/h` })}</p>
               )}
             </div>
           ))}
         </div>
         {formModelTargets && (targets.carb_per_hour > 120 || targets.sodium_per_hour > 1800 || targets.fluid_ml_per_hour > 1500) && (
           <p className="text-xs text-amber-600 text-center px-4 pb-2">
-            This is above typical research guidelines — make sure you&apos;ve trained at this intake.
+            {t('nutrition.aboveGuidelines')}
           </p>
         )}
       </div>
@@ -2242,7 +2242,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               ) : null
             })()}
             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-black/15 text-white text-xs">
-              {form.goal_time ? 'Target ' : ''}{formatDuration(targets.total_duration_minutes)}
+              {form.goal_time ? t('header.target', { time: formatDuration(targets.total_duration_minutes) }) : formatDuration(targets.total_duration_minutes)}
             </span>
             {conditionLabel && <span className="opacity-80">{conditionLabel}</span>}
           </p>
@@ -2266,11 +2266,11 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
         {/* Mobile tabs */}
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200 flex">
           {[
-            { key: 'products', label: 'Products' },
-            { key: 'timeline', label: 'Timeline' },
-            { key: 'coach',    label: 'Coach' },
-            { key: 'prefuel',  label: 'Pre-fuel' },
-            { key: 'order',    label: 'Order' },
+            { key: 'products', label: t('tabs.products') },
+            { key: 'timeline', label: t('tabs.timeline') },
+            { key: 'coach',    label: t('tabs.coachShort') },
+            { key: 'prefuel',  label: t('tabs.prefuelShort') },
+            { key: 'order',    label: t('tabs.order') },
           ].map(tab => (
             <button
               key={tab.key}
@@ -2384,7 +2384,7 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               rel="noopener noreferrer"
               className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
             >
-              Find Lecka → getlecka.com
+              {t('cta.findLeckaSite')}
             </a>
           ) : (
             <a
@@ -2394,8 +2394,8 @@ export default function ResultsPage({ targets, foundationTargets, selection, add
               className="flex items-center justify-center w-full min-h-[48px] bg-[#F64866] hover:bg-[#e03558] text-white rounded-2xl text-sm font-bold transition-colors"
             >
               {aggregated.length > 0
-                ? `Buy plan — ${formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2)} →`
-                : 'Buy plan →'}
+                ? t('cta.buyPlanPrice', { price: formatPrice(subtotal, regionConfig.currency_symbol, regionConfig.decimals ?? 2) })
+                : t('cta.buyPlanShort')}
             </a>
           )}
         </div>

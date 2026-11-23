@@ -27,7 +27,7 @@ function ProductPreferenceCard({ product, selected, onToggle, caffeineOk, t }) {
               <span className="text-xs text-gray-400">{t('form:product.carbs', { value: product.carbs_per_unit })}</span>
               <span className="text-xs text-gray-400">{t('form:product.sodium', { value: product.sodium_per_unit })}</span>
               {product.type === 'ultra_gel' && product.net_weight_g && (
-                <span className="text-xs text-gray-400">{product.net_weight_g}g pack</span>
+                <span className="text-xs text-gray-400">{t('form:product.packWeight', { value: product.net_weight_g })}</span>
               )}
               {product.caffeine && (
                 <span className="text-xs font-medium text-[#48C4B0]">{t('form:product.caffeine', { value: product.caffeine_mg })}</span>

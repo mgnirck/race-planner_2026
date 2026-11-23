@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useTranslation, Trans } from 'react-i18next'
+import i18n from '../i18n.js'
 import Nav from './Nav.jsx'
 import { clearLocalAuth } from '../auth.js'
 import { calculateTargets } from '../engine/nutrition-engine'
@@ -81,8 +82,8 @@ function daysUntil(dateStr) {
 
 function raceLabel(plan) {
   return plan.race_name || (plan.race_type
-    ? plan.race_type.charAt(0).toUpperCase() + plan.race_type.slice(1).replace(/_/g, ' ')
-    : 'Race plan')
+    ? i18n.t(`common:racetype.${plan.race_type}`, { defaultValue: plan.race_type.charAt(0).toUpperCase() + plan.race_type.slice(1).replace(/_/g, ' ') })
+    : i18n.t('common:ui.racePlan'))
 }
 
 function raceTypeLabel(raceType) {
@@ -276,7 +277,7 @@ function PlanPill({ mode }) {
       className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full flex-shrink-0"
       style={{ background: isPro ? TEAL_LIGHT : GREY_LIGHT, color: isPro ? TEAL_MID : GREY_MID }}
     >
-      {isPro ? 'Pro' : 'Basic'}
+      {isPro ? i18n.t('dashboard:plan.modePro') : i18n.t('dashboard:plan.modeBasic')}
     </span>
   )
 }
@@ -1239,7 +1240,7 @@ export default function DashboardPage() {
           <div className="text-center space-y-1">
             <p className="text-xs text-gray-400">{t('common:ui.trusted')}</p>
             <p className="text-xs text-gray-400">
-              Provided by{' '}
+              {t('common:footer.providedBy')}{' '}
               <a
                 href="https://www.getlecka.com"
                 target="_blank"
@@ -1273,13 +1274,13 @@ export default function DashboardPage() {
             <p className="text-xs text-gray-400 mb-2">{t('footer.findLecka')}</p>
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
               {[
-                { label: 'US',          href: 'https://www.getlecka.com' },
-                { label: 'Vietnam',     href: 'https://www.getlecka.vn' },
-                { label: 'Germany',     href: 'https://www.getlecka.de' },
-                { label: 'Denmark',     href: 'https://www.getlecka.dk' },
-                { label: 'Switzerland', href: 'https://www.getlecka.ch' },
-                { label: 'Singapore',   href: 'https://rdrc.sg/collections/lecka' },
-                { label: 'Hong Kong',   href: 'https://foodisdom.is/collections/lecka' },
+                { label: t('common:country.us'),          href: 'https://www.getlecka.com' },
+                { label: t('common:country.vn'),     href: 'https://www.getlecka.vn' },
+                { label: t('common:country.de'),     href: 'https://www.getlecka.de' },
+                { label: t('common:country.dk'),     href: 'https://www.getlecka.dk' },
+                { label: t('common:country.ch'), href: 'https://www.getlecka.ch' },
+                { label: t('common:country.sg'),   href: 'https://rdrc.sg/collections/lecka' },
+                { label: t('common:country.hk'),   href: 'https://foodisdom.is/collections/lecka' },
               ].map(({ label, href }) => (
                 <a
                   key={label}

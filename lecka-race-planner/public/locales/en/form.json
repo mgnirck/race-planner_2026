@@ -175,5 +175,19 @@
   "field.triathlonOption.triathlon_sprint": "750m swim · 20km bike · 5km run",
   "field.triathlonOption.triathlon_olympic": "1.5km swim · 40km bike · 10km run",
   "field.triathlonOption.triathlon_70_3": "1.9km swim · 90km bike · 21km run",
-  "field.triathlonOption.triathlon_140_6": "3.8km swim · 180km bike · 42km run"
+  "field.triathlonOption.triathlon_140_6": "3.8km swim · 180km bike · 42km run",
+  "field.triathlonTotal": "Total: {{h}}h {{m}}min",
+  "field.goalTime.tooFast": "That's a very fast target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.",
+  "field.goalTime.tooSlow": "That's a very slow target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.",
+  "field.ageBracket.hint": "Masters athletes absorb carbohydrates at a lower rate. Select your age group to adjust your targets.",
+  "field.ageBracket.under40": "Under 40",
+  "field.humidity.dry": "Dry",
+  "field.humidity.humid": "Humid",
+  "product.popular": "Popular",
+  "product.custom": "Custom",
+  "product.packWeight": "{{value}}g pack",
+  "customProduct.errName": "Please enter a product name (max 60 characters).",
+  "customProduct.errCarbs": "Carbs must be a number between 0 and 150.",
+  "customProduct.errSodium": "Sodium must be 0–2000 mg.",
+  "customProduct.errCaffeine": "Caffeine must be 0–300 mg."
 }

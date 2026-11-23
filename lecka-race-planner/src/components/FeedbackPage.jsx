@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import i18n from '../i18n.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -14,8 +15,8 @@ function formatGoalTime(minutes) {
 
 function raceLabel(plan) {
   return plan.race_name || (plan.race_type
-    ? plan.race_type.charAt(0).toUpperCase() + plan.race_type.slice(1).replace(/_/g, ' ')
-    : 'Race plan')
+    ? i18n.t(`common:racetype.${plan.race_type}`, { defaultValue: plan.race_type.charAt(0).toUpperCase() + plan.race_type.slice(1).replace(/_/g, ' ') })
+    : i18n.t('common:ui.racePlan'))
 }
 
 // ── Primitive UI components ───────────────────────────────────────────────────
@@ -132,7 +133,7 @@ export default function FeedbackPage({ planId }) {
     if (!plan?.selection) return []
     return (plan.selection ?? []).map(item => ({
       id:          item.product_id ?? item.product?.id ?? item.id ?? '',
-      name:        item.product?.name ?? item.name ?? item.product_id ?? 'Product',
+      name:        item.product?.name ?? item.name ?? item.product_id ?? t('ui.fbProduct'),
       type:        item.product?.type ?? item.type ?? '',
       planned_qty: item.quantity ?? item.qty ?? 1,
     })).filter(p => p.id)
@@ -220,11 +221,11 @@ export default function FeedbackPage({ planId }) {
               <p className="text-sm font-bold text-[#1B1B1B]">{raceLabel(plan)}</p>
             </div>
             {formatGoalTime(plan.goal_minutes) && (
-              <span className="text-xs text-gray-400">Goal {formatGoalTime(plan.goal_minutes)}</span>
+              <span className="text-xs text-gray-400">{t('ui.fbGoal', { time: formatGoalTime(plan.goal_minutes) })}</span>
             )}
             {plan.conditions && (
               <span className="text-xs text-gray-400">
-                {plan.conditions.charAt(0).toUpperCase() + plan.conditions.slice(1).replace(/_/g, ' ')}
+                {t(`conditions.${plan.conditions}`, { defaultValue: plan.conditions.charAt(0).toUpperCase() + plan.conditions.slice(1).replace(/_/g, ' ') })}
               </span>
             )}
           </div>
@@ -277,7 +278,7 @@ export default function FeedbackPage({ planId }) {
             <div>
               <FieldLabel>{t('common:ui.fbWhatUsed')}</FieldLabel>
               <p className="text-xs text-gray-400 mb-3">
-                Mark each product from your plan. Tap +/- to log actual quantities.
+                {t('ui.fbMarkProducts')}
               </p>
               <div className="space-y-3">
                 {planProducts.map(product => {
@@ -297,7 +298,7 @@ export default function FeedbackPage({ planId }) {
                             {product.name}
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">
-                            Planned: {product.planned_qty}
+                            {t('ui.fbPlanned', { count: product.planned_qty })}
                           </p>
                         </div>
                       </div>

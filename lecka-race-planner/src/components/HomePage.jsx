@@ -306,7 +306,7 @@ export default function HomePage() {
           <div className="text-center space-y-1">
             <p className="text-xs text-gray-400">{t('home.trust')}</p>
             <p className="text-xs text-gray-400">
-              Provided by{' '}
+              {t('footer.providedBy')}{' '}
               <a
                 href="https://www.getlecka.com"
                 target="_blank"
@@ -340,13 +340,13 @@ export default function HomePage() {
             <p className="text-xs text-gray-400 mb-2">{t('home.footer.findLecka')}</p>
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
               {[
-                { label: 'US',          href: 'https://www.getlecka.com' },
-                { label: 'Vietnam',     href: 'https://www.getlecka.vn' },
-                { label: 'Germany',     href: 'https://www.getlecka.de' },
-                { label: 'Denmark',     href: 'https://www.getlecka.dk' },
-                { label: 'Switzerland', href: 'https://www.getlecka.ch' },
-                { label: 'Singapore',   href: 'https://rdrc.sg/collections/lecka' },
-                { label: 'Hong Kong',   href: 'https://foodisdom.is/collections/lecka' },
+                { label: t('country.us'),          href: 'https://www.getlecka.com' },
+                { label: t('country.vn'),     href: 'https://www.getlecka.vn' },
+                { label: t('country.de'),     href: 'https://www.getlecka.de' },
+                { label: t('country.dk'),     href: 'https://www.getlecka.dk' },
+                { label: t('country.ch'), href: 'https://www.getlecka.ch' },
+                { label: t('country.sg'),   href: 'https://rdrc.sg/collections/lecka' },
+                { label: t('country.hk'),   href: 'https://foodisdom.is/collections/lecka' },
               ].map(({ label, href }) => (
                 <a
                   key={label}

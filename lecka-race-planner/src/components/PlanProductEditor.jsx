@@ -24,11 +24,11 @@ function formatTimingLabel(minutes) {
   return `${minutes} min`
 }
 
-function timingSummary(leckaSelection, productId) {
+function timingSummary(leckaSelection, productId, t) {
   const item = leckaSelection.find(i => i.product.id === productId)
   if (!item || !item.timing_minutes || item.timing_minutes.length === 0) return ''
   const times = [...item.timing_minutes].sort((a, b) => a - b)
-  if (times.length === 1) return `at ${formatTimingLabel(times[0])}`
+  if (times.length === 1) return t('results:timeline.atTime', { time: formatTimingLabel(times[0]) })
   return times.map(formatTimingLabel).join(' · ')
 }
 
@@ -211,7 +211,7 @@ export default function PlanProductEditor({
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-[#1B1B1B] truncate">{product.name}</p>
                 <p className="text-[10px] text-gray-400">
-                  {product.carbs_per_unit}g carbs · {timingSummary(leckaSelection, product.id)}
+                  {t('product.carbs', { value: product.carbs_per_unit })} · {timingSummary(leckaSelection, product.id, t)}
                 </p>
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -225,7 +225,7 @@ export default function PlanProductEditor({
         </div>
 
         <p className="text-[10px] text-[#48C4B0] mt-1.5">
-          Real food foundation — gut-friendly base for your race.
+          {t('products.realFoodNote')}
         </p>
 
         <AddChip onClick={() => setShowLeckaPicker(v => !v)} label={t('common:ui.pedAddLecka')} />
@@ -239,7 +239,7 @@ export default function PlanProductEditor({
                 <div key={type}>
                   <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-300
                                 px-3 py-1.5 bg-gray-50">
-                    {type === 'ultra_gel' ? 'Ultra gels' : type === 'gel' ? 'Gels' : 'Bars'}
+                    {type === 'ultra_gel' ? t('common:ui.ultraGels') : type === 'gel' ? t('common:ui.gels') : t('common:ui.bars')}
                   </p>
                   {products.map(p => (
                     <button
@@ -252,7 +252,7 @@ export default function PlanProductEditor({
                       <ProductIcon product={p} />
                       <div>
                         <p className="text-xs font-semibold text-[#1B1B1B]">{p.name}</p>
-                        <p className="text-[10px] text-gray-400">{p.carbs_per_unit}g carbs per unit</p>
+                        <p className="text-[10px] text-gray-400">{t('product.carbsPerUnit', { value: p.carbs_per_unit })}</p>
                       </div>
                     </button>
                   ))}
@@ -271,7 +271,7 @@ export default function PlanProductEditor({
         <div className="flex items-center gap-2 my-2">
           <div className="flex-1 h-px bg-gray-100" />
           <span className="text-[9px] font-semibold uppercase tracking-widest text-gray-300 whitespace-nowrap">
-            Add-on products · buy separately
+            {t('products.addonHeader')}
           </span>
           <div className="flex-1 h-px bg-gray-100" />
         </div>
@@ -382,8 +382,8 @@ export default function PlanProductEditor({
       {/* Progress bars */}
       <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
         {[
-          { label: 'Carbs covered',  provided: provided.carbs_per_hour_provided,  target: targets.carb_per_hour },
-          { label: 'Sodium covered', provided: provided.sodium_per_hour_provided, target: targets.sodium_per_hour },
+          { label: t('products.carbsCovered'),  provided: provided.carbs_per_hour_provided,  target: targets.carb_per_hour },
+          { label: t('products.sodiumCovered'), provided: provided.sodium_per_hour_provided, target: targets.sodium_per_hour },
         ].map(({ label, provided: prov, target }) => {
           const pct = target > 0 ? Math.min(130, Math.round((prov / target) * 100)) : 0
           const color = pct >= 90 && pct <= 110 ? '#48C4B0'

@@ -227,7 +227,7 @@ function StepRegion({ region, onSelect }) {
                   : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
               ].join(' ')}
             >
-              {cfg.label}
+              {t(`common:region.${key}`, { defaultValue: cfg.label })}
             </button>
           ))}
       </div>
@@ -251,7 +251,7 @@ function StepRegion({ region, onSelect }) {
                       : 'border-gray-200 bg-white text-[#1B1B1B] hover:border-[#48C4B0]',
                   ].join(' ')}
                 >
-                  {cfg.label}
+                  {t(`common:region.${key}`, { defaultValue: cfg.label })}
                 </button>
               ))}
           </div>
@@ -784,7 +784,7 @@ function StepOne({ form, setForm }) {
             const total = swimMin + bikeMin + runMin
             return (
               <p className="text-xs text-[#48C4B0] mt-2">
-                Total: {Math.floor(total / 60)}h {total % 60}min
+                {t('form:field.triathlonTotal', { h: Math.floor(total / 60), m: total % 60 })}
               </p>
             )
           })()}
@@ -853,12 +853,12 @@ function StepOne({ form, setForm }) {
             if (!bounds) return null
             if (goalMinutes < bounds.min) return (
               <p className="text-xs text-amber-600 mt-1.5">
-                That&apos;s a very fast target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+                {t('form:field.goalTime.tooFast')}
               </p>
             )
             if (goalMinutes > bounds.max) return (
               <p className="text-xs text-amber-600 mt-1.5">
-                That&apos;s a very slow target for this distance. Double-check your goal time — your nutrition plan will be calculated from this.
+                {t('form:field.goalTime.tooSlow')}
               </p>
             )
             return null
@@ -881,7 +881,7 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
       {/* Pre-fill badge */}
       {showPrefillBadge && (
         <div className="flex items-center justify-between gap-2 bg-[#48C4B0]/10 border border-[#48C4B0]/30 rounded-full px-4 py-2">
-          <span className="text-xs font-medium text-[#48C4B0]">{prefillMessage ?? 'Pre-filled from your profile'}</span>
+          <span className="text-xs font-medium text-[#48C4B0]">{prefillMessage ?? t('form:prefill.fromProfile')}</span>
           <button
             type="button"
             onClick={onDismissPrefill}
@@ -952,11 +952,11 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
       <div>
         <FieldLabel>{t('common:ui.ageBracket')} <span className="text-gray-400 font-normal">{t('form:field.optional')}</span></FieldLabel>
         <p className="text-xs text-gray-400 mb-2">
-          Masters athletes absorb carbohydrates at a lower rate. Select your age group to adjust your targets.
+          {t('form:field.ageBracket.hint')}
         </p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { key: 'under_40', label: 'Under 40' },
+            { key: 'under_40', label: t('form:field.ageBracket.under40') },
             { key: '40_to_50', label: '40–49' },
             { key: '50_to_60', label: '50–59' },
             { key: 'over_60',  label: '60+' },
@@ -1064,8 +1064,8 @@ function StepTwo({ form, setForm, showPrefillBadge = false, prefillMessage, onDi
             <p className="text-xs text-gray-400 mb-2">{t('form:field.humidity.label')}</p>
             <div className="flex gap-2">
               {[
-                { key: 'dry',   label: 'Dry',   range: '< 60 %' },
-                { key: 'humid', label: 'Humid', range: '≥ 60 %' },
+                { key: 'dry',   label: t('form:field.humidity.dry'),   range: '< 60 %' },
+                { key: 'humid', label: t('form:field.humidity.humid'), range: '≥ 60 %' },
               ].map(h => (
                 <button
                   key={h.key}
@@ -1311,12 +1311,12 @@ function AddonProductRow({ product, quantity, onChangeQty, onRemove }) {
           <span className="text-xs text-gray-400">{product.brand}</span>
           {POPULAR_IDS.has(product.id) && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#48C4B0]/10 text-[#48C4B0]">
-              Popular
+              {t('form:product.popular')}
             </span>
           )}
           {product.is_custom && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
-              Custom
+              {t('form:product.custom')}
             </span>
           )}
         </div>
@@ -1325,13 +1325,13 @@ function AddonProductRow({ product, quantity, onChangeQty, onRemove }) {
         </p>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
           {product.carbs_per_unit > 0 && (
-            <span className="text-xs text-gray-400">{product.carbs_per_unit}g carbs</span>
+            <span className="text-xs text-gray-400">{t('form:product.carbs', { value: product.carbs_per_unit })}</span>
           )}
           {product.sodium_per_unit > 0 && (
-            <span className="text-xs text-gray-400">{product.sodium_per_unit}mg sodium</span>
+            <span className="text-xs text-gray-400">{t('form:product.sodium', { value: product.sodium_per_unit })}</span>
           )}
           {product.caffeine && (
-            <span className="text-xs font-medium text-[#48C4B0]">{product.caffeine_mg}mg caffeine</span>
+            <span className="text-xs font-medium text-[#48C4B0]">{t('form:product.caffeine', { value: product.caffeine_mg })}</span>
           )}
           {product.dual_transporter && (
             <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-[#48C4B0]/10 text-[#48C4B0]">
@@ -1434,22 +1434,22 @@ function StepFour({ form, setForm, previewTargets }) {
   function handleAddCustomProduct() {
     const trimmedName = customName.trim()
     if (!trimmedName || trimmedName.length > 60) {
-      setCustomError('Please enter a product name (max 60 characters).')
+      setCustomError(t('form:customProduct.errName'))
       return
     }
     const carbsNum = Number(customCarbs)
     if (customCarbs === '' || !isFinite(carbsNum) || carbsNum < 0 || carbsNum > 150) {
-      setCustomError('Carbs must be a number between 0 and 150.')
+      setCustomError(t('form:customProduct.errCarbs'))
       return
     }
     const sodiumNum   = customSodium   !== '' ? Number(customSodium)   : 0
     const caffeineNum = customCaffeine !== '' ? Number(customCaffeine) : 0
     if (!isFinite(sodiumNum) || sodiumNum < 0 || sodiumNum > 2000) {
-      setCustomError('Sodium must be 0–2000 mg.')
+      setCustomError(t('form:customProduct.errSodium'))
       return
     }
     if (!isFinite(caffeineNum) || caffeineNum < 0 || caffeineNum > 300) {
-      setCustomError('Caffeine must be 0–300 mg.')
+      setCustomError(t('form:customProduct.errCaffeine'))
       return
     }
     setCustomError('')
